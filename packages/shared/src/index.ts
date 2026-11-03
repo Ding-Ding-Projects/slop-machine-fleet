@@ -57,6 +57,12 @@ export interface Task {
   createdAt: string;
   result?: unknown;
 }
+export interface BulkAttempt {
+  id: string;
+  startedAt: string;
+  phase: "dispatching" | "acknowledged" | "uncertain";
+  acknowledgedAt?: string;
+}
 export interface Operation {
   id: string;
   action: string;
@@ -65,6 +71,8 @@ export interface Operation {
     id: string;
     state: string;
     message?: string;
+    dispatchState?: "never-dispatched" | "acknowledged" | "uncertain";
+    attempt?: BulkAttempt | null;
     imageProvenance?: ResolvedImageProvenance | null;
   }>;
   createdAt: string;

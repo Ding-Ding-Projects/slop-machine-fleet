@@ -4,6 +4,7 @@ import {
   GetCommandInvocationCommand,
   DescribeInstanceInformationCommand,
 } from "@aws-sdk/client-ssm";
+import type { ActionAttemptContext } from "./bulk-operations.js";
 import type { CloudProvider } from "./cloud.js";
 import type { Store } from "./db.js";
 import type { Worker } from "@fleet/shared";
@@ -39,7 +40,11 @@ export const releaseSchema = z
   });
 export interface Provisioner {
   reconcile(worker: Worker): Promise<Worker>;
-  reset(worker: Worker, mode?: "repair" | "update"): Promise<void>;
+  reset(
+    worker: Worker,
+    mode?: "repair" | "update",
+    context?: ActionAttemptContext,
+  ): Promise<void>;
 }
 const ps = (v: string) => `'${v.replaceAll("'", "''")}'`,
   b64 = (v: string) => Buffer.from(v).toString("base64");
@@ -54,12 +59,18 @@ export class SsmProvisioner implements Provisioner {
     private client: (region: string) => Pick<SSMClient, "send"> = (region) =>
       new SSMClient({ region }),
   ) {}
-  async reset(worker: Worker, mode: "repair" | "update" = "repair") {
+  async reset(
+    worker: Worker,
+    mode: "repair" | "update" = "repair",
+    context?: ActionAttemptContext,
+  ) {
     if (!worker.instanceId) throw new Error("Instance identity is unavailable");
     delete this.enrollments[worker.id];
     await this.ca.saveManifest(this.enrollments);
     await this.store.put("state", `bootstrap:${worker.id}`, {
       phase: "request",
+      operationId: context?.operationId ?? null,
+      attemptId: context?.attemptId ?? null,
       mode,
       version: this.release.version,
       attempts: 0,

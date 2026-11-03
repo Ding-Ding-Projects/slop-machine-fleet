@@ -409,6 +409,7 @@ test("queued tasks cannot dispatch before verified worker readiness and terminat
     const id = randomUUID();
     await f.store.put("workers", id, {
       id,
+      instanceId: "i-test",
       name: "test",
       state: "bootstrapping",
       transport: "unenrolled",
