@@ -7,7 +7,7 @@ const identity = require('./mode.json');
 let window, actions, selected = '', state = {}, closing = false, verifiedHost = '';
 const page = pathToFileURL(path.join(__dirname, 'index.html')).href;
 const stateFile = () => path.join(app.getPath('userData'), 'companion-state.json');
-async function persist() { await fs.writeFile(stateFile(), JSON.stringify(state), { mode: 0o600 }); }
+async function persist() { await fs.mkdir(path.dirname(stateFile()), { recursive: true }); await fs.writeFile(stateFile(), JSON.stringify(state), { mode: 0o600 }); }
 function emit(value) { if (window && !window.isDestroyed()) window.webContents.send('companion:progress', value); }
 function trusted(event) {
   if (event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame || event.senderFrame.url !== page) throw new Error('Only the local companion can request actions.');
@@ -48,7 +48,7 @@ else app.whenReady().then(async () => {
   });
   handle('select', async () => {
     if (actions.busy || state.running) throw new Error('Wait for the running operation.');
-    const result = await dialog.showOpenDialog(window, { title: 'Select trusted Fleet source', properties: ['openDirectory'] });
+    const result = await dialog.showOpenDialog(window, { title: 'Select trusted Fleet source', ...(typeof state.source === 'string' ? { defaultPath: state.source } : {}), properties: ['openDirectory'] });
     if (result.canceled) return null;
     selected = await validateSource(result.filePaths[0]);
     verifiedHost = '';
