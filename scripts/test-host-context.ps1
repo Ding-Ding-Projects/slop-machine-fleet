@@ -7,6 +7,7 @@ $records=@([pscustomobject]@{project='existing-fleet';workingDirectory=$root})
 if((Select-HostProject $records $root '') -ne 'existing-fleet'){throw 'Existing project was not retained.'}
 Reject {Select-HostProject $records $root 'new-fleet'}
 Reject {Select-HostProject $records $other 'existing-fleet'}
+Reject {Select-HostProject @([pscustomobject]@{project='unknown-fleet';workingDirectory=''}) $root 'unknown-fleet'}
 Reject {Select-HostProject @($records[0],[pscustomobject]@{project='second-fleet';workingDirectory=$root}) $root ''}
 Assert-HostAddress 'fleet.lan' '8443'
 foreach($value in @('localhost','127.0.0.1','0.0.0.0','host&command','https://host')){Reject {Assert-HostAddress $value '8443'}}

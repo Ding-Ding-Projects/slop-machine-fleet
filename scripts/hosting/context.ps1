@@ -2,21 +2,24 @@ function ConvertTo-NativeArgument([string]$Value) {
   if ($Value.IndexOf([char]0) -ge 0) { throw 'Native arguments cannot contain null characters.' }
   return '"' + [regex]::Replace([regex]::Replace($Value,'(\\*)"','$1$1\"'),'(\\+)$','$1$1') + '"'
 }
-function Invoke-HostCommand([string]$Executable,[string[]]$Arguments,[int]$TimeoutSeconds=180,[hashtable]$Environment=@{}) {
+function Invoke-HostCommand([string]$Executable,[string[]]$Arguments,[int]$TimeoutSeconds=180,[hashtable]$Environment=@{},[string]$OutputFile='') {
   $info=New-Object Diagnostics.ProcessStartInfo
   $info.FileName=$Executable; $info.Arguments=($Arguments | ForEach-Object { ConvertTo-NativeArgument $_ }) -join ' '
   $info.UseShellExecute=$false; $info.CreateNoWindow=$true; $info.RedirectStandardOutput=$true; $info.RedirectStandardError=$true
   foreach($key in $Environment.Keys){$info.EnvironmentVariables[$key]=[string]$Environment[$key]}
   $child=New-Object Diagnostics.Process; $child.StartInfo=$info
+  $fileStream=$null
   try {
+    if($OutputFile){$fileStream=[IO.File]::Open($OutputFile,[IO.FileMode]::CreateNew);Protect-LocalPath $OutputFile}
     if(-not $child.Start()){throw 'The required command did not start.'}
-    $output=$child.StandardOutput.ReadToEndAsync(); $errorOutput=$child.StandardError.ReadToEndAsync()
+    $output=if($fileStream){$child.StandardOutput.BaseStream.CopyToAsync($fileStream)}else{$child.StandardOutput.ReadToEndAsync()}; $errorOutput=$child.StandardError.ReadToEndAsync()
     if(-not $child.WaitForExit($TimeoutSeconds*1000)){try{$child.Kill()}catch{};throw 'The command exceeded its time limit. Running containers and completed effects were preserved.'}
     $text=$output.GetAwaiter().GetResult(); $discard=$errorOutput.GetAwaiter().GetResult(); $discard=$null
     if($child.ExitCode -ne 0){throw ('Required command exited {0}. No raw output containing configuration is displayed.' -f $child.ExitCode)}
+    if($fileStream){$fileStream.Flush($true);return ''}
     if($text.Length -gt 1048576){throw 'Command output exceeded the supported bound.'}
     return $text.Trim()
-  } finally {$child.Dispose()}
+  } finally {if($fileStream){$fileStream.Dispose()};$child.Dispose()}
 }
 function Get-HostOptions([string[]]$Values,[string]$DefaultRoot) {
   $result=@{Root=$DefaultRoot;Project='';Release='';HostName='';Port='';Mode='';NonInteractive=([Console]::IsInputRedirected -or $env:CI -eq 'true');Trust=$false;Fingerprint=''}
@@ -31,10 +34,13 @@ function Get-HostOptions([string[]]$Values,[string]$DefaultRoot) {
   if($result.NonInteractive -and $result.Trust){throw 'Certificate confirmation requires an attended run. Existing exact trust can be reused without this option.'}
   $result.Root=[IO.Path]::GetFullPath($result.Root)
   if(-not (Test-Path -LiteralPath (Join-Path $result.Root 'compose.yaml'))){throw 'The selected project directory has no compose.yaml.'}
+  $package=Get-Content -LiteralPath (Join-Path $result.Root 'package.json') -Raw | ConvertFrom-Json
+  if($package.name -cne 'slop-machine-fleet'){throw 'The selected directory is not the Fleet source project.'}
   return $result
 }
 function Read-HostEnvironment([string]$File) {
   $values=@{}
+  if((Test-Path -LiteralPath $File) -and ((Get-Item -LiteralPath $File -Force).Attributes -band [IO.FileAttributes]::ReparsePoint)){throw 'Environment configuration cannot be a symbolic link or junction.'}
   if(Test-Path -LiteralPath $File){foreach($line in [IO.File]::ReadAllLines($File)){if($line -match '^([A-Z][A-Z0-9_]*)=(.*)$'){if($values.ContainsKey($matches[1])){throw 'Duplicate environment settings require review.'};$values[$matches[1]]=$matches[2].Trim()}}}
   return $values
 }
@@ -46,6 +52,7 @@ function Select-HostProject([object[]]$Records,[string]$Root,[string]$Requested)
   $matching=@($Records | Where-Object {$_.workingDirectory -and [IO.Path]::GetFullPath($_.workingDirectory).TrimEnd('\','/') -eq $normalized})
   if($Requested){
     if($Requested -notmatch '^[a-z0-9][a-z0-9_-]{0,62}$'){throw 'Invalid Compose project identity.'}
+    if(@($Records | Where-Object {$_.project -eq $Requested -and -not $_.workingDirectory}).Count){throw 'The named project has no verifiable source directory. Existing containers were retained.'}
     if(@($Records | Where-Object {$_.project -eq $Requested -and $_.workingDirectory -and [IO.Path]::GetFullPath($_.workingDirectory).TrimEnd('\','/') -ne $normalized}).Count){throw 'The named Compose project belongs to another directory. Select its actual project directory.'}
     if(@($matching | Where-Object {$_.project -ne $Requested}).Count){throw 'Another existing project uses this directory. Preserve it by selecting that exact project.'}
     return $Requested
@@ -59,9 +66,10 @@ function Invoke-HostDocker([object]$Context,[string[]]$Arguments,[int]$TimeoutSe
   Invoke-HostCommand $Context.Docker (@('--context',$Context.DockerContext)+$Arguments) $TimeoutSeconds
 }
 function Invoke-HostCompose([object]$Context,[string[]]$Arguments,[int]$TimeoutSeconds=180) {
-  $prefix=@('--context',$Context.DockerContext,'compose','--project-directory',$Context.Root,'--env-file',$Context.EnvFile,'-f',(Join-Path $Context.Root 'compose.yaml'),'-p',$Context.Project)
+  $prefix=Get-HostComposeArguments $Context
   Invoke-HostCommand $Context.Docker ($prefix+$Arguments) $TimeoutSeconds $Context.Environment
 }
+function Get-HostComposeArguments([object]$Context) {return @('--context',$Context.DockerContext,'compose','--project-directory',$Context.Root,'--env-file',$Context.EnvFile,'-f',(Join-Path $Context.Root 'compose.yaml'),'-p',$Context.Project)}
 function Save-HostEnvironment([string]$File,[hashtable]$Values,[string]$Local) {
   $previous=if(Test-Path -LiteralPath $File){[IO.File]::ReadAllText($File)}else{$null};$body=if($null -eq $previous){''}else{$previous}
   foreach($key in $Values.Keys){if($key -notin @('FLEET_HOST','FLEET_HTTPS_PORT','FLEET_IMAGE','COMPOSE_PROJECT_NAME')){throw 'Unsupported managed configuration key.'};$value=[string]$Values[$key];if($value -match '[\r\n\x00]'){throw 'Invalid configuration value.'};$pattern='(?m)^'+[regex]::Escape($key)+'=.*$';if([regex]::IsMatch($body,$pattern)){$body=[regex]::Replace($body,$pattern,($key+'='+$value))}else{$body+="`r`n"+$key+'='+$value}}
