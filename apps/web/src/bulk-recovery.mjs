@@ -13,7 +13,7 @@ export function resumeReason(operation,target){
  return null;
 }
 export function createResumeRequest(operation,workerIds){
- if(!Array.isArray(workerIds)||!workerIds.length||new Set(workerIds).size!==workerIds.length)throw Error('INVALID_RESUME_TARGETS');
+ if(!Array.isArray(workerIds)||!workerIds.length||workerIds.length>5||new Set(workerIds).size!==workerIds.length)throw Error('INVALID_RESUME_TARGETS');
  for(const id of workerIds){const target=operation.targets.find(item=>item.id===id);if(resumeReason(operation,target)!==null)throw Error('TARGET_NOT_RESUMABLE');}
  return {workerIds:[...workerIds],requestHash:operation.requestHash};
 }
