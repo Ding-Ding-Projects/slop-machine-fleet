@@ -59,10 +59,12 @@ using(var auth=new AuthManager(settings,raceRuntime)) {
     await raceRuntime.DelayStarted.Task.WaitAsync(TimeSpan.FromSeconds(2));
     Check(successor.SessionId!=owner,"successor receives a fresh session identity after predecessor settlement");
     try {await auth.Cancel("pairing",owner);Check(false,"stale cancel accepted");}catch(InvalidOperationException){Check(auth.Status("pairing").SessionId==successor.SessionId&&auth.Status("pairing").State=="code-issued","stale cancellation cannot change the successor owner");}
-    try {await auth.Input("pairing",owner,"y");Check(false,"stale input accepted");}catch(InvalidOperationException){Check(auth.Status("pairing").SessionId==successor.SessionId,"stale input cannot target a successor session");}
+    try {await auth.Input("pairing",new AuthInput(owner,Guid.NewGuid(),"enter"));Check(false,"stale input accepted");}catch(InvalidOperationException){Check(auth.Status("pairing").SessionId==successor.SessionId,"stale input cannot target a successor session");}
     await auth.Cancel("pairing",successor.SessionId!.Value);
 }
 Console.WriteLine($"PASS {checks} pairing and ownership checks");
+await InteractiveChecks.Run(settings,Check);
+Console.WriteLine($"PASS {checks} authentication consumer checks");
 
 sealed class FakePairingRuntime(string response="") : IPairingRuntime {
     public DateTimeOffset UtcNow {get;private set;}=new(2030,1,1,0,0,0,TimeSpan.Zero);

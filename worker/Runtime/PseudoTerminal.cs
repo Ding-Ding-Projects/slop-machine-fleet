@@ -5,7 +5,7 @@ using Microsoft.Win32.SafeHandles;
 namespace Fleet.Worker;
 
 // ConPTY retains interactive CLI semantics without a visible desktop or shell.
-public sealed class PseudoTerminal : IDisposable {
+public sealed class PseudoTerminal : IAuthTerminal {
     IntPtr console, attributes, processHandle, threadHandle;
     readonly StreamReader reader;
     readonly StreamWriter writer;
