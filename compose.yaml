@@ -1,0 +1,54 @@
+name: slop-machine-fleet
+services:
+  database:
+    image: postgres:17.6-bookworm
+    environment:
+      POSTGRES_USER: fleet
+      POSTGRES_DB: fleet
+      POSTGRES_PASSWORD_FILE: /run/secrets/database_password
+    secrets: [database_password]
+    volumes: [database:/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U fleet -d fleet]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+  service:
+    image: ${FLEET_IMAGE:?Set FLEET_IMAGE to a published version or digest}
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: '3000'
+      PUBLIC_ORIGIN: https://${FLEET_HOST:?Set FLEET_HOST}:${FLEET_HTTPS_PORT:-8443}
+      DATABASE_URL_FILE: /run/secrets/database_url
+      SETUP_CODE_FILE: /run/secrets/setup_code
+      WEB_ROOT: /app/apps/web/dist
+    secrets: [database_url, setup_code]
+    depends_on:
+      database: { condition: service_healthy }
+    restart: unless-stopped
+    init: true
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+  gateway:
+    image: caddy:2.10.2-alpine
+    environment:
+      FLEET_HOST: ${FLEET_HOST}
+    ports: ['${FLEET_HTTPS_PORT:-8443}:443']
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - certificates:/data
+      - gateway_config:/config
+    depends_on: [service]
+    restart: unless-stopped
+secrets:
+  database_password: { file: ./.local/database-password }
+  database_url: { file: ./.local/database-url }
+  setup_code: { file: ./.local/setup-code }
+volumes:
+  database:
+  certificates:
+  gateway_config:
