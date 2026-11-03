@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readAuthState,promptRequest,isCurrentPrompt,cancellationPath,createAuthOwnership} from '../src/auth-prompts.mjs';
+import {readAuthState,promptRequest,isCurrentPrompt,cancellationPath,createAuthOwnership,isAuthInputAcknowledgement} from '../src/auth-prompts.mjs';
 const sessionId='11111111-1111-1111-1111-111111111111',promptId='22222222-2222-2222-2222-222222222222',other='33333333-3333-3333-3333-333333333333';
 const helper=()=>({state:'input-required',sessionId,gitSetupState:'not-requested',prompt:{promptId,kind:'github-credential-helper',title:'Provider title is not rendered',choices:[{value:'yes',label:'Provider label is not rendered'},{value:'no',label:'No'}],defaultChoice:'yes',allowedActions:['choose','enter']},expiresAt:null});
 test('recognized credential helper exposes exact choices without retaining provider prompt copy',()=>{const state=readAuthState(helper(),'github');assert.equal(state.prompt.kind,'github-credential-helper');assert.deepEqual(state.prompt.choices,['yes','no']);assert.equal(state.unsupportedPrompt,false);assert.doesNotMatch(JSON.stringify(state),/Provider title|Provider label/);});
@@ -18,3 +18,4 @@ test('late responses lose ownership after another request, unmount or target rep
 
 test('declined or failed Git credential setup never rewrites verified GitHub login',()=>{for(const gitSetupState of ['declined','error','configured']){const state=readAuthState({...helper(),state:'verified',prompt:null,gitSetupState,...(gitSetupState==='error'?{errorCode:'GIT_SETUP_FAILED'}:{})},'github');assert.equal(state.state,'verified');assert.equal(state.gitSetupState,gitSetupState);assert.equal(state.legacy,false);}});
 test('missing setup-state capability is read-only and unknown enum is rejected',()=>{const value=helper();delete value.gitSetupState;assert.equal(readAuthState(value,'github').legacy,true);assert.throws(()=>readAuthState({...helper(),gitSetupState:'guessed'},'github'),/AUTH_RESPONSE_INVALID/);});
+test('input acknowledgement is not mistaken for authenticated state or terminal output',()=>{assert.equal(isAuthInputAcknowledgement({accepted:true}),true);for(const value of [{accepted:false},{accepted:true,transcript:'not allowed'},helper(),null])assert.equal(isAuthInputAcknowledgement(value),false);});

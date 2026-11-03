@@ -5,7 +5,7 @@ import {useUI} from './preferences';
 import {useWorkflow} from './platform/integration/WorkflowSafety';
 import {usePlatform} from './platform';
 import {AuthPrompt,type PromptResponse} from './AuthPrompt';
-import {readAuthState,isCurrentPrompt,cancellationPath,createAuthOwnership} from './auth-prompts.mjs';
+import {readAuthState,isCurrentPrompt,cancellationPath,createAuthOwnership,isAuthInputAcknowledgement} from './auth-prompts.mjs';
 const blankAuth=(state='unknown')=>({state,sessionId:null,prompt:null,unsupportedPrompt:false,expiresAt:null,errorCode:null,gitSetupState:'unknown'});
 function Connection({workerId,provider,onOpenMaintenance}:{workerId:string;provider:'codex'|'github'|'pairing';onOpenMaintenance:()=>void}){
  const {t}=useUI(),[state,setState]=useState<any>(blankAuth),[busy,setBusy]=useState(false),[error,setError]=useState(''),[clock,setClock]=useState(Date.now()),[revealed,setRevealed]=useState(false);
@@ -23,8 +23,13 @@ function Connection({workerId,provider,onOpenMaintenance}:{workerId:string;provi
   const controller=new AbortController();request.current=controller;inFlight.current=true;
   setBusy(true);setError('');setRevealed(false);replace(blankAuth('checking'));
   try{
-   const result=await api<unknown>(target,method,body,controller.signal);
+   let result=await api<unknown>(target,method,body,controller.signal);
    if(!ownership.current.isCurrent(ticket))return;
+   if(suffix==='/input'){
+    if(!isAuthInputAcknowledgement(result))throw Error('AUTH_RESPONSE_INVALID');
+    result=await api<unknown>(path,'GET',undefined,controller.signal);
+    if(!ownership.current.isCurrent(ticket))return;
+   }
    const next=readAuthState(result,provider,expectedSession);session.current=next.sessionId;replace(next);
   }catch(cause){
    if(!ownership.current.isCurrent(ticket)||controller.signal.aborted)return;

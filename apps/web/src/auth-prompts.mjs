@@ -41,4 +41,5 @@ export function isCurrentPrompt(current,request){
  try{const valid=promptRequest(current,request.action,request.choice);return Object.keys(request).length===Object.keys(valid).length&&Object.keys(valid).every(key=>request[key]===valid[key]);}catch{return false;}
 }
 export function cancellationPath(path,current){if(!uuid(current?.sessionId))throw Error('AUTH_SESSION_UNAVAILABLE');return `${path}?sessionId=${encodeURIComponent(current.sessionId)}`;}
+export function isAuthInputAcknowledgement(value){return object(value)&&Object.keys(value).length===1&&value.accepted===true;}
 export function createAuthOwnership(){let sequence=0,alive=false;return {mount(){alive=true;sequence++;},dispose(){alive=false;sequence++;},begin(){if(!alive)throw Error('AUTH_VIEW_UNAVAILABLE');return ++sequence;},isCurrent(ticket){return alive&&ticket===sequence;}};}
