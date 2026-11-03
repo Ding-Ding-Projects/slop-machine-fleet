@@ -44,7 +44,7 @@ app.Use(async (context, next) => {
     catch (InvalidOperationException) { context.Response.StatusCode = 409; await context.Response.WriteAsJsonAsync(new { error = new { code = "STATE_CONFLICT", message = "Operation is not available in the current state." } }); }
     catch (Exception) { context.Response.StatusCode = 500; await context.Response.WriteAsJsonAsync(new { error = new { code = "WORKER_ERROR", message = "Worker operation failed. Inspect nonsecret status." } }); }
 });
-app.MapGet("/health", (TaskManager tasks) => new { workerId = settings.WorkerId, ready = !tasks.Draining, state = tasks.Draining ? "draining" : "ready", version = "0.1.0", runtime = Environment.Version.ToString() });
+app.MapGet("/health", (TaskManager tasks) => new { workerId = settings.WorkerId, ready = !tasks.Draining, state = tasks.Draining ? "draining" : "ready", version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "unavailable", runtime = Environment.Version.ToString() });
 app.MapPost("/auth/{provider}/start", (string provider, AuthManager auth) => auth.Start(provider));
 app.MapGet("/auth/{provider}", (string provider, AuthManager auth) => auth.Status(provider));
 app.MapPost("/auth/{provider}/input", async (string provider, InputRequest body, AuthManager auth) => { await auth.Input(provider, body.Input); return Results.Accepted(); });

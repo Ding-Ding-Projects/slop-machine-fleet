@@ -21,6 +21,10 @@ function Get-SquirrelPayload([string]$Directory) {
   return $result
 }
 try {
+  foreach ($signingInput in @('CSC_LINK','CSC_KEY_PASSWORD','WIN_CSC_LINK','WIN_CSC_KEY_PASSWORD','CSC_NAME','WIN_CSC_NAME')) {
+    [Environment]::SetEnvironmentVariable($signingInput, $null, 'Process')
+  }
+  $env:CSC_IDENTITY_AUTO_DISCOVERY = 'false'
   Set-Location -LiteralPath $root
   if ($Options | Where-Object { $_ -notin @('/s','--silent','/run','--run') }) { throw 'Supported arguments: /s, --silent, /run, --run.' }
   Write-Host 'Build uses user-scoped portable tools. Administrator rights are not required.'
@@ -49,6 +53,8 @@ try {
     $env:PATH = "$nodeHome;$env:PATH"
   }
   & node --version
+  & node (Join-Path $PSScriptRoot 'check-vocabulary.mjs')
+  if ($LASTEXITCODE -ne 0) { throw 'Private source currency validation did not pass.' }
   if ($LASTEXITCODE -ne 0) { throw 'Node verification failed.' }
   . (Join-Path $PSScriptRoot 'dotnet.ps1')
   $workerProject = Join-Path $root 'worker/Fleet.Worker.csproj'
