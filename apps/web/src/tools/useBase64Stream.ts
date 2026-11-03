@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import {
   removeTemporary,
   claimTemporary,
@@ -7,6 +7,7 @@ import {
 } from "../../../../packages/shared/local-base64/storage.mjs";
 import { textByteLength } from "../../../../packages/shared/local-base64/data-url.mjs";
 import { zipPlan } from "../../../../packages/shared/local-base64/archive.mjs";
+import { createRunLifecycle } from "../../../../packages/shared/local-base64/lifecycle.mjs";
 type Claim = { id: string; owner: string; expectedBytes: number };
 export type StreamResult = {
   id: string;
@@ -56,19 +57,28 @@ export function useBase64Stream() {
     }
     if (alive.current) setCleanupError(true);
   }, []);
-  const stop = useCallback(() => {
-    generation.current++;
-    worker.current?.terminate();
-    worker.current = null;
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = null;
-    pending.current?.(Error("cancelled"));
-    pending.current = null;
-    if (activeId.current) {
-      void retire(activeId.current);
-      activeId.current = null;
-    }
-  }, [retire]);
+  const lifecycle = useMemo(
+    () =>
+      createRunLifecycle({
+        generation,
+        worker,
+        timer,
+        pending,
+        activeId,
+        retire,
+        onReset: () => {
+          if (alive.current) {
+            setBusy(false);
+            setPaused(false);
+          }
+        },
+        onPause: (value: boolean) => {
+          if (alive.current) setPaused(value);
+        },
+      }),
+    [retire],
+  );
+  const stop = lifecycle.stop;
   const dispose = useCallback(() => {
     stop();
     for (const id of owned.current.keys()) void retire(id);
@@ -80,15 +90,7 @@ export function useBase64Stream() {
       dispose();
     };
   }, [dispose]);
-  const cancel = useCallback(() => {
-    worker.current?.postMessage({ type: "cancel" });
-    setPaused(false);
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => {
-      stop();
-      if (alive.current) setBusy(false);
-    }, 1500);
-  }, [stop]);
+  const cancel = lifecycle.cancel;
   const run = useCallback(
     (
       file: File,
@@ -109,19 +111,26 @@ export function useBase64Stream() {
       });
       return new Promise<StreamResult>((resolve, reject) => {
         pending.current = reject;
-        const size =
-          typeof options.textPayload === "string"
-            ? textByteLength(
-                options.textPayload,
-                mode === "decode"
-                  ? "utf-8"
-                  : String(options.encoding || "utf-8"),
-              )
-            : file.size;
-        const expectedBytes =
-          mode === "zip"
-            ? zipPlan(options.files as any).expectedBytes
-            : storageBudget(size, mode, Number(options.wrap) || 0);
+        let expectedBytes: number;
+        try {
+          const size =
+            typeof options.textPayload === "string"
+              ? textByteLength(
+                  options.textPayload,
+                  mode === "decode"
+                    ? "utf-8"
+                    : String(options.encoding || "utf-8"),
+                )
+              : file.size;
+          expectedBytes =
+            mode === "zip"
+              ? zipPlan(options.files as any).expectedBytes
+              : storageBudget(size, mode, Number(options.wrap) || 0);
+        } catch (error) {
+          lifecycle.finish(current);
+          reject(error);
+          return;
+        }
         void acquireAndStart({
           acquire: () => claimTemporary({ consent, expectedBytes }),
           retain: (claim: Claim) => {
@@ -136,15 +145,7 @@ export function useBase64Stream() {
               { type: "module" },
             );
             worker.current = active;
-            const finish = () => {
-              active.terminate();
-              worker.current = null;
-              pending.current = null;
-              if (timer.current) clearTimeout(timer.current);
-              timer.current = null;
-              setBusy(false);
-              setPaused(false);
-            };
+            const finish = () => lifecycle.finish(current);
             active.onmessage = ({ data }) => {
               if (current !== generation.current) return;
               if (data.type === "progress") {
@@ -179,6 +180,7 @@ export function useBase64Stream() {
               }
             };
             active.onerror = () => {
+              if (current !== generation.current) return;
               const id = activeId.current;
               activeId.current = null;
               finish();
@@ -199,7 +201,7 @@ export function useBase64Stream() {
         });
       });
     },
-    [stop, retire],
+    [stop, retire, lifecycle],
   );
   return {
     run,
