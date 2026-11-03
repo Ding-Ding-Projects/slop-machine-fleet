@@ -5,6 +5,7 @@ import { decodeText, imageDimensions } from "./core.mjs";
 import {
   detectedMedia,
   previewLabel,
+  decodeTextPreview,
 } from "../../../../packages/shared/local-base64/preview.mjs";
 export type StreamEntry = {
   id: string;
@@ -137,14 +138,16 @@ export function StreamOutput({ entry }: { entry: StreamEntry }) {
       return;
     }
     try {
+      const decoded = decodeTextPreview(
+        bytes,
+        output.result.mode === "encode"
+          ? "utf-8"
+          : String(output.result.options.encoding || "utf-8"),
+        output.file.size > bytes.length,
+      );
       setPreview(
-        decodeText(
-          bytes,
-          output.result.mode === "encode"
-            ? "utf-8"
-            : String(output.result.options.encoding || "utf-8"),
-        ) +
-          (output.file.size > 65536
+        decoded.text +
+          (decoded.truncated
             ? "\n" +
               t(
                 "Preview truncated; download keeps all bytes.",

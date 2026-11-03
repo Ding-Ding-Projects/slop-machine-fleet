@@ -27,3 +27,24 @@ export function previewLabel(mime) {
         ? "video"
         : "text";
 }
+
+export function decodeTextPreview(
+  bytes,
+  encoding = "utf-8",
+  truncated = false,
+) {
+  if (!(bytes instanceof Uint8Array) || bytes.length > 65536)
+    throw new RangeError("Preview exceeds its byte bound");
+  if (!["utf-8", "utf-16le", "utf-16be", "latin1"].includes(encoding))
+    throw new TypeError("Unsupported preview encoding");
+  if (encoding === "latin1") {
+    let text = "";
+    for (let offset = 0; offset < bytes.length; offset += 8192)
+      text += String.fromCharCode(...bytes.subarray(offset, offset + 8192));
+    return { text, truncated };
+  }
+  // A bounded prefix is not end-of-input: buffer only an incomplete final unit.
+  // Fatal decoding still rejects malformed interior bytes and terminal input.
+  const decoder = new TextDecoder(encoding, { fatal: true, ignoreBOM: true });
+  return { text: decoder.decode(bytes, { stream: truncated }), truncated };
+}
