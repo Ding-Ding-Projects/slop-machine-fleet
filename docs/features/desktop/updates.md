@@ -29,7 +29,9 @@ All metadata requests use HTTPS, restricted product/API/CDN destinations, bounde
 
 The persistent ready strip names the exact downloaded version, links to its validated release notes and warns that the package is unsigned. It becomes ready only after the native downloaded event matches both the pinned feed and exact expected version. Later leaves the client running and the update ready. A small local recovery note records staging, but that note is never trusted to manufacture a ready state after launch.
 
-The parent workspace must mount `DesktopUpdates` with complete safety properties: `authenticated`, `reachable`, `activeTasks`, `pendingWrites` and `dirty`. Unknown values block restart. These must include all active tasks, queued or in-flight mutations and drafts from both visible and unmounted workflows. The component reports this state every two seconds. Main requires a report no more than six seconds old and invalidates it on navigation or renderer loss.
+The parent workspace must mount `DesktopUpdates` with complete safety properties: `authenticated`, `reachable`, `activeTasks`, `pendingWrites`, `dirty`, `verifiedAt` and `sourceGeneration`. Unknown values block restart. The booleans include all active tasks, queued or in-flight mutations and drafts from both visible and unmounted workflows. `verifiedAt` is the actual coherent authoritative snapshot's verification time in epoch milliseconds, a positive safe integer. `sourceGeneration` is the actual API mutation/write revision, a nonnegative safe integer. The owning interface records them together only after a successful coherent read with unchanged write revision and no pending writes. A heartbeat must never generate either value.
+
+The component forwards the same evidence every two seconds. Main requires both an IPC receipt no more than six seconds old and authoritative source evidence no more than four seconds old. Future times, invalid metadata, missing evidence and a regressing write revision are rejected and immediately revoke earlier safety. Repeating old booleans cannot refresh source authority. A newly verified idle snapshot at the same write revision refreshes evidence without cancelling an open native confirmation; semantic boolean or write-revision changes invalidate confirmation. Navigation or renderer loss revokes safety and resets the document's revision namespace.
 
 Restart requests first require a safe workspace, then open a native confirmation with Later as the default. Main rechecks safety, navigation generation and the same ready candidate after confirmation before calling `quitAndInstall()`. Native confirmation cannot be supplied through renderer IPC. The action restarts Fleet only; it never changes the computer's power or login state. A normal application exit and later launch can also apply an already downloaded Squirrel update, as described by Electron; Later is not a package rollback.
 
@@ -46,6 +48,8 @@ The isolated preload exposes only `read`, `subscribe`, `check`, `reportSafety`, 
   activeTasks={anyActiveTask}
   pendingWrites={anyQueuedOrPendingMutation}
   dirty={anyUnsavedDraft}
+  verifiedAt={coherentSnapshotVerifiedAt}
+  sourceGeneration={snapshotApiWriteRevision}
 />
 ```
 
