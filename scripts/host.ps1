@@ -1,5 +1,6 @@
 param([Parameter(ValueFromRemainingArguments=$true)][string[]]$Options)
 $ErrorActionPreference = 'Stop'
+$env:PSModulePath = (Join-Path $PSHOME 'Modules') + ';' + (Join-Path $env:ProgramFiles 'WindowsPowerShell\Modules')
 Set-Location -LiteralPath (Split-Path $PSScriptRoot -Parent)
 function Run-Compose([string[]]$Arguments) { & docker compose @Arguments; if ($LASTEXITCODE -ne 0) { throw "Docker Compose exited $LASTEXITCODE." } }
 try {
@@ -20,9 +21,46 @@ try {
   $mode = if ($Options -contains '--logs') { 'logs' } elseif ($Options -contains '--detached') { 'detached' } else { if ((Read-Host 'Choose [D]etached or interactive [L]ogs') -match '^[lL]$') { 'logs' } else { 'detached' } }
   $local = Join-Path (Get-Location) '.local'
   New-Item -ItemType Directory -Force $local | Out-Null
-  $identity = [Security.Principal.WindowsIdentity]::GetCurrent().Name
-  & icacls.exe $local /inheritance:r /grant:r "${identity}:(OI)(CI)F" /Q | Out-Null
-  if ($LASTEXITCODE -ne 0) { throw 'Could not protect local configuration storage.' }
+  $identitySid = [Security.Principal.WindowsIdentity]::GetCurrent().User
+  $systemSid = New-Object Security.Principal.SecurityIdentifier('S-1-5-18')
+  function Protect-LocalPath([string]$Target) {
+    $phase = 'inspect path'; $category = 'configuration path'
+    try {
+      $item = Get-Item -LiteralPath $Target -Force
+      if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw 'Local configuration cannot contain symbolic links or junctions.' }
+      $category = if ($item.PSIsContainer) { 'configuration directory' } else { 'configuration file' }
+      $phase = 'read owner and group'
+      $metadata = [Security.AccessControl.AccessControlSections]::Owner -bor [Security.AccessControl.AccessControlSections]::Group
+      $before = if ($item.PSIsContainer) { [IO.Directory]::GetAccessControl($Target,$metadata) } else { [IO.File]::GetAccessControl($Target,$metadata) }
+      $owner = $before.GetOwner([Security.Principal.SecurityIdentifier]).Value
+      $group = $before.GetGroup([Security.Principal.SecurityIdentifier]).Value
+      $phase = 'prepare DACL'
+      # A fresh descriptor marks only access rules as modified; owner, group and audit are not written.
+      $acl = if ($item.PSIsContainer) { New-Object Security.AccessControl.DirectorySecurity } else { New-Object Security.AccessControl.FileSecurity }
+      $acl.SetAccessRuleProtection($true, $false)
+      foreach ($sid in @($identitySid,$systemSid)) {
+        if ($item.PSIsContainer) { $rule = New-Object Security.AccessControl.FileSystemAccessRule($sid,'FullControl','ContainerInherit,ObjectInherit','None','Allow') }
+        else { $rule = New-Object Security.AccessControl.FileSystemAccessRule($sid,'FullControl','Allow') }
+        $acl.AddAccessRule($rule)
+      }
+      $phase = 'persist DACL'
+      if ($item.PSIsContainer) { [IO.Directory]::SetAccessControl($Target,$acl) } else { [IO.File]::SetAccessControl($Target,$acl) }
+      $phase = 'read back DACL and metadata'
+      $sections = $metadata -bor [Security.AccessControl.AccessControlSections]::Access
+      $verified = if ($item.PSIsContainer) { [IO.Directory]::GetAccessControl($Target,$sections) } else { [IO.File]::GetAccessControl($Target,$sections) }
+      $rules = @($verified.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier]))
+      $expectedInheritance = if ($item.PSIsContainer) { [Security.AccessControl.InheritanceFlags]'ContainerInherit,ObjectInherit' } else { [Security.AccessControl.InheritanceFlags]::None }
+      if (-not $verified.AreAccessRulesProtected -or $rules.Count -ne 2 -or $verified.GetOwner([Security.Principal.SecurityIdentifier]).Value -ne $owner -or $verified.GetGroup([Security.Principal.SecurityIdentifier]).Value -ne $group) { throw 'Local configuration permissions or owner/group preservation did not verify.' }
+      foreach ($sid in @($identitySid,$systemSid)) {
+        $matching = @($rules | Where-Object { $_.IdentityReference.Value -eq $sid.Value -and $_.AccessControlType -eq 'Allow' -and $_.FileSystemRights -eq [Security.AccessControl.FileSystemRights]::FullControl -and -not $_.IsInherited -and $_.InheritanceFlags -eq $expectedInheritance -and $_.PropagationFlags -eq [Security.AccessControl.PropagationFlags]::None })
+        if ($matching.Count -ne 1) { throw 'Local configuration requires exactly the current identity and SYSTEM with explicit full control.' }
+      }
+    } catch {
+      throw ('Local permissions failed during {0} for {1}: {2}, HRESULT 0x{3:X8}.' -f $phase,$category,$_.Exception.GetType().FullName,$_.Exception.HResult)
+    }
+  }
+  Protect-LocalPath $local
+  Get-ChildItem -LiteralPath $local -Recurse -Force | ForEach-Object { Protect-LocalPath $_.FullName }
   function New-ProtectedValue([string]$Name) {
     $file = Join-Path $local $Name
     if (-not (Test-Path $file)) {
@@ -36,6 +74,13 @@ try {
   New-ProtectedValue 'setup-code'
   $databaseUrlFile = Join-Path $local 'database-url'
   if (-not (Test-Path $databaseUrlFile)) { $password = [IO.File]::ReadAllText((Join-Path $local 'database-password')); [IO.File]::WriteAllText($databaseUrlFile, "postgresql://fleet:${password}@database:5432/fleet"); $password = $null }
+  New-Item -ItemType Directory -Force (Join-Path $local 'aws') | Out-Null
+  if (-not (Test-Path (Join-Path $local 'worker-release.json'))) { throw 'Download the source-bound worker-release.json from the accepted release into .local/worker-release.json before starting the controller.' }
+  $workerRelease = Get-Content (Join-Path $local 'worker-release.json') -Raw | ConvertFrom-Json
+  foreach ($property in @('version','assetUrl','assetSha256','bootstrapUrl','bootstrapSha256')) { if (-not $workerRelease.$property) { throw 'The worker release manifest is incomplete.' } }
+  foreach ($property in @('assetSha256','bootstrapSha256')) { if ($workerRelease.$property -notmatch '^[a-f0-9]{64}$') { throw 'The worker release manifest digest is invalid.' } }
+  foreach ($property in @('assetUrl','bootstrapUrl')) { $assetUri = [Uri]$workerRelease.$property; if ($assetUri.Scheme -ne 'https' -or $assetUri.UserInfo -or $assetUri.Query -or $assetUri.Fragment) { throw 'Worker release assets must use immutable HTTPS addresses without credentials or query values.' } }
+  Get-ChildItem -LiteralPath $local -Recurse -Force | ForEach-Object { Protect-LocalPath $_.FullName }
   Run-Compose @('pull')
   Run-Compose @('up','-d','--wait','--wait-timeout','180')
   $url = "https://${fleetHost}:$port/api/health"

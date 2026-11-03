@@ -93,3 +93,37 @@ export interface FleetEvent {
   data: unknown;
   createdAt: string;
 }
+export type TaskOutputKind =
+  | "assistant"
+  | "command"
+  | "command-output"
+  | "file-change"
+  | "progress"
+  | "state"
+  | "result";
+export interface TaskOutputEvent {
+  sequence: number;
+  kind: TaskOutputKind;
+  content: string;
+  at: string;
+  itemId?: string | null;
+  stream?: "combined" | "stdout" | "stderr" | null;
+  truncated: boolean;
+  redacted: boolean;
+}
+export interface TaskOutputPage {
+  taskId: string;
+  events: TaskOutputEvent[];
+  nextCursor: number;
+  oldestSequence: number;
+  latestSequence: number;
+  gap: boolean;
+  truncated: boolean;
+  resetReason?: string | null;
+}
+
+export interface AuthenticatedSession {
+  authenticated: true;
+  csrfToken: string;
+  scopeKey: string;
+}

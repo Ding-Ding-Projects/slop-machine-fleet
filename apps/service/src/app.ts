@@ -6,14 +6,17 @@ import {
   createHash,
 } from "node:crypto";
 import { readFile } from "node:fs/promises";
-import { dirname, resolve, relative, isAbsolute, sep } from "node:path";
+import { registerFeatureRoutes } from "./features.js";
 import Fastify from "fastify";
+import { isApiRequest } from "./request-routing.js";
 import cookie from "@fastify/cookie";
 import rateLimit from "@fastify/rate-limit";
 import { z } from "zod";
 import type { Worker, Task } from "@fleet/shared";
 import { Store, migrate, type Database } from "./db.js";
 import type { CloudProvider } from "./cloud.js";
+import { initializeOwnerIdentity, currentOwnerScope } from "./owner-scope.js";
+import { outputQuerySchema, validateTaskOutput } from "./task-output.js";
 import type { Provisioner } from "./provisioning.js";
 import type { WorkerTransport } from "./transport.js";
 const uuid = z.string().uuid(),
@@ -67,6 +70,7 @@ export async function createService(o: ServiceOptions) {
   const app = Fastify({ logger: false, bodyLimit: 65536, trustProxy: false }),
     store = new Store(o.db);
   await migrate(o.db);
+  await initializeOwnerIdentity(store);
   await app.register(cookie);
   await app.register(rateLimit, { max: 120, timeWindow: "1 minute" });
   let serial = Promise.resolve();
@@ -104,7 +108,7 @@ export async function createService(o: ServiceOptions) {
       .header("Cache-Control", "no-store")
       .header("X-Content-Type-Options", "nosniff")
       .header("Referrer-Policy", "no-referrer");
-    if (!req.url.startsWith("/api/")) return;
+    if (!isApiRequest(req)) return;
     const write = !["GET", "HEAD", "OPTIONS"].includes(req.method);
     if (write && req.headers.origin !== o.origin)
       throw fail(403, "ORIGIN_REQUIRED", "A matching origin is required.");
@@ -114,22 +118,25 @@ export async function createService(o: ServiceOptions) {
         "/api/auth/status",
         "/api/auth/setup",
         "/api/auth/login",
-      ].includes(req.url.split("?")[0])
+      ].includes(req.routeOptions.url ?? "")
     )
       return;
     const raw = req.cookies.fleet_session,
       s = raw ? await store.get("sessions", hash(raw)) : undefined;
-    if (!s || s.expiresAt < Date.now())
+    const owner = await store.get("state", "owner");
+    if (!s || s.expiresAt < Date.now() || !owner?.id || s.ownerId !== owner.id)
       throw fail(401, "AUTH_REQUIRED", "Sign in to continue.");
     if (write && !same(String(req.headers["x-csrf-token"] ?? ""), s.csrfToken))
       throw fail(403, "CSRF_REQUIRED", "A valid CSRF token is required.");
     (req as any).session = s;
   });
+  registerFeatureRoutes(app, o.featureManifestFile);
   const signIn = async (res: any) => {
     const raw = randomBytes(32).toString("base64url"),
       s = {
         csrfToken: randomBytes(32).toString("base64url"),
         expiresAt: Date.now() + 8 * 3600000,
+        ownerId: (await store.get("state", "owner"))?.id,
       };
     await store.put("sessions", hash(raw), s);
     res.setCookie("fleet_session", raw, {
@@ -139,7 +146,11 @@ export async function createService(o: ServiceOptions) {
       path: "/",
       maxAge: 28800,
     });
-    return { authenticated: true, csrfToken: s.csrfToken };
+    return {
+      authenticated: true,
+      csrfToken: s.csrfToken,
+      scopeKey: await currentOwnerScope(store, o.origin),
+    };
   };
   app.get("/api/health", async () => {
     await o.db.query("SELECT 1");
@@ -150,7 +161,12 @@ export async function createService(o: ServiceOptions) {
       ? await store.get("sessions", hash(req.cookies.fleet_session))
       : undefined;
     return {
-      authenticated: Boolean(s && s.expiresAt > Date.now()),
+      authenticated: Boolean(
+        s &&
+          s.expiresAt > Date.now() &&
+          Boolean((await store.get("state", "owner"))?.id) &&
+          s.ownerId === (await store.get("state", "owner"))?.id,
+      ),
       setupAvailable:
         !(await store.get("state", "owner")) && Boolean(o.setupCodeFile),
     };
@@ -187,6 +203,7 @@ export async function createService(o: ServiceOptions) {
           );
         const salt = randomBytes(16).toString("hex");
         await store.put("state", "owner", {
+          id: randomUUID(),
           salt,
           digest: scryptSync(b.password, salt, 64).toString("hex"),
         });
@@ -215,6 +232,7 @@ export async function createService(o: ServiceOptions) {
   app.get("/api/auth/session", async (req) => ({
     authenticated: true,
     csrfToken: (req as any).session.csrfToken,
+    scopeKey: await currentOwnerScope(store, o.origin),
   }));
   app.post("/api/auth/logout", async (req, res) => {
     if (req.cookies.fleet_session)
@@ -424,7 +442,7 @@ export async function createService(o: ServiceOptions) {
       w.state = "draining";
     } else {
       await o.cloud.action(w, a);
-      w.state = a === "terminate" ? "terminated" : `${a}-requested`;
+      w.state = `${a}-requested`;
     }
     await store.put("workers", w.id, w);
     return w;
@@ -529,18 +547,14 @@ export async function createService(o: ServiceOptions) {
     return t;
   };
   async function dispatch(id: string) {
-    const tasks = (await store.all<Task>("tasks"))
-      .filter((t) => t.workerId === id)
-      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    const tasks = (await store.all<Task>("tasks")).filter(
+      (t) => t.workerId === id,
+    );
     if (tasks.some((t) => ["running", "dispatching"].includes(t.state))) return;
     const t = tasks.find((t) => t.state === "queued");
     if (!t) return;
     const w = await worker(id);
-    if (
-      ["draining", "terminated"].includes(w.state) ||
-      !(await o.transport.ready(w))
-    )
-      return;
+    if (w.state !== "ready" || !(await o.transport.ready(w))) return;
     t.state = "dispatching";
     await store.put("tasks", t.id, t);
     try {
@@ -561,9 +575,7 @@ export async function createService(o: ServiceOptions) {
     await store.event("task.updated", { id: t.id, state: t.state });
   }
   app.get("/api/tasks", async () => ({
-    tasks: (await store.all<Task>("tasks")).sort((a, b) =>
-      a.createdAt.localeCompare(b.createdAt),
-    ),
+    tasks: await store.all<Task>("tasks"),
   }));
   app.post("/api/tasks", async (req) =>
     lock(async () => {
@@ -606,9 +618,78 @@ export async function createService(o: ServiceOptions) {
       return task(t.id);
     }),
   );
-  app.get<{ Params: { id: string } }>("/api/tasks/:id", async (req) =>
-    task(req.params.id),
-  );
+  app.get<{ Params: { id: string } }>("/api/tasks/:id", async (req) => {
+    const current = await task(req.params.id);
+    if (["running", "dispatching"].includes(current.state)) {
+      try {
+        const value = await o.transport.request(
+          await worker(current.workerId),
+          "GET",
+          `/tasks/${current.id}`,
+        );
+        const workerTask = z
+          .object({
+            id: uuid,
+            state: z.string().max(80),
+            threadId: z.string().max(256).nullable().optional(),
+            turnId: z.string().max(256).nullable().optional(),
+            errorCode: z.string().max(160).nullable().optional(),
+            pendingApprovals: z
+              .array(
+                z.object({
+                  requestId: z.string().min(1).max(128),
+                  method: z.string().min(1).max(100),
+                  summary: z.string().max(2000),
+                  detailsAvailable: z.boolean().optional(),
+                  redacted: z.boolean().optional(),
+                  permissions: z.array(z.string().max(200)).max(20),
+                }),
+              )
+              .max(100)
+              .optional(),
+            approvalRequestIds: z
+              .array(z.string().max(128))
+              .max(100)
+              .optional(),
+          })
+          .parse(value);
+        return { ...current, workerTask };
+      } catch {
+        return { ...current, workerDetailUnavailable: true };
+      }
+    }
+    return current;
+  });
+  app.get<{
+    Params: { id: string };
+    Querystring: { after?: string; limit?: string };
+  }>("/api/tasks/:id/output", async (req) => {
+    const current = await task(req.params.id),
+      query = outputQuerySchema.parse(req.query);
+    let value: unknown;
+    try {
+      value = await o.transport.request(
+        await worker(current.workerId),
+        "GET",
+        `/tasks/${current.id}/output?after=${query.after}&limit=${query.limit}`,
+      );
+    } catch {
+      throw fail(
+        503,
+        "TASK_OUTPUT_UNAVAILABLE",
+        "Task output is unavailable. Worker memory may have reset; reconnect and inspect the replay state.",
+      );
+    }
+    try {
+      return validateTaskOutput(value, current.id, query.after, query.limit);
+    } catch {
+      throw fail(
+        502,
+        "TASK_OUTPUT_INVALID",
+        "Worker task output failed identity, bounds or replay validation.",
+      );
+    }
+  });
   app.post<{ Params: { id: string } }>("/api/tasks/:id/cancel", async (req) =>
     lock(async () => {
       const t = await task(req.params.id);
@@ -683,7 +764,11 @@ export async function createService(o: ServiceOptions) {
         const current = req.cookies.fleet_session
           ? await store.get("sessions", hash(req.cookies.fleet_session))
           : undefined;
-        if (!current || current.expiresAt < Date.now()) {
+        if (
+          !current ||
+          current.expiresAt < Date.now() ||
+          current.ownerId !== (await store.get("state", "owner"))?.id
+        ) {
           res.raw.end();
           return;
         }
@@ -732,6 +817,33 @@ export async function createService(o: ServiceOptions) {
           }
         }
       for (const w of await store.all<Worker>("workers")) {
+        if (
+          [
+            "start-requested",
+            "stop-requested",
+            "restart-requested",
+            "terminate-requested",
+          ].includes(w.state)
+        ) {
+          try {
+            const observed = await o.cloud.observe(w);
+            if (observed === "terminated") w.state = "terminated";
+            else if (observed === "stopped") w.state = "stopped";
+            else if (
+              observed === "running" &&
+              w.state !== "stop-requested" &&
+              w.state !== "terminate-requested"
+            ) {
+              const health = await o.transport.request(w, "GET", "/health");
+              if (health.workerId === w.id && health.ready === true)
+                w.state = "ready";
+            }
+            await store.put("workers", w.id, w);
+          } catch {
+            /* Provider acceptance is not terminal-state proof. */
+          }
+        }
+
         if (
           o.provisioner &&
           ["bootstrapping", "enrollment-required"].includes(w.state)

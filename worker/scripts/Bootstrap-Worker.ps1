@@ -4,6 +4,7 @@ param(
     [Parameter(Mandatory)][Uri]$AssetUrl,
     [Parameter(Mandatory)][ValidatePattern('^[a-fA-F0-9]{64}$')][string]$AssetSha256,
     [Parameter(Mandatory)][Guid]$WorkerId,
+    [Parameter(Mandatory)][ValidatePattern('^vol-[a-f0-9]{8,17}$')][string]$DataVolumeId,
     [string]$InstallRoot='C:\ProgramData\SlopMachineFleet',
     [string]$ServerCertificateBase64,[string]$ControllerCaBase64,[string]$ControllerThumbprint
 )
@@ -20,6 +21,31 @@ $accountName='FleetWorker'
 function Protect-Directory([string]$Path,[string]$WorkerPermission) {
     & icacls.exe $Path /inheritance:r /grant:r '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-544:(OI)(CI)F' "$env:COMPUTERNAME\${accountName}:(OI)(CI)$WorkerPermission" | Out-Null
     if ($LASTEXITCODE -ne 0) { throw 'Unable to enforce the worker directory ACL' }
+}
+function Resolve-DataWorkspace([bool]$AllowInitialize) {
+    $identity=$DataVolumeId.Replace('-','').ToLowerInvariant()
+    $deadline=[DateTime]::UtcNow.AddSeconds(60)
+    do { $disks=@(Get-Disk | Where-Object { ($_.SerialNumber -replace '[^A-Za-z0-9]','').ToLowerInvariant() -eq $identity }); if($disks.Count -eq 0) { Start-Sleep -Seconds 2; Update-HostStorageCache } } while($disks.Count -eq 0 -and [DateTime]::UtcNow -lt $deadline)
+    if($disks.Count -ne 1 -or $disks[0].IsBoot -or $disks[0].IsSystem) { throw 'The exact retained data volume could not be safely identified' }
+    $disk=$disks[0]
+    if($disk.IsOffline) { Set-Disk -Number $disk.Number -IsOffline $false }
+    if($disk.IsReadOnly) { throw 'Retained data volume is read-only; no workspace mutation attempted' }
+    if($disk.PartitionStyle -eq 'RAW') {
+        if(!$AllowInitialize) { throw 'Retained data volume is unexpectedly RAW; repair never reformats it' }
+        Initialize-Disk -Number $disk.Number -PartitionStyle GPT | Out-Null
+        $partition=New-Partition -DiskNumber $disk.Number -UseMaximumSize -AssignDriveLetter
+        $partition | Format-Volume -FileSystem NTFS -NewFileSystemLabel 'FleetData' -Confirm:$false | Out-Null
+    } else {
+        $partitions=@(Get-Partition -DiskNumber $disk.Number | Where-Object { $_.Type -eq 'Basic' })
+        if($partitions.Count -ne 1) { throw 'Retained data volume has an ambiguous partition layout; no formatting attempted' }
+        $partition=$partitions[0]
+        if(!$partition.DriveLetter) { $partition | Add-PartitionAccessPath -AssignDriveLetter; $partition=Get-Partition -DiskNumber $disk.Number -PartitionNumber $partition.PartitionNumber }
+        $volume=$partition | Get-Volume
+        if($volume.FileSystem -ne 'NTFS') { throw 'Retained workspace requires an existing supported NTFS volume; no formatting attempted' }
+    }
+    $workspace="$($partition.DriveLetter):\FleetWorkspaces"
+    New-Item -ItemType Directory -Path $workspace -Force | Out-Null
+    return $workspace
 }
 function Install-OfficialTools {
     [Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12
@@ -59,6 +85,10 @@ function Install-OfficialTools {
 if($Phase -in @('Repair','Update')) {
     if(!(Test-Path -LiteralPath (Join-Path $enrollment 'worker-id')) -or (Get-Content -LiteralPath (Join-Path $enrollment 'worker-id') -Raw) -ne $WorkerId.ToString()) { throw 'Existing enrollment identity mismatch' }
     $account=Get-LocalUser -Name $accountName -ErrorAction Stop
+    if((Get-Content -LiteralPath (Join-Path $InstallRoot 'data-volume-id') -Raw) -ne $DataVolumeId) { throw 'Retained volume identity mismatch' }
+    $workspace=Resolve-DataWorkspace $false
+    $existingConfig=Get-Content -LiteralPath $configuration -Raw | ConvertFrom-Json
+    if([IO.Path]::GetFullPath($existingConfig.dataRoot) -ne [IO.Path]::GetFullPath($workspace)) { throw 'Existing configuration does not match the exact retained data volume' }
     $administrators=Get-LocalGroup -SID 'S-1-5-32-544'
     if(Get-LocalGroupMember -Group $administrators | Where-Object SID -EQ $account.SID) { throw 'Dedicated worker identity cannot be an administrator' }
     foreach($process in @(Get-CimInstance Win32_Process -Filter "Name LIKE 'codex%'") ) {
@@ -88,6 +118,10 @@ if ($Phase -eq 'Request') {
     $credential=New-Object Management.Automation.PSCredential("$env:COMPUTERNAME\$accountName",$password)
     New-Item -ItemType Directory -Path $InstallRoot,$enrollment,(Join-Path $InstallRoot 'data') -Force | Out-Null
     Protect-Directory $InstallRoot 'RX'; Protect-Directory $enrollment 'RX'; Protect-Directory (Join-Path $InstallRoot 'data') 'M'
+    $workspace=Resolve-DataWorkspace $true
+    Protect-Directory $workspace 'M'
+    Set-Content -LiteralPath (Join-Path $InstallRoot 'data-volume-id') -Value $DataVolumeId -NoNewline
+    Set-Content -LiteralPath (Join-Path $InstallRoot 'data-workspace') -Value $workspace -NoNewline
     Invoke-WebRequest -UseBasicParsing -Uri $AssetUrl.AbsoluteUri -OutFile $executable
     if ((Get-FileHash -LiteralPath $executable -Algorithm SHA256).Hash -ne $AssetSha256) { throw 'Worker executable integrity verification failed; service was not started' }
     Install-OfficialTools
@@ -124,12 +158,15 @@ public static class FleetServiceIdentity {
 }
 if (!(Test-Path -LiteralPath $executable) -or (Get-FileHash -LiteralPath $executable -Algorithm SHA256).Hash -ne $AssetSha256) { throw 'Enrolled executable is absent or mismatched' }
 if ((Get-Content -LiteralPath (Join-Path $enrollment 'worker-id') -Raw) -ne $WorkerId.ToString()) { throw 'Worker identity mismatch' }
+if((Get-Content -LiteralPath (Join-Path $InstallRoot 'data-volume-id') -Raw) -ne $DataVolumeId) { throw 'Retained volume identity mismatch' }
+$workspace=Resolve-DataWorkspace $false
+if((Get-Content -LiteralPath (Join-Path $InstallRoot 'data-workspace') -Raw) -ne $workspace) { throw 'Retained workspace mapping changed' }
 if ($ControllerThumbprint -notmatch '^[a-fA-F0-9]{64}$') { throw 'Expected the controller leaf SHA-256 DER thumbprint' }
 if (!$ServerCertificateBase64 -or !$ControllerCaBase64 -or $ServerCertificateBase64.Length -gt 32768 -or $ControllerCaBase64.Length -gt 32768) { throw 'Missing or oversized public enrollment certificate' }
 [IO.File]::WriteAllBytes((Join-Path $enrollment 'server.pem'),[Convert]::FromBase64String($ServerCertificateBase64))
 [IO.File]::WriteAllBytes((Join-Path $enrollment 'controller-ca.pem'),[Convert]::FromBase64String($ControllerCaBase64))
 $tools=Get-Content -LiteralPath (Join-Path $InstallRoot 'tools-state.json') -Raw | ConvertFrom-Json
-@{workerId=$WorkerId.ToString();serverCertificate=(Join-Path $enrollment 'server.pem');serverKey=(Join-Path $enrollment 'server.key');controllerCa=(Join-Path $enrollment 'controller-ca.pem');controllerThumbprint=$ControllerThumbprint;dataRoot=(Join-Path $InstallRoot 'data');gitPath=$tools.paths.git;ghPath=$tools.paths.gh;codexPath=$tools.paths.codex} | ConvertTo-Json | Set-Content -LiteralPath $configuration -Encoding UTF8
+@{workerId=$WorkerId.ToString();serverCertificate=(Join-Path $enrollment 'server.pem');serverKey=(Join-Path $enrollment 'server.key');controllerCa=(Join-Path $enrollment 'controller-ca.pem');controllerThumbprint=$ControllerThumbprint;dataRoot=$workspace;gitPath=$tools.paths.git;ghPath=$tools.paths.gh;codexPath=$tools.paths.codex} | ConvertTo-Json | Set-Content -LiteralPath $configuration -Encoding UTF8
 Protect-Directory $InstallRoot 'RX'
 Start-Service -Name SlopMachineFleetWorker
 $deadline=[DateTime]::UtcNow.AddSeconds(45)

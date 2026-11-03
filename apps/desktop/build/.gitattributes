@@ -1,0 +1,5 @@
+# Preserve the exact upstream source and license bytes on every checkout.
+deployed_code_24px.svg -text
+LICENSE.material-symbols -text
+*.ico -text
+*.png -text

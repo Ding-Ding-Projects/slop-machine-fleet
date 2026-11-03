@@ -1,2 +1,30 @@
-:root{color-scheme:light;--canvas:#f6f8fc;--surface:#ffffff;--input:#ffffff;--text:#202b40;--muted:#758096;--border:#e3e8f0;--primary:#3264cd;--on-primary:#fff;--selected:#eaf0ff;--hover:#f0f4fb;--good:#278269;--good-surface:#e9f5ef;--danger:#ad3444;--danger-surface:#ffedf0;--warning:#b77920;--md-sys-color-primary:var(--primary);--md-sys-color-on-primary:var(--on-primary);--md-sys-color-surface:var(--surface);--md-sys-color-on-surface:var(--text);--md-sys-color-outline:var(--border);--md-sys-color-on-surface-variant:var(--muted)}
-:root[data-theme=dark]{color-scheme:dark;--canvas:#111722;--surface:#19212f;--input:#131c29;--text:#e3e9f4;--muted:#a1adc2;--border:#303b4e;--primary:#a8c2ff;--on-primary:#14346c;--selected:#24385d;--hover:#233047;--good:#79d8b5;--good-surface:#1b3934;--danger:#ffabb6;--danger-surface:#45262e;--warning:#efbf71}
+/* Source-owned design tokens and fonts remain in the preserved reference tree. */
+@import '../../../design/design-system/tokens.css';
+:root {
+ color-scheme:dark;
+ --canvas:var(--surface);--panel:var(--surface-container-low);--input:var(--surface-container-highest);
+ --text:var(--on-surface);--muted:var(--on-surface-variant);--border:var(--outline-variant);
+ --selected:var(--secondary-container);--hover:color-mix(in srgb,var(--on-surface) 8%,var(--panel));
+ --good:var(--status-running);--good-surface:var(--status-running-soft);
+ --danger:var(--status-failed);--danger-surface:var(--status-failed-soft);--warning:var(--status-draining);
+ --md-sys-color-primary:var(--primary);--md-sys-color-on-primary:var(--on-primary);
+ --md-sys-color-primary-container:var(--primary-container);--md-sys-color-on-primary-container:var(--on-primary-container);
+ --md-sys-color-secondary:var(--secondary);--md-sys-color-on-secondary:var(--on-secondary);
+ --md-sys-color-secondary-container:var(--secondary-container);--md-sys-color-on-secondary-container:var(--on-secondary-container);
+ --md-sys-color-tertiary:var(--tertiary);--md-sys-color-on-tertiary:var(--on-tertiary);
+ --md-sys-color-tertiary-container:var(--tertiary-container);--md-sys-color-on-tertiary-container:var(--on-tertiary-container);
+ --md-sys-color-error:var(--error);--md-sys-color-on-error:var(--on-error);
+ --md-sys-color-error-container:var(--error-container);--md-sys-color-on-error-container:var(--on-error-container);
+ --md-sys-color-surface:var(--surface);--md-sys-color-surface-container-lowest:var(--surface-container-lowest);
+ --md-sys-color-surface-container-low:var(--surface-container-low);--md-sys-color-surface-container:var(--surface-container);
+ --md-sys-color-surface-container-high:var(--surface-container-high);--md-sys-color-surface-container-highest:var(--surface-container-highest);
+ --md-sys-color-on-surface:var(--on-surface);--md-sys-color-on-surface-variant:var(--on-surface-variant);
+ --md-sys-color-outline:var(--outline);--md-sys-color-outline-variant:var(--outline-variant);
+ --md-sys-color-inverse-surface:var(--inverse-surface);--md-sys-color-inverse-on-surface:var(--inverse-on-surface);
+ --md-sys-color-inverse-primary:var(--inverse-primary);--md-sys-color-scrim:var(--scrim);--md-sys-color-shadow:var(--shadow);
+ --md-ref-typeface-brand:var(--font-brand);--md-ref-typeface-plain:var(--font-plain);--md-icon-font:var(--font-icon);
+ --md-sys-typescale-body-large-font:var(--font-plain);--md-sys-typescale-body-medium-font:var(--font-plain);
+ --md-sys-typescale-label-large-font:var(--font-plain);--md-sys-typescale-label-medium-font:var(--font-plain);
+ --md-sys-typescale-title-medium-font:var(--font-plain);
+}
+:root[data-theme=light]{color-scheme:light}

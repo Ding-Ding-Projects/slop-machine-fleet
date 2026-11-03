@@ -8,6 +8,8 @@ Run `build.bat /s` to acquire supported Node/.NET tools and project dependencies
 
 The desktop setup screen stores only the service origin in its local application data. Sign-in happens inside the service; cookies remain managed by the isolated desktop session. The Connection menu returns to address setup. HTTP addresses, embedded credentials and certificate exceptions are not supported.
 
+Portable Node and .NET build tools share `%LOCALAPPDATA%\DingDingProjects\SlopMachineFleetBuildTools`, outside the Squirrel-owned application installation. The scripts reject cache paths inside that installation, normalized traversal into it and linked cache directories. They do not select old installation-contained runtimes from PATH, copy an old cache automatically, or delete or move existing installation data. Existing valid independent runtimes and checksum-verified downloads remain reusable. Cache resolution itself leaves PATH unchanged; a bootstrapped runtime is added only to the current build process.
+
 ## Host on the LAN
 
 1. Install and start a supported Docker engine with Compose v2. The hosting entrypoint reports missing engine support and exits without changing other containers. Automatic engine installation and the portable setup/build GUI are not implemented by these scripts.

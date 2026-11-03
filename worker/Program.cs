@@ -44,13 +44,14 @@ app.Use(async (context, next) => {
     catch (InvalidOperationException) { context.Response.StatusCode = 409; await context.Response.WriteAsJsonAsync(new { error = new { code = "STATE_CONFLICT", message = "Operation is not available in the current state." } }); }
     catch (Exception) { context.Response.StatusCode = 500; await context.Response.WriteAsJsonAsync(new { error = new { code = "WORKER_ERROR", message = "Worker operation failed. Inspect nonsecret status." } }); }
 });
-app.MapGet("/health", (TaskManager tasks) => new { workerId = settings.WorkerId, ready = !tasks.Draining, state = tasks.Draining ? "draining" : "ready", version = "0.1.0", runtime = Environment.Version.ToString() });
+app.MapGet("/health", (TaskManager tasks) => new { workerId = settings.WorkerId, ready = !tasks.Draining, state = tasks.Draining ? "draining" : "ready", version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "unavailable", runtime = Environment.Version.ToString() });
 app.MapPost("/auth/{provider}/start", (string provider, AuthManager auth) => auth.Start(provider));
 app.MapGet("/auth/{provider}", (string provider, AuthManager auth) => auth.Status(provider));
 app.MapPost("/auth/{provider}/input", async (string provider, InputRequest body, AuthManager auth) => { await auth.Input(provider, body.Input); return Results.Accepted(); });
 app.MapDelete("/auth/{provider}", (string provider, AuthManager auth) => { auth.Cancel(provider); return Results.NoContent(); });
 app.MapPost("/tasks", async (TaskRequest request, TaskManager tasks) => Results.Accepted(value: await tasks.Start(request)));
 app.MapGet("/tasks/{id:guid}", (Guid id, TaskManager tasks) => tasks.Details(id));
+app.MapGet("/tasks/{id:guid}/output", (Guid id, long? after, int? limit, TaskManager tasks) => tasks.Output(id,after??0,limit??100));
 app.MapPost("/tasks/{id:guid}/cancel", async (Guid id, TaskManager tasks) => { await tasks.Cancel(id); return Results.Accepted(); });
 app.MapPost("/tasks/{id:guid}/input", async (Guid id, InputRequest input, TaskManager tasks) => { await tasks.Input(id, input.Input); return Results.Accepted(); });
 app.MapPost("/tasks/{id:guid}/approvals/{requestId}", async (Guid id, string requestId, ApprovalRequest body, TaskManager tasks) => { await tasks.Approve(id, requestId, body.Decision); return Results.Accepted(); });
@@ -59,7 +60,7 @@ app.MapGet("/events", async (HttpContext context, Events events) => {
     context.Response.ContentType = "text/event-stream";
     long.TryParse(context.Request.Headers["Last-Event-ID"], out var after);
     while (!context.RequestAborted.IsCancellationRequested) {
-        foreach (var entry in events.Since(after)) { await context.Response.WriteAsync($"id: {entry.Sequence}\ndata: {System.Text.Json.JsonSerializer.Serialize(entry)}\n\n", context.RequestAborted); after = entry.Sequence; }
+        foreach (var entry in events.Since(after)) { await context.Response.WriteAsync($"id: {entry.Sequence}\ndata: {System.Text.Json.JsonSerializer.Serialize(entry,new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web))}\n\n", context.RequestAborted); after = entry.Sequence; }
         await context.Response.Body.FlushAsync(context.RequestAborted);
         await Task.Delay(500, context.RequestAborted);
     }

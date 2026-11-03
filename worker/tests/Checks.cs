@@ -43,4 +43,67 @@ using(var terminal=new PseudoTerminal(Path.Combine(Environment.GetFolderPath(Env
     Check(await terminal.Wait(timeout.Token)==0,"native ConPTY returns actual child exit status");
 }
 Console.WriteLine($"PASS {checks} total worker checks");
+void Notify(TaskOutput transcript,string method,string payload) {using var fixture=JsonDocument.Parse(payload);transcript.Record(method,fixture.RootElement);}
+var transcript=new TaskOutput(Guid.NewGuid());
+Notify(transcript,"item/agentMessage/delta","{\"threadId\":\"t\",\"turnId\":\"u\",\"itemId\":\"a\",\"delta\":\"Actual assistant \"}");
+Check(transcript.Snapshot(0,100).Events.Length==0,"partial output line withheld until safe boundary");
+Notify(transcript,"item/agentMessage/delta","{\"threadId\":\"t\",\"turnId\":\"u\",\"itemId\":\"a\",\"delta\":\"message\\n\"}");
+Check(transcript.Snapshot(0,100).Events.Single().Content=="Actual assistant message\n","assistant deltas produce actual ordered text");
+Notify(transcript,"item/started","{\"threadId\":\"t\",\"turnId\":\"u\",\"item\":{\"id\":\"c\",\"type\":\"commandExecution\",\"command\":\"dotnet build\",\"status\":\"inProgress\"}}");
+Notify(transcript,"item/commandExecution/outputDelta","{\"threadId\":\"t\",\"turnId\":\"u\",\"itemId\":\"c\",\"delta\":\"build stdout\\nbuild stderr\\n\"}");
+Notify(transcript,"item/completed","{\"threadId\":\"t\",\"turnId\":\"u\",\"item\":{\"id\":\"c\",\"type\":\"commandExecution\",\"command\":\"dotnet build\",\"status\":\"completed\",\"exitCode\":0,\"aggregatedOutput\":\"must not duplicate streamed output\"}}");
+var commandEvents=transcript.Snapshot(0,100).Events;
+Check(commandEvents.Count(x=>x.Kind=="command-output")==2&&commandEvents.Where(x=>x.Kind=="command-output").All(x=>x.Stream=="combined"),"task command output keeps actual multiplexed stream semantics");
+Check(!commandEvents.Any(x=>x.Content.Contains("must not duplicate")),"completed aggregate does not duplicate streamed command text");
+Notify(transcript,"item/fileChange/patchUpdated","{\"threadId\":\"t\",\"turnId\":\"u\",\"itemId\":\"f\",\"changes\":[{\"path\":\"src/example.cs\",\"kind\":{\"type\":\"update\"},\"diff\":\"not copied\"}]}");
+Check(transcript.Snapshot(0,100).Events.Any(x=>x.Kind=="file-change"&&x.Content=="update: src/example.cs"),"file change progress uses actual path and operation");
+Notify(transcript,"turn/plan/updated","{\"threadId\":\"t\",\"turnId\":\"u\",\"plan\":[{\"step\":\"Compile worker\",\"status\":\"completed\"}]}");
+Check(transcript.Snapshot(0,100).Events.Any(x=>x.Kind=="progress"&&x.Content.Contains("Compile worker")),"actual plan progress is observable");
+var beforeAuth=transcript.LatestSequence;
+Notify(transcript,"account/login/completed","{\"authId\":\"not-task-data\",\"success\":true}");
+Notify(transcript,"process/outputDelta","{\"processHandle\":\"unrelated\",\"stream\":\"stderr\",\"deltaBase64\":\"b3V0cHV0\",\"capReached\":false}");
+Check(transcript.LatestSequence==beforeAuth,"authentication and uncorrelated process data excluded");
+var redaction=new TaskOutput(Guid.NewGuid());
+Notify(redaction,"item/agentMessage/delta","{\"itemId\":\"s\",\"delta\":\"Bearer \"}");
+Notify(redaction,"item/agentMessage/delta","{\"itemId\":\"s\",\"delta\":\"example-sensitive-value\\n\"}");
+Check(redaction.Snapshot(0,100).Events.All(x=>x.Redacted&&!x.Content.Contains("example-sensitive-value")),"credential patterns split across protocol deltas withheld");
+Notify(redaction,"item/started","{\"item\":{\"id\":\"p\",\"type\":\"commandExecution\",\"command\":\"type PERSONAL_VOCABULARY.json\"}}");
+Notify(redaction,"item/commandExecution/outputDelta","{\"itemId\":\"p\",\"delta\":\"private mapping contents\\n\"}");
+Check(!redaction.Snapshot(0,100).Events.Any(x=>x.Content.Contains("private mapping contents")),"personal wording file command output withheld");
+Notify(redaction,"item/agentMessage/delta","{\"itemId\":\"code\",\"delta\":\"ABCD-EFGH\\n\"}");
+Check(!redaction.Snapshot(0,100).Events.Any(x=>x.Content.Contains("ABCD-EFGH")),"one-time code-shaped output withheld");
+var pressure=new TaskOutput(Guid.NewGuid());for(var i=0;i<700;i++) pressure.State("running");
+var firstPage=pressure.Snapshot(0,20);var nextPage=pressure.Snapshot(firstPage.NextCursor,20);
+Check(firstPage.Gap&&firstPage.Truncated&&firstPage.Events.Length==20&&firstPage.OldestSequence>1,"bounded replay reports evicted history and remaining pages");
+Check(nextPage.Events[0].Sequence==firstPage.NextCursor+1,"replay cursors do not duplicate or skip retained events");
+var restarted=new TaskOutput(Guid.NewGuid(),700,true);restarted.State("interrupted");var restartSnapshot=restarted.Snapshot(0,100);
+Check(restartSnapshot.Gap&&restartSnapshot.ResetReason=="worker-restarted"&&restartSnapshot.Events.Single().Sequence==701,"restart preserves monotonic cursor and reports lost transient history");
+var oversized=new TaskOutput(Guid.NewGuid());
+using(var huge=JsonDocument.Parse(JsonSerializer.Serialize(new {itemId="long",delta=new string('x',10000)+"\n"}))) oversized.Record("item/agentMessage/delta",huge.RootElement);
+Check(oversized.Snapshot(0,100).Events.All(x=>x.Truncated&&x.Content.Length<=2048),"oversized partial lines produce truthful bounded omission markers");
+var ahead=pressure.Snapshot(99999,100);Check(ahead.Gap&&ahead.ResetReason=="cursor-ahead-of-worker"&&ahead.NextCursor==ahead.LatestSequence,"ahead cursor receives explicit reset and valid replacement cursor");
+var bytePressure=new TaskOutput(Guid.NewGuid());
+for(var i=0;i<100;i++) {using var chunk=JsonDocument.Parse(JsonSerializer.Serialize(new {itemId="bytes",delta=new string('\u754c',2040)+"\n"}));bytePressure.Record("item/agentMessage/delta",chunk.RootElement);}
+var byteSnapshot=bytePressure.Snapshot(0,200);
+Check(byteSnapshot.Gap&&JsonSerializer.SerializeToUtf8Bytes(byteSnapshot.Events,new JsonSerializerOptions(JsonSerializerDefaults.Web)).Length<=256*1024,"serialized replay byte budget includes JSON escaping");
+var suppressionPressure=new TaskOutput(Guid.NewGuid());
+for(var i=0;i<1025;i++) {using var command=JsonDocument.Parse(JsonSerializer.Serialize(new {item=new {id="protected-"+i,type="commandExecution",command="type PERSONAL_VOCABULARY.json"}}));suppressionPressure.Record("item/started",command.RootElement);}
+Notify(suppressionPressure,"item/commandExecution/outputDelta","{\"itemId\":\"protected-1024\",\"delta\":\"must remain hidden after tracking limit\\n\"}");
+Check(!suppressionPressure.Snapshot(0,200).Events.Any(x=>x.Content.Contains("must remain hidden")),"protected item tracking overflow fails closed");
+Console.WriteLine($"PASS {checks} total worker checks");
+using(var pairing=JsonDocument.Parse(JsonSerializer.Serialize(new {manualPairingCode="TEST-CODE",expiresAt=DateTimeOffset.UtcNow.AddMinutes(5).ToUnixTimeSeconds()}))) {
+    var state=AuthManager.ParsePairing(pairing.RootElement); Check(state.State=="code-issued"&&state.UserCode=="TEST-CODE"&&state.ExpiresAt.HasValue,"official pairing fields and Unix expiry parsed");
+}
+using(var expiredPairing=JsonDocument.Parse("{\"manualPairingCode\":\"TEST-CODE\",\"expiresAt\":1}")) Check(AuthManager.ParsePairing(expiredPairing.RootElement).State=="expired","provider-expired pairing code is not offered");
+Console.WriteLine($"PASS {checks} total worker checks");
+var enrollment=Path.Combine(folder,"enrollment");Directory.CreateDirectory(enrollment);var workerId=Guid.NewGuid();File.WriteAllText(Path.Combine(enrollment,"worker-id"),workerId.ToString());
+var executable=Path.Combine(AppContext.BaseDirectory,"Fleet.Worker.exe");
+var first=await Commands.Run(executable,["--enroll-request="+enrollment]);
+using var request=JsonDocument.Parse(first.Output);
+Check(first.Code==0&&request.RootElement.GetProperty("workerId").GetGuid()==workerId,"native enrollment returns matching public identity");
+Check(request.RootElement.GetProperty("csr").GetString()!.Contains("BEGIN CERTIFICATE REQUEST",StringComparison.Ordinal),"native enrollment returns a public CSR");
+var keyHash=SHA256.HashData(File.ReadAllBytes(Path.Combine(enrollment,"server.key")));
+var second=await Commands.Run(executable,["--enroll-request="+enrollment]);
+Check(second.Code==0&&keyHash.SequenceEqual(SHA256.HashData(File.ReadAllBytes(Path.Combine(enrollment,"server.key")))),"enrollment retry preserves the local private key");
+Console.WriteLine($"PASS {checks} total worker checks");
 // The unique test directory is retained for diagnostics; it contains synthetic metadata only.

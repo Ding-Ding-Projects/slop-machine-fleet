@@ -24,6 +24,7 @@ async function fixture(pricing = true) {
     cloud: {
       dataVolume: async () => "vol-ab12",
       identity: async () => "123456789012",
+      observe: async () => "running",
       discovery: async () => ({}),
       estimate: async () => ({
         available: pricing,
@@ -44,7 +45,53 @@ async function fixture(pricing = true) {
       ready: async () => true,
       request: async (_w, method, path) => {
         if (method === "POST" && path === "/tasks") dispatches++;
-        return { state: "running" };
+        if (method === "GET" && path.includes("/output?")) {
+          const id = path.split("/")[2];
+          const after = Number(
+            new URL(path, "https://worker.test").searchParams.get("after"),
+          );
+          return {
+            taskId: id,
+            events:
+              after < 1
+                ? [
+                    {
+                      sequence: 1,
+                      kind: "command-output",
+                      content: "safe task transcript",
+                      at: new Date().toISOString(),
+                      stream: "combined",
+                      truncated: false,
+                      redacted: false,
+                    },
+                  ]
+                : [],
+            nextCursor: Math.max(after, 1),
+            oldestSequence: 1,
+            latestSequence: 1,
+            gap: false,
+            truncated: false,
+          };
+        }
+
+        return method === "GET" && path.startsWith("/tasks/")
+          ? {
+              id: path.split("/").pop(),
+              state: "running",
+              approvalRequestIds: ["approval-1"],
+              pendingApprovals: [
+                {
+                  requestId: "approval-1",
+                  method: "command/exec",
+                  summary: "Run the configured project build",
+                  detailsAvailable: true,
+                  redacted: false,
+                  permissions: ["workspace-write"],
+                },
+              ],
+              userCode: "must-not-forward",
+            }
+          : { state: "running" };
       },
     },
   });
@@ -256,6 +303,18 @@ test("FIFO dispatch keeps one active task and rejects credential-bearing reposit
     assert.equal(a.json().state, "running");
     assert.equal(b.json().state, "queued");
     assert.equal(f.dispatches(), 1);
+    const detail = await f.app.inject({
+      url: `/api/tasks/${a.json().id}`,
+      headers: f.headers,
+    });
+    assert.deepEqual(detail.json().workerTask.approvalRequestIds, [
+      "approval-1",
+    ]);
+    assert.equal(detail.json().workerTask.userCode, undefined);
+    assert.equal(
+      detail.json().workerTask.pendingApprovals[0].summary,
+      "Run the configured project build",
+    );
     assert.equal(
       (
         await f.app.inject({
@@ -320,5 +379,206 @@ test("an established event stream closes after logout or session expiry", async 
     } finally {
       await f.close();
     }
+  }
+});
+test("queued tasks cannot dispatch before verified worker readiness and termination keeps capacity reserved", async () => {
+  const f = await fixture();
+  try {
+    const id = randomUUID();
+    await f.store.put("workers", id, {
+      id,
+      name: "test",
+      state: "bootstrapping",
+      transport: "unenrolled",
+      region: "us-east-1",
+      createdAt: new Date().toISOString(),
+    });
+    const task = await f.app.inject({
+      method: "POST",
+      url: "/api/tasks",
+      headers: f.headers,
+      payload: {
+        workerId: id,
+        repository: "https://github.com/example/project.git",
+        prompt: "Build",
+      },
+    });
+    assert.equal(task.json().state, "queued");
+    assert.equal(f.dispatches(), 0);
+    const stopped = await f.app.inject({
+      method: "POST",
+      url: `/api/workers/${id}/actions`,
+      headers: f.headers,
+      payload: { action: "terminate" },
+    });
+    assert.equal(stopped.json().state, "terminate-requested");
+    await f.store.put("state", "settings", {
+      region: "us-east-1",
+      maxWorkers: 1,
+      theme: "system",
+      language: "en",
+      soundEnabled: true,
+    });
+    const review = await f.app.inject({
+      method: "POST",
+      url: "/api/cloud/reviews",
+      headers: f.headers,
+      payload: spec,
+    });
+    const launch = await f.app.inject({
+      method: "POST",
+      url: "/api/workers",
+      headers: f.headers,
+      payload: {
+        reviewId: review.json().id,
+        spec,
+        idempotencyKey: randomUUID(),
+      },
+    });
+    assert.equal(launch.statusCode, 409);
+    assert.equal(launch.json().error.code, "CAPACITY_LIMIT");
+    assert.equal(f.launches(), 0);
+  } finally {
+    await f.close();
+  }
+});
+test("task output requires the owner session, bounds replay and never enters general events", async () => {
+  const f = await fixture();
+  try {
+    const workerId = randomUUID();
+    await f.store.put("workers", workerId, {
+      id: workerId,
+      name: "test",
+      state: "ready",
+      transport: "ready",
+      region: "us-east-1",
+      createdAt: new Date().toISOString(),
+    });
+    const created = await f.app.inject({
+      method: "POST",
+      url: "/api/tasks",
+      headers: f.headers,
+      payload: {
+        workerId,
+        repository: "https://github.com/example/project.git",
+        prompt: "Build",
+      },
+    });
+    const id = created.json().id;
+    assert.equal(
+      (await f.app.inject({ url: `/api/tasks/${id}/output` })).statusCode,
+      401,
+    );
+    const output = await f.app.inject({
+      url: `/api/tasks/${id}/output?after=0&limit=1`,
+      headers: f.headers,
+    });
+    assert.equal(output.statusCode, 200);
+    assert.equal(output.headers["cache-control"], "no-store");
+    assert.equal(output.json().events[0].stream, "combined");
+    assert.equal(output.json().events[0].content, "safe task transcript");
+    assert.equal(
+      (
+        await f.app.inject({
+          url: `/api/tasks/${id}/output?limit=201`,
+          headers: f.headers,
+        })
+      ).statusCode,
+      400,
+    );
+    assert.equal(
+      (
+        await f.app.inject({
+          url: `/api/tasks/${id}/output?after=-1`,
+          headers: f.headers,
+        })
+      ).statusCode,
+      400,
+    );
+    assert.equal(
+      (
+        await f.app.inject({
+          url: `/api/tasks/${randomUUID()}/output`,
+          headers: f.headers,
+        })
+      ).statusCode,
+      404,
+    );
+    assert.equal(
+      JSON.stringify(await f.store.get("tasks", id)).includes(
+        "safe task transcript",
+      ),
+      false,
+    );
+    assert.equal(
+      JSON.stringify(
+        (await f.store.db.query("SELECT value FROM fleet_events")).rows,
+      ).includes("safe task transcript"),
+      false,
+    );
+  } finally {
+    await f.close();
+  }
+});
+test("authenticated scope is stable across login sessions, absent publicly and invalidated by owner replacement", async () => {
+  const f = await fixture();
+  try {
+    const initial = await f.app.inject({
+      url: "/api/auth/session",
+      headers: f.headers,
+    });
+    const scope = initial.json().scopeKey;
+    assert.match(scope, /^[a-f0-9]{64}$/);
+    assert.deepEqual(Object.keys(initial.json()).sort(), [
+      "authenticated",
+      "csrfToken",
+      "scopeKey",
+    ]);
+    const owner = await f.store.get("state", "owner"),
+      controller = await f.store.get("state", "controller-identity");
+    assert.equal(JSON.stringify(initial.json()).includes(owner.id), false);
+    assert.equal(JSON.stringify(initial.json()).includes(controller.id), false);
+    assert.equal(JSON.stringify(initial.json()).includes(owner.salt), false);
+    assert.equal(JSON.stringify(initial.json()).includes(owner.digest), false);
+    const publicStatus = await f.app.inject({ url: "/api/auth/status" });
+    assert.deepEqual(Object.keys(publicStatus.json()).sort(), [
+      "authenticated",
+      "setupAvailable",
+    ]);
+    assert.equal(publicStatus.json().scopeKey, undefined);
+    const login = await f.app.inject({
+      method: "POST",
+      url: "/api/auth/login",
+      headers: { origin: f.headers.origin },
+      payload: { password: "test-only-password-long" },
+    });
+    assert.equal(login.statusCode, 200);
+    assert.equal(login.json().scopeKey, scope);
+    assert.notEqual(login.json().csrfToken, initial.json().csrfToken);
+    await f.store.put("state", "owner", { ...owner, id: randomUUID() });
+    assert.equal(
+      (await f.app.inject({ url: "/api/auth/session", headers: f.headers }))
+        .statusCode,
+      401,
+    );
+    assert.equal(
+      (
+        await f.app.inject({ url: "/api/auth/status", headers: f.headers })
+      ).json().authenticated,
+      false,
+    );
+    const replacementLogin = await f.app.inject({
+      method: "POST",
+      url: "/api/auth/login",
+      headers: { origin: f.headers.origin },
+      payload: { password: "test-only-password-long" },
+    });
+    assert.notEqual(replacementLogin.json().scopeKey, scope);
+    assert.equal(
+      (await f.app.inject({ url: "/api/auth/session" })).statusCode,
+      401,
+    );
+  } finally {
+    await f.close();
   }
 });

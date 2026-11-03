@@ -1,57 +1,44 @@
-# Fleet workspace design handoff
+# Design handoff: Slop Machine Fleet design system
 
-Status: proposed design, awaiting independent review. No runtime or visual acceptance is claimed.
+Status: **design reference, version 2.** Nothing here is implemented, verified or shipped behaviour.
 
-## Product and framework
+## What is in this folder
 
-Slop Machine Fleet is a React and Vite operational workspace served by the authenticated local controller, with the same browser interface used by the desktop shell. The opening view is a productive fleet list, never a marketing page. The service contract is `docs/API.md`. Only actual service records appear; empty, unavailable, expired-session and partial-result states remain distinct.
+| Path | What |
+| --- | --- |
+| `design-system/README.md` | Brand book: principles, voice, colour, type, shape, motion, iconography, window and navigation |
+| `design-system/tokens.json` | Source tokens: Material 3 colour roles for dark and light, status data colours, the Material 3 type scale plus mono roles, spacing, corner scale, elevation, state layers, sizes |
+| `design-system/tokens.css` | CSS custom properties and font faces generated from `tokens.json` |
+| `design-system/fonts/` | Bundled Geist, Geist Mono and Material Symbols Rounded (variable woff2) with their licences |
+| `design-system/components/bundle.css` | Component classes, prefixed `sf-` |
+| `design-system/components/<Name>/` | `preview.html` and `README.md` for 43 components and patterns |
+| `design-system/components/Cover/preview.html` | The system's cover |
+| `design-system/design-system.json` | Index for the hosted design-system canvas |
+| `frames/<Name>-<theme>.png` | Local renders of every preview in dark and light at 1.5x |
+| `COVERAGE.md` | Which requirement each component covers, and what is still to design |
+| `scripts/generate-m3-scheme.mjs`, `scripts/m3-scheme.json` | How the colour roles were generated from seed `#C6F02A`, and the output |
+| `scripts/fetch-fonts.sh` | Downloads the complete font files from pinned npm packages |
+| `REHEARSAL.md` | Review notes |
 
-## Visual direction
+## Inputs
 
-A quiet Material Design 3 console uses a warm neutral canvas, blue primary actions, compact outlined status chips and generous readable table rows. Desktop has a 216px navigation rail, a 64px top bar and a single scrollable content area. A pale-blue selected navigation item and a restrained primary button establish hierarchy. Dark mode uses charcoal surfaces with blue accents and readable contrast. System fonts avoid remote asset requests. Icons are original inline SVG line geometry, with text labels on navigation and actions.
+- The product plan: desktop client and authenticated LAN web app sharing one service; one Windows Server 2025 EC2 machine per worker; guided device login, GitHub CLI login and pairing; coding-task dispatch; bulk lifecycle actions with per-worker outcomes; five-machine cap with cost review.
+- The required feature catalogue and UI contract, including Material 3 Expressive conformance, bundled fonts, tabs, regex builders, the command palette, appearance customization and the safety patterns.
 
-At widths below 760px navigation becomes a horizontally scrollable compact bar. Fleet rows become stacked cards with visible labels rather than squeezing a table. Dialogs become full-width sheets with internally scrolling content, bounded at 100dvh. Every layout must work at 320 CSS pixels and 200% scale. No fixed-height content boxes truncate bilingual copy.
+## Implementation notes
 
-## Screen inventory and actions
+- Each component's guidelines name the Material 3 primitive it maps to. Build with genuine Material 3 components and these tokens; the CSS is the visual reference.
+- Colour roles regenerate from the user's seed with Material Color Utilities (see `scripts/generate-m3-scheme.mjs`). Status colours are data and do not regenerate.
+- Cantonese text falls back to Noto Sans HK, then Microsoft JhengHei UI. The app must vendor a complete CJK face by script.
+- The Material Symbols font is the full variable file (about 4.4 MB); the app may subset it by script to the icons it uses.
 
-| State ID | Surface | Workflow and real service binding |
-| --- | --- | --- |
-| auth.loading | Session check | GET auth/status and auth/session, explicit retry on unavailable service |
-| auth.setup | First-owner setup | Local owner setup authorization, username and password sent once to auth/setup; no persistence of inputs |
-| auth.login | Owner sign-in | POST auth/login, show service errors without exposing credentials |
-| onboarding.connection | Setup checklist | Real health and discovery checks, optional appearance choice, saved step, Back/Next and resume |
-| fleet.empty | Fleet | Empty workspace explains no workers exist and offers Create workers |
-| fleet.list | Fleet | GET workers, independent search, infrastructure/auth/pairing/task status, selected IDs and bulk actions |
-| worker.detail | Worker | GET worker detail; independent infrastructure controls and auth states, update/repair/drain actions |
-| worker.auth | Worker connection | Separate Codex, GitHub and pairing sections; start/status/input/disconnect routes; transient values never enter history or export |
-| create.spec | Create workers | Discover region/type/subnet choices, worker count and storage; server review before launch |
-| create.review | Cost review | Exact reviewed specification, currency/rates/expiry when returned, separate explicit launch confirmation; edits invalidate review |
-| tasks.list | Tasks | Actual queued/running/completed state, local search, dispatch to real available worker |
-| task.detail | Task | Actual events/output, explicit approval cards and cancel/input actions; no invented progress percentages |
-| operations.list | Operations | Durable operation rows and per-target results, retry from actual outcomes, partial success displayed |
-| settings.preferences | Settings | Local language/theme/density/motion/sound/narration/wording preferences and reset, searchable sections |
-| docs.tasks | Help | Task-led guides for setup, cost review, auth, dispatch, recovery and data boundaries; visitor-owned checklist persistence |
-| global.offline | Service unavailable | Last fetched records marked stale, mutations unavailable, retry |
-| global.error | Action error | Inline actionable result, pending control restored, no success claim |
+## Review
 
-## Interaction, accessibility and privacy
+- Contrast: every text, outline and status pair named in a usage note was checked in both themes (4.5:1 text, 3:1 outlines). One failure was fixed (light running status on `surface-container-high`); 0 remain.
+- Frames: all 86 component frames plus the cover were rendered and reviewed. Fixes: status chips stretched in the worker card grid, segmented buttons stretched in columns, a wrapping context menu item, a two-line sign-in heading.
+- Stageshow skill, pinned commit `802057409787133703c56001080169e347305572` (fresh install was not available in this environment, so the pinned copy was used). Applied: restraint, type and spacing insets, one icon set at one size, no AI tropes, frame review. Not applicable: animated demo choreography, cursor beats and device framing, since this is a component system.
 
-All controls have visible focus, semantic labels and at least 40px targets. Dialogs use native dialog semantics, initial focus, Escape dismissal and focus restoration. Destructive controls require a distinct confirmation naming exact targets and preserve workspaces by default. Bulk results name each target separately. Status does not depend on color. Live results use polite announcements without moving focus. Fetches use same-origin cookies and CSRF from the session; responses are parsed defensively. Codes, prompts and auth inputs are never console logged. Sensitive auth responses remain in component memory and clear when closed or disconnected.
+## Still open
 
-Search fields own separate plain/regex mode, pattern, flags, validity and saved snippets. The adjacent editor provides guided syntax insertion, bounded isolated match/replace/split execution, groups, timing, export and explanations. It truthfully identifies JavaScript engine semantics. Native tracing, cross-engine conversion, filesystem replacement and full RegexBuddy parity remain unfinished and visibly disclosed, never simulated.
-
-## Localization and personal wording
-
-English, Cantonese and bilingual choices persist locally; bilingual labels wrap. Independent English and Cantonese tone controls both ship at level 5, with first-run disclosure; level 1 is serious. Facts and consequences remain unchanged at every level. Theme, spacing and motion preferences persist separately from server configuration. Personal wording uses the documented schemaVersion 1 and entries-object JSON contract with 256 KiB byte limit, depth 8, bounded string entries, duplicate/unsafe/unknown-key rejection, complete validation before atomic caching, revalidation on load, local-only application at owned UI text boundaries and immediate clear/reset. File paths, source filenames, actual mappings and external records never enter exports, requests or diagnostics. Global JSON drop and Settings upload share one loader. Successful import provides a nonblocking three-second celebration, reduced-motion behavior and optional outcome audio; invalid input preserves the prior wording.
-
-## Deterministic references and acceptance
-
-Reference screen identifiers above are stable. Required tuples: 1440x900 and 320x720 browser viewports, English/Cantonese/bilingual, light/dark, 100/125/150/200% scale. Representative visual states include empty fleet, populated test-only fixture, create review, worker auth, task approval, operation partial result, settings and help. Test fixtures must be separately identified and must never populate production service state. Source inspection and this design document are not visual evidence. Capture receipts must name exact source commit and built asset hash.
-
-The complete required-feature inventory is maintained by the integrating owner. This handoff does not claim completion of universal tool suites, all appearance/context-menu controls, full regex parity, credential-vault features or release/runtime acceptance. Unfinished applicable items remain explicit in that inventory.
-
-
-## Independent review disposition
-
-Reviewed independently with gpt-6-astra before implementation. Core implementation may proceed with corrected tone defaults, schemaVersion 1 entries-object validation, separate authentication terminal states, expiry and retry handling, and explicit partial-operation results. This review is a design disposition, not built-interface acceptance.
-
+- Full screens for each built-in tool, the full regex builder, the grouped settings surface and the public documentation site (see `COVERAGE.md`).
+- Narrow-width and high-scale renders, screen reader checks, and motion review (stills only so far).
