@@ -95,6 +95,8 @@ export interface LaunchReview {
   estimate: CostEstimate;
 }
 export interface AuthStatus {
+  signupAvailable?: boolean;
+  loginMode?: "username-password" | "legacy-password";
   authenticated: boolean;
   setupAvailable: boolean;
   csrfToken?: string;
@@ -151,6 +153,7 @@ export interface TaskOutputPage {
 }
 
 export interface AuthenticatedSession {
+  account?: { username: string | null; usernameRequired: boolean };
   authenticated: true;
   csrfToken: string;
   scopeKey: string;

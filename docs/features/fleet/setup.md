@@ -10,7 +10,7 @@ Run `host.bat --detached` to start the tracked Compose deployment. Run `host.bat
 
 ## Establish trust and ownership
 
-The deployment uses HTTPS. Trust the deployment's actual local CA through the supported operating-system route before connecting another client. Do not disable certificate verification. Complete first-owner setup using the protected host-local authorization flow, then sign in normally. The setup authorization must never enter source, chat, a screenshot or a support bundle.
+The deployment uses HTTPS. Trust the deployment's actual local CA through the supported operating-system route before connecting another client. Do not disable certificate verification. At the trusted controller URL, the first user signs up with a username and password. No setup authorization code or host file is required. After the controller is claimed, only normal sign-in remains. Existing legacy owners retain password-only access until they deliberately adopt a username; service startup never resets their data.
 
 Connect the desktop to the exact trusted HTTPS controller origin. The client rejects arbitrary URL schemes and does not expose Node.js APIs to remote content.
 

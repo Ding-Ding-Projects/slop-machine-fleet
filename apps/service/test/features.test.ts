@@ -244,6 +244,8 @@ const documentedRoutes: Array<[string, string]> = [
   ["GET", "/api/health"],
   ["GET", "/api/auth/status"],
   ["POST", "/api/auth/setup"],
+  ["POST", "/api/auth/signup"],
+  ["PUT", "/api/auth/username"],
   ["POST", "/api/auth/login"],
   ["POST", "/api/auth/logout"],
   ["GET", "/api/auth/session"],

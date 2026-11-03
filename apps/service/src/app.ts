@@ -1,11 +1,5 @@
-import {
-  randomBytes,
-  randomUUID,
-  scryptSync,
-  timingSafeEqual,
-  createHash,
-} from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { randomUUID, timingSafeEqual, createHash } from "node:crypto";
+import { registerOwnerAuth } from "./owner-auth.js";
 import { registerFeatureRoutes } from "./features.js";
 import Fastify from "fastify";
 import {
@@ -66,7 +60,6 @@ export interface ServiceOptions {
   cloud: CloudProvider;
   transport: WorkerTransport;
   origin: string;
-  setupCodeFile?: string;
   secureCookies?: boolean;
   provisioner?: Provisioner;
   featureManifestFile?: string;
@@ -123,6 +116,7 @@ export async function createService(o: ServiceOptions) {
         "/api/health",
         "/api/auth/status",
         "/api/auth/setup",
+        "/api/auth/signup",
         "/api/auth/login",
       ].includes(req.routeOptions.url ?? "")
     )
@@ -137,114 +131,14 @@ export async function createService(o: ServiceOptions) {
     (req as any).session = s;
   });
   registerFeatureRoutes(app, o.featureManifestFile);
-  const signIn = async (res: any) => {
-    const raw = randomBytes(32).toString("base64url"),
-      s = {
-        csrfToken: randomBytes(32).toString("base64url"),
-        expiresAt: Date.now() + 8 * 3600000,
-        ownerId: (await store.get("state", "owner"))?.id,
-      };
-    await store.put("sessions", hash(raw), s);
-    res.setCookie("fleet_session", raw, {
-      httpOnly: true,
-      secure: o.secureCookies !== false,
-      sameSite: "strict",
-      path: "/",
-      maxAge: 28800,
-    });
-    return {
-      authenticated: true,
-      csrfToken: s.csrfToken,
-      scopeKey: await currentOwnerScope(store, o.origin),
-    };
-  };
   app.get("/api/health", async () => {
     await o.db.query("SELECT 1");
     return { status: "ok" };
   });
-  app.get("/api/auth/status", async (req) => {
-    const s = req.cookies.fleet_session
-      ? await store.get("sessions", hash(req.cookies.fleet_session))
-      : undefined;
-    return {
-      authenticated: Boolean(
-        s &&
-          s.expiresAt > Date.now() &&
-          Boolean((await store.get("state", "owner"))?.id) &&
-          s.ownerId === (await store.get("state", "owner"))?.id,
-      ),
-      setupAvailable:
-        !(await store.get("state", "owner")) && Boolean(o.setupCodeFile),
-    };
-  });
-  app.post(
-    "/api/auth/setup",
-    { config: { rateLimit: { max: 5, timeWindow: "15 minutes" } } },
-    async (req, res) =>
-      lock(async () => {
-        if (await store.get("state", "owner"))
-          throw fail(409, "ALREADY_CONFIGURED", "Owner setup is complete.");
-        const b = z
-          .object({
-            setupCode: z.string().min(20).max(1024),
-            password: z.string().min(14).max(256),
-          })
-          .strict()
-          .parse(req.body);
-        let expected = "";
-        try {
-          expected = (await readFile(o.setupCodeFile ?? "", "utf8")).trim();
-        } catch {
-          throw fail(
-            503,
-            "SETUP_UNAVAILABLE",
-            "Mount the host setup authorization file.",
-          );
-        }
-        if (!expected || !same(b.setupCode, expected))
-          throw fail(
-            403,
-            "INVALID_SETUP_CODE",
-            "Setup authorization is invalid.",
-          );
-        const salt = randomBytes(16).toString("hex");
-        await store.put("state", "owner", {
-          id: randomUUID(),
-          salt,
-          digest: scryptSync(b.password, salt, 64).toString("hex"),
-        });
-        return signIn(res);
-      }),
-  );
-  app.post(
-    "/api/auth/login",
-    { config: { rateLimit: { max: 5, timeWindow: "15 minutes" } } },
-    async (req, res) => {
-      const b = z
-          .object({ password: z.string().max(256) })
-          .strict()
-          .parse(req.body),
-        owner = await store.get("state", "owner");
-      const digest = scryptSync(
-        b.password,
-        owner?.salt ?? "unconfigured",
-        64,
-      ).toString("hex");
-      if (!owner || !same(digest, owner.digest))
-        throw fail(401, "INVALID_CREDENTIALS", "Credentials are invalid.");
-      return signIn(res);
-    },
-  );
-  app.get("/api/auth/session", async (req) => ({
-    authenticated: true,
-    csrfToken: (req as any).session.csrfToken,
-    scopeKey: await currentOwnerScope(store, o.origin),
-  }));
-  app.post("/api/auth/logout", async (req, res) => {
-    if (req.cookies.fleet_session)
-      await store.remove("sessions", hash(req.cookies.fleet_session));
-    res.clearCookie("fleet_session", { path: "/" });
-    return { authenticated: false };
+  registerOwnerAuth(app, {
+    store,
+    origin: o.origin,
+    secureCookies: o.secureCookies,
   });
   app.get(
     "/api/settings",
