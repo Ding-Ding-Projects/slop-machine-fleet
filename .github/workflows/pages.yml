@@ -1,0 +1,124 @@
+name: Publish documentation
+on:
+  push:
+    branches: [main]
+  release:
+    types: [published]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: documentation-pages
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - uses: actions/configure-pages@v5
+      - name: Verify published downloads against source-bound payload hashes
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $repository = 'Ding-Ding-Projects/slop-machine-fleet'
+          $releases = gh release list --repo $repository --limit 20 --json tagName,isDraft,isPrerelease
+          if ($LASTEXITCODE) { throw 'Published release discovery failed.' }
+          $selected = $null
+          foreach ($candidate in ($releases | ConvertFrom-Json)) {
+            if ($candidate.isDraft -or $candidate.isPrerelease -or $candidate.tagName -notmatch '^[A-Za-z0-9._-]{1,100}$') { continue }
+            $tag = $candidate.tagName
+            $release = gh api "repos/$repository/releases/tags/$tag" | ConvertFrom-Json
+            if ($LASTEXITCODE) { throw 'Published release readback failed.' }
+            $manifestAsset = @($release.assets | Where-Object name -eq 'source-manifest.json')
+            if ($manifestAsset.Count -ne 1 -or $manifestAsset[0].size -gt 1048576) { continue }
+            $manifestText = gh release download $tag --repo $repository --pattern source-manifest.json --output -
+            if ($LASTEXITCODE) { throw 'Published source manifest download failed.' }
+            $manifest = $manifestText | ConvertFrom-Json
+            if ($manifest.source -notmatch '^[a-f0-9]{40}$' -or -not $manifest.files -or $manifest.files.Count -gt 64) { continue }
+            if ($manifest.updateChannel -and ($manifest.updateChannel -ne 'stable' -or $manifest.sourceBranch -ne 'main')) { continue }
+            git fetch origin "refs/tags/${tag}:refs/tags/${tag}"
+            if ($LASTEXITCODE) { throw 'Release tag readback failed.' }
+            $tagSource = git rev-parse "${tag}^{commit}"
+            if ($LASTEXITCODE -or $tagSource -ne $manifest.source) { throw 'Published release tag differs from its source manifest.' }
+            git merge-base --is-ancestor $manifest.source HEAD
+            if ($LASTEXITCODE -ne 0) { continue }
+            $selected = @{ tag=$tag; release=$release; manifest=$manifest }
+            break
+          }
+          if (-not $selected) { throw 'No normal source-proven main release is available. Documentation downloads were not fabricated.' }
+          $directory = Join-Path $env:RUNNER_TEMP ('verified-downloads-' + [guid]::NewGuid())
+          New-Item -ItemType Directory -Path $directory | Out-Null
+          $assets = @(); $names = @{}; [long]$total = 0
+          foreach ($entry in $selected.manifest.files) {
+            if ($entry.name -notmatch '^(Setup\.exe|RELEASES|[^/\\\s]+-(full|delta)\.nupkg|Fleet-(build|host|docs)-[0-9][^/\\\s]*\.exe|Fleet\.Worker\.exe|Bootstrap-Worker\.ps1)$' -or $names.ContainsKey($entry.name) -or $entry.bytes -lt 1 -or $entry.bytes -gt 1500000000 -or $entry.sha256 -notmatch '^[a-fA-F0-9]{64}$') { throw 'Published payload inventory is invalid.' }
+            $names[$entry.name] = $true; $total += $entry.bytes
+            if ($total -gt 4000000000) { throw 'Published download inventory exceeds its bounded verification budget.' }
+            $asset = @($selected.release.assets | Where-Object name -eq $entry.name)
+            $url = "https://github.com/$repository/releases/download/$($selected.tag)/$($entry.name)"
+            if ($asset.Count -ne 1 -or $asset[0].size -ne $entry.bytes -or $asset[0].browser_download_url -ne $url) { throw 'Stored release payload metadata does not match its source inventory.' }
+            gh release download $selected.tag --repo $repository --pattern $entry.name --dir $directory
+            if ($LASTEXITCODE) { throw 'Published payload download failed.' }
+            $file = Get-Item -LiteralPath (Join-Path $directory $entry.name)
+            $hash = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($file.Length -ne $entry.bytes -or $hash -ne $entry.sha256.ToLowerInvariant()) { throw 'Downloaded payload bytes do not match their source-bound hash.' }
+            $assets += @{ name=$entry.name; size=$file.Length; sha256=$hash; url=$url }
+          }
+          if (-not $names.ContainsKey('Setup.exe') -or -not $names.ContainsKey('RELEASES') -or -not ($assets | Where-Object name -like '*-full.nupkg')) { throw 'The published installable delivery is incomplete.' }
+          @{ verified=$true; isDraft=$false; isPrerelease=$false; tag=$selected.tag; sourceCommit=$selected.manifest.source; assets=$assets } | ConvertTo-Json -Depth 6 | Set-Content apps/docs/release.json
+          Write-Host "Verified $($assets.Count) actual release downloads ($total bytes) from $($selected.tag)."
+      - name: Include complete available public wiki articles and assets
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $wiki = 'https://github.com/Ding-Ding-Projects/slop-machine-fleet.wiki.git'
+          $reference = git ls-remote $wiki HEAD 2>$null
+          if ($LASTEXITCODE -eq 0 -and $reference) {
+            $clone = Join-Path $env:RUNNER_TEMP ('published-wiki-' + [guid]::NewGuid())
+            git clone --depth 1 $wiki $clone
+            if ($LASTEXITCODE) { throw 'Available public wiki could not be imported completely.' }
+            $destination = 'docs/wiki/published'
+            New-Item -ItemType Directory -Force $destination | Out-Null
+            foreach ($item in Get-ChildItem -LiteralPath $clone -Force | Where-Object Name -ne '.git') {
+              if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw 'Wiki links are not accepted as source files.' }
+              if ($item.PSIsContainer -and @(Get-ChildItem -LiteralPath $item.FullName -Recurse -Force | Where-Object { ($_.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 }).Count -gt 0) { throw 'Nested wiki links are not accepted as source files.' }
+              $target = Join-Path $destination $item.Name
+              if (Test-Path -LiteralPath $target) { throw 'Published wiki import would overwrite existing source.' }
+              Copy-Item -LiteralPath $item.FullName -Destination $target -Recurse
+            }
+            Write-Host "Imported complete public wiki at $reference. Source navigation and local assets are retained."
+          } else {
+            Write-Warning 'The public wiki is not initialized or unavailable. Existing prepared wiki articles remain included; published wiki synchronization is unverified.'
+          }
+      - name: Build the complete documentation through the supported root entrypoint
+        shell: cmd
+        run: build.bat /s
+      - name: Require genuine built documentation output
+        shell: pwsh
+        run: |
+          if (-not (Test-Path apps/docs/dist/index.html) -or -not (Test-Path apps/docs/src/content.generated.json)) { throw 'Documentation build output is missing.' }
+          $content = Get-Content apps/docs/src/content.generated.json -Raw | ConvertFrom-Json
+          if (-not $content.release -or -not $content.articles -or $content.articles.Count -lt 1) { throw 'Complete documentation content and verified downloads must be bundled before deployment.' }
+          Write-Host "Built documentation: $($content.articles.Count) complete articles; release $($content.release.tag); source $($content.commit)."
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: apps/docs/dist
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy reviewed static documentation
+        id: deployment
+        uses: actions/deploy-pages@v4
