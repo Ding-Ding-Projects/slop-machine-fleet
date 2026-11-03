@@ -1,7 +1,7 @@
 const uuid=value=>typeof value==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 const states=new Set(['unknown','pending','input-required','code-issued','verified','error','expired','cancelled']);
 const same=(a,b)=>typeof a==='string'&&typeof b==='string'&&a.toLowerCase()===b.toLowerCase();
-const object=value=>value&&typeof value==='object'&&!Array.isArray(value);
+const object=value=>!!value&&typeof value==='object'&&!Array.isArray(value);
 function bounded(value,max){return typeof value==='string'&&value.length<=max&&!/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(value);}
 export function recognizedPrompt(value,provider,state){
  if(value==null)return null;
