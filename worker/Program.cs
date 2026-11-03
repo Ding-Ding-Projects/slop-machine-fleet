@@ -51,6 +51,7 @@ app.MapPost("/auth/{provider}/input", async (string provider, InputRequest body,
 app.MapDelete("/auth/{provider}", (string provider, AuthManager auth) => { auth.Cancel(provider); return Results.NoContent(); });
 app.MapPost("/tasks", async (TaskRequest request, TaskManager tasks) => Results.Accepted(value: await tasks.Start(request)));
 app.MapGet("/tasks/{id:guid}", (Guid id, TaskManager tasks) => tasks.Details(id));
+app.MapGet("/tasks/{id:guid}/output", (Guid id, long? after, int? limit, TaskManager tasks) => tasks.Output(id,after??0,limit??100));
 app.MapPost("/tasks/{id:guid}/cancel", async (Guid id, TaskManager tasks) => { await tasks.Cancel(id); return Results.Accepted(); });
 app.MapPost("/tasks/{id:guid}/input", async (Guid id, InputRequest input, TaskManager tasks) => { await tasks.Input(id, input.Input); return Results.Accepted(); });
 app.MapPost("/tasks/{id:guid}/approvals/{requestId}", async (Guid id, string requestId, ApprovalRequest body, TaskManager tasks) => { await tasks.Approve(id, requestId, body.Decision); return Results.Accepted(); });
