@@ -57,6 +57,7 @@ try {
   if ($LASTEXITCODE -ne 0) { throw "Worker build exited $LASTEXITCODE." }
   if (Test-Path package-lock.json) { & npm.cmd ci --no-audit --no-fund } else { & npm.cmd install --no-audit --no-fund }
   if ($LASTEXITCODE -ne 0) { throw "Dependency acquisition exited $LASTEXITCODE." }
+  $env:FLEET_BUILD_TIME = [DateTimeOffset]::UtcNow.ToString('O')
   & npm.cmd run build
   if ($LASTEXITCODE -ne 0) { throw "Build exited $LASTEXITCODE." }
   if ($Installer) {
