@@ -160,6 +160,8 @@ jobs:
             Write-Host "Imported complete public wiki at $reference. Source navigation and local assets are retained."
           } else {
             Write-Warning 'The public wiki is not initialized or unavailable. Existing prepared wiki articles remain included; published wiki synchronization is unverified.'
+            # The optional probe was handled; required clone and download failures still throw.
+            $global:LASTEXITCODE = 0
           }
       - name: Build the complete documentation through the supported root entrypoint
         shell: cmd
