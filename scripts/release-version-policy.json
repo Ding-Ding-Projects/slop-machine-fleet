@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "epoch": 0,
+  "componentMaximum": 65534,
+  "repository": "Ding-Ding-Projects/slop-machine-fleet",
+  "workflowId": "405397166",
+  "workflowPath": ".github/workflows/release.yml"
+}
