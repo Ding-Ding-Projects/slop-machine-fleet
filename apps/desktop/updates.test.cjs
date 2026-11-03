@@ -70,6 +70,9 @@ test('parallel checks serialize and ready download is never automatically instal
   assert.equal(f.controller.snapshot().status,'ready');assert.equal(f.updater.quits,0);assert.ok(!JSON.stringify(f.controller.snapshot()).includes('private raw notes'));
   await f.controller.check();f.controller.later();assert.equal(f.updater.checks,1);assert.equal(f.controller.snapshot().status,'ready');
 });
+test('missing accepted feed stays unavailable without starting native update',async()=>{
+  const f=fixture({discover:async()=>{throw Error('missing release feed');}});await f.controller.check();assert.equal(f.controller.snapshot().status,'unavailable');assert.equal(f.controller.snapshot().code,'feed-unavailable');assert.equal(f.updater.checks,0);assert.equal(f.updater.quits,0);
+});
 test('mismatched native identity and raw native errors never become ready or leak details',async()=>{
   const f=fixture();await f.controller.check();f.updater.emit('update-downloaded',{},'','9.9.9',new Date(),base);await flush();assert.equal(f.controller.snapshot().code,'download-identity-mismatch');assert.equal(f.updater.quits,0);
   const g=fixture();await g.controller.check();g.updater.emit('error',new Error('fixture-auth-value'));assert.equal(g.controller.snapshot().code,'native-error');assert.ok(!JSON.stringify(g.controller.snapshot()).includes('fixture-auth-value'));

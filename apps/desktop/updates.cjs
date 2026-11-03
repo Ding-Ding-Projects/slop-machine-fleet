@@ -59,7 +59,7 @@ class DesktopUpdates extends EventEmitter {
       if (pending?.catch) pending.catch(() => this.handlers.error());
     } catch {
       this.finish(); this.candidate = null;
-      this.publish({ status: 'failed', code: 'feed-unavailable', availableVersion: null, notesUrl: null, retryAvailable: true });
+      this.publish({ status: 'unavailable', code: 'feed-unavailable', availableVersion: null, notesUrl: null, retryAvailable: true });
     }
     return this.snapshot();
   }
