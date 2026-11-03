@@ -1,6 +1,9 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { createService } from "./app.js";
+import { Store } from "./db.js";
+import { CertificateAuthority } from "./pki.js";
+import { SsmProvisioner, releaseSchema } from "./provisioning.js";
 import { database } from "./db.js";
 import { AwsProvider } from "./cloud.js";
 import { SsmTransport } from "./transport.js";
@@ -18,6 +21,23 @@ if (
 const enrollments = process.env.WORKER_ENROLLMENT_FILE
   ? JSON.parse(await readFile(process.env.WORKER_ENROLLMENT_FILE, "utf8"))
   : {};
+if (process.env.CONTROLLER_PKI_DIR) {
+  try {
+    Object.assign(
+      enrollments,
+      JSON.parse(
+        await readFile(
+          resolve(process.env.CONTROLLER_PKI_DIR, "enrollments.json"),
+          "utf8",
+        ),
+      ),
+    );
+  } catch (error: any) {
+    if (error.code !== "ENOENT") throw error;
+  }
+}
+const transport = new SsmTransport(enrollments);
+const cloud = new AwsProvider();
 const db = database(url);
 const lease = await db.connect();
 const locked = await lease.query(
@@ -30,9 +50,25 @@ if (!locked.rows[0]?.acquired) {
 }
 const app = await createService({
   db,
-  cloud: new AwsProvider(),
-  transport: new SsmTransport(enrollments),
+  cloud,
+  transport,
+  provisioner:
+    process.env.WORKER_RELEASE_FILE && process.env.CONTROLLER_PKI_DIR
+      ? new SsmProvisioner(
+          new Store(db),
+          cloud,
+          new CertificateAuthority(process.env.CONTROLLER_PKI_DIR),
+          enrollments,
+          transport,
+          releaseSchema.parse(
+            JSON.parse(await readFile(process.env.WORKER_RELEASE_FILE, "utf8")),
+          ),
+        )
+      : undefined,
   origin,
+  featureManifestFile:
+    process.env.FEATURE_MANIFEST_FILE ??
+    resolve(import.meta.dirname, "../../../docs/required-features.json"),
   setupCodeFile: process.env.SETUP_CODE_FILE,
   secureCookies: parsed.protocol === "https:",
 });
@@ -44,18 +80,19 @@ if (process.env.WEB_ROOT) {
   await app.register(plugin.default, { root: resolve(process.env.WEB_ROOT) });
   app.setNotFoundHandler((req, res) =>
     req.url.startsWith("/api/")
-      ? res
-          .code(404)
-          .send({
-            error: { code: "NOT_FOUND", message: "Route was not found." },
-          })
+      ? res.code(404).send({
+          error: { code: "NOT_FOUND", message: "Route was not found." },
+        })
       : res.sendFile("index.html"),
   );
 }
 app.addHook("onClose", async () => {
-  await lease.query("SELECT pg_advisory_unlock(723662801)");
-  lease.release();
-  await db.end();
+  try {
+    await lease.query("SELECT pg_advisory_unlock(723662801)");
+  } finally {
+    lease.release();
+    await db.end();
+  }
 });
 await app.listen({
   host: process.env.HOST ?? "127.0.0.1",

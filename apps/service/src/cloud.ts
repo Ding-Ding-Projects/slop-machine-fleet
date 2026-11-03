@@ -14,8 +14,15 @@ import {
 import { SSMClient, GetParameterCommand } from "@aws-sdk/client-ssm";
 import { STSClient, GetCallerIdentityCommand } from "@aws-sdk/client-sts";
 import { PricingClient, GetProductsCommand } from "@aws-sdk/client-pricing";
-import type { LaunchSpec, CostEstimate, WorkerAction } from "@fleet/shared";
+import type {
+  LaunchSpec,
+  CostEstimate,
+  WorkerAction,
+  Worker,
+} from "@fleet/shared";
 export interface CloudProvider {
+  identity(region: string): Promise<string>;
+  dataVolume(worker: Worker): Promise<string>;
   discovery(region: string): Promise<unknown>;
   estimate(spec: LaunchSpec): Promise<CostEstimate>;
   launch(spec: LaunchSpec, key: string, ids: string[]): Promise<string[]>;
@@ -34,6 +41,35 @@ function prices(items: string[] | undefined, unit: string): number[] {
     .filter((n) => Number.isFinite(n) && n > 0);
 }
 export class AwsProvider implements CloudProvider {
+  async identity(region: string) {
+    const result = await new STSClient({ region }).send(
+      new GetCallerIdentityCommand({}),
+    );
+    if (!result.Account)
+      throw new Error("Provider account identity is unavailable");
+    return result.Account;
+  }
+  async dataVolume(worker: Worker) {
+    const instance = (
+      await new EC2Client({ region: worker.region }).send(
+        new DescribeInstancesCommand({ InstanceIds: [worker.instanceId!] }),
+      )
+    ).Reservations?.[0]?.Instances?.[0];
+    if (
+      !instance?.Tags?.some(
+        (t) => t.Key === "FleetWorkerId" && t.Value === worker.id,
+      )
+    )
+      throw new Error("Worker instance ownership is not verified");
+    const mapping = instance.BlockDeviceMappings?.find(
+      (m) =>
+        m.DeviceName === "/dev/sdf" && m.Ebs?.DeleteOnTermination === false,
+    );
+    if (!mapping?.Ebs?.VolumeId)
+      throw new Error("Retained data volume identity is unavailable");
+    return mapping.Ebs.VolumeId;
+  }
+
   async discovery(region: string) {
     const ec2 = new EC2Client({ region });
     const [identity, regions, subnets, types] = await Promise.all([

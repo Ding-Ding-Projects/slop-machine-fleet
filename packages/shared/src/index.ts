@@ -19,6 +19,7 @@ export interface LaunchSpec {
 export interface Worker {
   id: string;
   instanceId?: string;
+  dataVolumeId?: string;
   name: string;
   region: string;
   state: string;
