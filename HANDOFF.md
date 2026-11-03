@@ -1,5 +1,13 @@
 # Fleet delivery handoff
 
+## Release identity and preserved coupled candidate
+
+The release-version repair is integrated locally through `dba64a5`, with explicit documentation identity labels at `a22facd`. It retains strict newer-version updates, derives bounded versions from authenticated provider metadata, applies consistent isolated overlays and checks the actual accepted stable floor before serialized publication. Hosted documentation retains its own build identity and separately selected download identity.
+
+Source `5900784` produced a complete local0.16.1 installer/companion set through the exact root installer entrypoint with matching actual package, feed, archive, executable and embedded-renderer version/source readback. That local receipt is explicitly nonpublishable. Followup `9062d3f` preserves source-receipt precedence and evidence boundaries with focused checks; it does not relabel the earlier binaries. Authenticated provider publication and installed-update proof remain pending.
+
+The reviewed coupled authentication, bulk interface and Base64 source is pushed and read back at `aa142d7`, inactive on main. Its final exact build passed at `c1fac0a`; focused checks retain source `23f0670` and their separate counts. Current browser/native acceptance remains unavailable. README screenshots are explicitly sourcec054 baselines, with refresh pending rather than claimed current evidence for later changes.
+
 ## Recovery and protocol checkpoint
 
 The compatible pairing-expiry consumer fix and durable bulk recovery are on verified remote main `4c2357d981c774d780a625962648d17ec24e1ddd`. Exact integrated root builds passed. Ten controlled expiry checks and37 service checks cover their respective units; these do not establish real cloud or account behavior. Bulk retries preserve uncertainty and only advance original targets proven never dispatched.

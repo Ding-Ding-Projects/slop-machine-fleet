@@ -39,4 +39,6 @@
 - [x] Preserve complete prepared wiki articles and navigation while forge-wiki initialization is unavailable.
 - [ ] Publish and read back the forge wiki after its supported repository becomes available.
 - [ ] Verify release source binding, installed update where applicable and all acceptance evidence.
+- [x] Verify consistent local0.16.1 package/feed/executable/renderer identity through the exact installer entrypoint at source5900784; receipt is explicitly nonpublishable.
+- [ ] Verify authenticated derived-version publication, stable-floor ordering and actual installed update.
 - [ ] Integrate and push completed work, preserve incomplete work and process eligible task-owned cleanup.

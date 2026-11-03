@@ -1,5 +1,15 @@
 # Fleet continuation
 
+## Release-identity integration checkpoint
+
+The reviewed release-version correction is integrated locally through `dba64a5`, followed by the independent documentation-label change at `a22facd`. Provider releases derive one bounded numeric version from authenticated workflow/run/attempt identity, apply an isolated tracked-source overlay before producers, and require a strictly newer accepted stable floor immediately before serialized publication. Equal/older updater exclusion remains intact. The original checked-in version is not silently rewritten.
+
+Actual local `build-installer.bat /s` completed at delivery source `590078492eafc3a4a9d10c865f68095809f8dd51`, using explicit nonpublishable local version0.16.1. Readback verified package nuspec/feed, desktop archive, worker and three companion executable versions, embedded renderer versions and source identities. Setup is136696320 bytes, SHA2564f149a3b75ca93e7e20dac007c80ea72e42f9d27a4c90effd5e4f6eb9f7f0bf9; full package is135957590 bytes, SHA256a89fccf86758881cc22ed145df49f86c87e42a0e912b8a01a5ed9bbab16f7d66. Later source-receipt/docs/test followup `9062d3f` has focused verification, not a relabelled package run.
+
+The complete coupled authentication/bulk-interface/Base64 candidate is remotely preserved at `aa142d7a2e8cedd2c9978ba221eb36e280b5ce3f`. Its final build source is `c1fac0a`; source `23f0670` passed45 service,36 controlled worker-authentication,17 auth-interface and7 bulk-interface checks. All78 outgoing revisions passed privacy scanning. The candidate remains inactive on main because browser/native acceptance is unavailable. Separate worker and service refs are verified at `11bb88f` and `9947315`.
+
+Documentation labels distinguish their own build/source/time from the selected download release/source. Baseline screenshots retain their original source and are no longer described as proof of later feature-evidence changes. Required-feature completion, fresh rendered evidence, live login/pairing/model turn, approved cloud provisioning and native update remain pending. Read back the next main push and authenticated provider release before upgrading this checkpoint's delivery state.
+
 ## Current continuation after recovery repairs
 
 Main `4c2357d981c774d780a625962648d17ec24e1ddd` is pushed and read back. It includes the compatible expired-pairing consumer repair at `81e00ac` and durable bulk dispatch/reconciliation. Both integrated source revisions passed their exact root builds. The expiry consumer has ten controlled checks; the independently reviewed bulk candidate has37 service checks. Live provider reconciliation and GUI resume acceptance remain unverified.
