@@ -1,0 +1,732 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { mkdtemp, writeFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { randomUUID } from "node:crypto";
+import { newDb } from "pg-mem";
+import { createService } from "../src/app.js";
+import { Store } from "../src/db.js";
+async function fixture(
+  pricing = true,
+  onLaunch?: (
+    spec: any,
+    key: string,
+    ids: string[],
+    attempt: number,
+  ) => Promise<any[]>,
+) {
+  const memory = newDb(),
+    pg = memory.adapters.createPg(),
+    db = new pg.Pool();
+  const directory = await mkdtemp(join(tmpdir(), "fleet-test-"));
+  const file = join(directory, "setup");
+  await writeFile(file, "test-only-setup-authorization");
+  let launches = 0,
+    dispatches = 0;
+  const app = await createService({
+    db,
+    origin: "https://fleet.test",
+    setupCodeFile: file,
+    provisioner: { reconcile: async (w) => w, reset: async () => {} },
+    cloud: {
+      dataVolume: async () => "vol-ab12",
+      identity: async () => "123456789012",
+      observe: async () => "running",
+      discovery: async () => ({}),
+      estimate: async () => ({
+        available: pricing,
+        currency: "USD",
+        hourly: 1,
+        monthly: 730,
+        source: "test double",
+        retrievedAt: new Date().toISOString(),
+        exclusions: [],
+      }),
+      launch: async (_s, _k, ids) => {
+        launches++;
+        if (onLaunch) return onLaunch(_s, _k, ids, launches);
+        return ids.map(() => ({
+          instanceId: "i-test",
+          imageProvenance: {
+            imageId: "ami-test",
+            parameterName:
+              "/aws/service/ami-windows-latest/Windows_Server-2025-English-Full-Base",
+            source: "aws:ssm-public-parameter" as const,
+            region: _s.region,
+            rootDeviceName: "/dev/sda1",
+            resolvedAt: "2026-11-03T10:00:00.000Z",
+            parameterVersion: 12,
+            ownerId: "amazon-test-owner",
+          },
+        }));
+      },
+      action: async () => {},
+    },
+    transport: {
+      ready: async () => true,
+      request: async (_w, method, path) => {
+        if (method === "POST" && path === "/tasks") dispatches++;
+        if (method === "GET" && path.includes("/output?")) {
+          const id = path.split("/")[2];
+          const after = Number(
+            new URL(path, "https://worker.test").searchParams.get("after"),
+          );
+          return {
+            taskId: id,
+            events:
+              after < 1
+                ? [
+                    {
+                      sequence: 1,
+                      kind: "command-output",
+                      content: "safe task transcript",
+                      at: new Date().toISOString(),
+                      stream: "combined",
+                      truncated: false,
+                      redacted: false,
+                    },
+                  ]
+                : [],
+            nextCursor: Math.max(after, 1),
+            oldestSequence: 1,
+            latestSequence: 1,
+            gap: false,
+            truncated: false,
+          };
+        }
+
+        return method === "GET" && path.startsWith("/tasks/")
+          ? {
+              id: path.split("/").pop(),
+              state: "running",
+              approvalRequestIds: ["approval-1"],
+              pendingApprovals: [
+                {
+                  requestId: "approval-1",
+                  method: "command/exec",
+                  summary: "Run the configured project build",
+                  detailsAvailable: true,
+                  redacted: false,
+                  permissions: ["workspace-write"],
+                },
+              ],
+              userCode: "must-not-forward",
+            }
+          : { state: "running" };
+      },
+    },
+  });
+  await app.ready();
+  const setup = await app.inject({
+    method: "POST",
+    url: "/api/auth/setup",
+    headers: { origin: "https://fleet.test" },
+    payload: {
+      setupCode: "test-only-setup-authorization",
+      password: "test-only-password-long",
+    },
+  });
+  assert.equal(setup.statusCode, 200);
+  const cookie = setup.cookies[0].name + "=" + setup.cookies[0].value,
+    csrf = setup.json().csrfToken;
+  return {
+    app,
+    store: new Store(db),
+    headers: { cookie, origin: "https://fleet.test", "x-csrf-token": csrf },
+    launches: () => launches,
+    dispatches: () => dispatches,
+    close: async () => {
+      await app.close();
+      await db.end();
+      await rm(directory, { recursive: true });
+    },
+  };
+}
+const spec = {
+  count: 1,
+  region: "us-east-1",
+  instanceType: "m7i.large",
+  subnetId: "subnet-ab12",
+  securityGroupId: "sg-ab12",
+  instanceProfile: "FleetWorker",
+  bootGiB: 80,
+  dataGiB: 100,
+};
+test("authentication, CSRF and origin protect mutations and setup is one-time", async () => {
+  const f = await fixture();
+  try {
+    assert.equal((await f.app.inject({ url: "/api/workers" })).statusCode, 401);
+    assert.equal(
+      (
+        await f.app.inject({
+          method: "PUT",
+          url: "/api/settings",
+          headers: { cookie: f.headers.cookie, origin: f.headers.origin },
+          payload: {},
+        })
+      ).statusCode,
+      403,
+    );
+    assert.equal(
+      (
+        await f.app.inject({
+          method: "POST",
+          url: "/api/auth/logout",
+          headers: { ...f.headers, origin: "https://evil.test" },
+        })
+      ).statusCode,
+      403,
+    );
+    assert.equal(
+      (
+        await f.app.inject({
+          method: "POST",
+          url: "/api/auth/setup",
+          headers: { origin: f.headers.origin },
+          payload: {},
+        })
+      ).statusCode,
+      409,
+    );
+    assert.equal(
+      (await f.app.inject({ url: "/api/auth/session", headers: f.headers }))
+        .headers["cache-control"],
+      "no-store",
+    );
+  } finally {
+    await f.close();
+  }
+});
+test("launch binds exact expiring review, requires prices, preserves idempotency and cap", async () => {
+  const f = await fixture();
+  try {
+    const r = await f.app.inject({
+      method: "POST",
+      url: "/api/cloud/reviews",
+      headers: f.headers,
+      payload: spec,
+    });
+    assert.equal(r.statusCode, 200);
+    const payload = {
+      reviewId: r.json().id,
+      spec,
+      idempotencyKey: randomUUID(),
+    };
+    assert.equal(
+      (
+        await f.app.inject({
+          method: "POST",
+          url: "/api/workers",
+          headers: f.headers,
+          payload: { ...payload, spec: { ...spec, count: 2 } },
+        })
+      ).statusCode,
+      409,
+    );
+    assert.equal(
+      (
+        await f.app.inject({
+          method: "POST",
+          url: "/api/workers",
+          headers: f.headers,
+          payload,
+        })
+      ).statusCode,
+      200,
+    );
+    assert.equal(
+      (
+        await f.app.inject({
+          method: "POST",
+          url: "/api/workers",
+          headers: f.headers,
+          payload,
+        })
+      ).statusCode,
+      200,
+    );
+    assert.equal(f.launches(), 1);
+    assert.equal((await f.store.all("workers"))[0].transport, "unenrolled");
+    const review = await f.store.get("reviews", r.json().id);
+    review.expiresAt = "2000-01-01T00:00:00.000Z";
+    await f.store.put("reviews", review.id, review);
+    assert.equal(
+      (
+        await f.app.inject({
+          method: "POST",
+          url: "/api/workers",
+          headers: f.headers,
+          payload: { ...payload, idempotencyKey: randomUUID() },
+        })
+      ).statusCode,
+      409,
+    );
+  } finally {
+    await f.close();
+  }
+  const unavailable = await fixture(false);
+  try {
+    const r = await unavailable.app.inject({
+      method: "POST",
+      url: "/api/cloud/reviews",
+      headers: unavailable.headers,
+      payload: spec,
+    });
+    assert.equal(
+      (
+        await unavailable.app.inject({
+          method: "POST",
+          url: "/api/workers",
+          headers: unavailable.headers,
+          payload: {
+            reviewId: r.json().id,
+            spec,
+            idempotencyKey: randomUUID(),
+          },
+        })
+      ).statusCode,
+      409,
+    );
+    assert.equal(unavailable.launches(), 0);
+  } finally {
+    await unavailable.close();
+  }
+});
+test("FIFO dispatch keeps one active task and rejects credential-bearing repository URLs", async () => {
+  const f = await fixture();
+  try {
+    const id = randomUUID();
+    await f.store.put("workers", id, {
+      id,
+      name: "test",
+      state: "ready",
+      transport: "ready",
+      region: "us-east-1",
+      createdAt: new Date().toISOString(),
+    });
+    const payload = {
+      workerId: id,
+      repository: "https://github.com/example/project.git",
+      prompt: "Build the project",
+    };
+    const a = await f.app.inject({
+      method: "POST",
+      url: "/api/tasks",
+      headers: f.headers,
+      payload,
+    });
+    const b = await f.app.inject({
+      method: "POST",
+      url: "/api/tasks",
+      headers: f.headers,
+      payload,
+    });
+    assert.equal(a.json().state, "running");
+    assert.equal(b.json().state, "queued");
+    assert.equal(f.dispatches(), 1);
+    const detail = await f.app.inject({
+      url: `/api/tasks/${a.json().id}`,
+      headers: f.headers,
+    });
+    assert.deepEqual(detail.json().workerTask.approvalRequestIds, [
+      "approval-1",
+    ]);
+    assert.equal(detail.json().workerTask.userCode, undefined);
+    assert.equal(
+      detail.json().workerTask.pendingApprovals[0].summary,
+      "Run the configured project build",
+    );
+    assert.equal(
+      (
+        await f.app.inject({
+          method: "POST",
+          url: "/api/tasks",
+          headers: f.headers,
+          payload: {
+            ...payload,
+            repository: "https://user:password@github.com/example/project.git",
+          },
+        })
+      ).statusCode,
+      400,
+    );
+    await f.app.inject({
+      method: "POST",
+      url: `/api/tasks/${a.json().id}/cancel`,
+      headers: f.headers,
+    });
+    assert.equal(f.dispatches(), 1);
+  } finally {
+    await f.close();
+  }
+});
+test("an established event stream closes after logout or session expiry", async () => {
+  for (const expire of [false, true]) {
+    const f = await fixture();
+    try {
+      const address = await f.app.listen({ host: "127.0.0.1", port: 0 });
+      const response = await fetch(address + "/api/events", {
+        headers: { cookie: f.headers.cookie },
+      });
+      assert.equal(response.status, 200);
+      const reader = response.body!.getReader();
+      assert.equal((await reader.read()).done, false);
+      if (expire) {
+        const raw = f.headers.cookie.slice(f.headers.cookie.indexOf("=") + 1);
+        const { createHash } = await import("node:crypto");
+        const key = createHash("sha256")
+          .update(JSON.stringify(raw))
+          .digest("hex");
+        const session = await f.store.get("sessions", key);
+        session.expiresAt = Date.now() - 1;
+        await f.store.put("sessions", key, session);
+      } else {
+        await f.app.inject({
+          method: "POST",
+          url: "/api/auth/logout",
+          headers: f.headers,
+        });
+      }
+      const closed = await Promise.race([
+        reader.read(),
+        new Promise<never>((_, reject) =>
+          setTimeout(
+            () => reject(new Error("Stream did not close after revocation")),
+            4000,
+          ),
+        ),
+      ]);
+      assert.equal(closed.done, true);
+    } finally {
+      await f.close();
+    }
+  }
+});
+test("queued tasks cannot dispatch before verified worker readiness and termination keeps capacity reserved", async () => {
+  const f = await fixture();
+  try {
+    const id = randomUUID();
+    await f.store.put("workers", id, {
+      id,
+      name: "test",
+      state: "bootstrapping",
+      transport: "unenrolled",
+      region: "us-east-1",
+      createdAt: new Date().toISOString(),
+    });
+    const task = await f.app.inject({
+      method: "POST",
+      url: "/api/tasks",
+      headers: f.headers,
+      payload: {
+        workerId: id,
+        repository: "https://github.com/example/project.git",
+        prompt: "Build",
+      },
+    });
+    assert.equal(task.json().state, "queued");
+    assert.equal(f.dispatches(), 0);
+    const stopped = await f.app.inject({
+      method: "POST",
+      url: `/api/workers/${id}/actions`,
+      headers: f.headers,
+      payload: { action: "terminate" },
+    });
+    assert.equal(stopped.json().state, "terminate-requested");
+    await f.store.put("state", "settings", {
+      region: "us-east-1",
+      maxWorkers: 1,
+      theme: "system",
+      language: "en",
+      soundEnabled: true,
+    });
+    const review = await f.app.inject({
+      method: "POST",
+      url: "/api/cloud/reviews",
+      headers: f.headers,
+      payload: spec,
+    });
+    const launch = await f.app.inject({
+      method: "POST",
+      url: "/api/workers",
+      headers: f.headers,
+      payload: {
+        reviewId: review.json().id,
+        spec,
+        idempotencyKey: randomUUID(),
+      },
+    });
+    assert.equal(launch.statusCode, 409);
+    assert.equal(launch.json().error.code, "CAPACITY_LIMIT");
+    assert.equal(f.launches(), 0);
+  } finally {
+    await f.close();
+  }
+});
+test("task output requires the owner session, bounds replay and never enters general events", async () => {
+  const f = await fixture();
+  try {
+    const workerId = randomUUID();
+    await f.store.put("workers", workerId, {
+      id: workerId,
+      name: "test",
+      state: "ready",
+      transport: "ready",
+      region: "us-east-1",
+      createdAt: new Date().toISOString(),
+    });
+    const created = await f.app.inject({
+      method: "POST",
+      url: "/api/tasks",
+      headers: f.headers,
+      payload: {
+        workerId,
+        repository: "https://github.com/example/project.git",
+        prompt: "Build",
+      },
+    });
+    const id = created.json().id;
+    assert.equal(
+      (await f.app.inject({ url: `/api/tasks/${id}/output` })).statusCode,
+      401,
+    );
+    const output = await f.app.inject({
+      url: `/api/tasks/${id}/output?after=0&limit=1`,
+      headers: f.headers,
+    });
+    assert.equal(output.statusCode, 200);
+    assert.equal(output.headers["cache-control"], "no-store");
+    assert.equal(output.json().events[0].stream, "combined");
+    assert.equal(output.json().events[0].content, "safe task transcript");
+    assert.equal(
+      (
+        await f.app.inject({
+          url: `/api/tasks/${id}/output?limit=201`,
+          headers: f.headers,
+        })
+      ).statusCode,
+      400,
+    );
+    assert.equal(
+      (
+        await f.app.inject({
+          url: `/api/tasks/${id}/output?after=-1`,
+          headers: f.headers,
+        })
+      ).statusCode,
+      400,
+    );
+    assert.equal(
+      (
+        await f.app.inject({
+          url: `/api/tasks/${randomUUID()}/output`,
+          headers: f.headers,
+        })
+      ).statusCode,
+      404,
+    );
+    assert.equal(
+      JSON.stringify(await f.store.get("tasks", id)).includes(
+        "safe task transcript",
+      ),
+      false,
+    );
+    assert.equal(
+      JSON.stringify(
+        (await f.store.db.query("SELECT value FROM fleet_events")).rows,
+      ).includes("safe task transcript"),
+      false,
+    );
+  } finally {
+    await f.close();
+  }
+});
+test("authenticated scope is stable across login sessions, absent publicly and invalidated by owner replacement", async () => {
+  const f = await fixture();
+  try {
+    const initial = await f.app.inject({
+      url: "/api/auth/session",
+      headers: f.headers,
+    });
+    const scope = initial.json().scopeKey;
+    assert.match(scope, /^[a-f0-9]{64}$/);
+    assert.deepEqual(Object.keys(initial.json()).sort(), [
+      "authenticated",
+      "csrfToken",
+      "scopeKey",
+    ]);
+    const owner = await f.store.get("state", "owner"),
+      controller = await f.store.get("state", "controller-identity");
+    assert.equal(JSON.stringify(initial.json()).includes(owner.id), false);
+    assert.equal(JSON.stringify(initial.json()).includes(controller.id), false);
+    assert.equal(JSON.stringify(initial.json()).includes(owner.salt), false);
+    assert.equal(JSON.stringify(initial.json()).includes(owner.digest), false);
+    const publicStatus = await f.app.inject({ url: "/api/auth/status" });
+    assert.deepEqual(Object.keys(publicStatus.json()).sort(), [
+      "authenticated",
+      "setupAvailable",
+    ]);
+    assert.equal(publicStatus.json().scopeKey, undefined);
+    const login = await f.app.inject({
+      method: "POST",
+      url: "/api/auth/login",
+      headers: { origin: f.headers.origin },
+      payload: { password: "test-only-password-long" },
+    });
+    assert.equal(login.statusCode, 200);
+    assert.equal(login.json().scopeKey, scope);
+    assert.notEqual(login.json().csrfToken, initial.json().csrfToken);
+    await f.store.put("state", "owner", { ...owner, id: randomUUID() });
+    assert.equal(
+      (await f.app.inject({ url: "/api/auth/session", headers: f.headers }))
+        .statusCode,
+      401,
+    );
+    assert.equal(
+      (
+        await f.app.inject({ url: "/api/auth/status", headers: f.headers })
+      ).json().authenticated,
+      false,
+    );
+    const replacementLogin = await f.app.inject({
+      method: "POST",
+      url: "/api/auth/login",
+      headers: { origin: f.headers.origin },
+      payload: { password: "test-only-password-long" },
+    });
+    assert.notEqual(replacementLogin.json().scopeKey, scope);
+    assert.equal(
+      (await f.app.inject({ url: "/api/auth/session" })).statusCode,
+      401,
+    );
+  } finally {
+    await f.close();
+  }
+});
+
+test("partial launch persists first actual image provenance and keeps an unknown second target and idempotent receipt", async () => {
+  const image = {
+    imageId: "ami-first-test",
+    parameterName:
+      "/aws/service/ami-windows-latest/Windows_Server-2025-English-Full-Base",
+    source: "aws:ssm-public-parameter",
+    region: "us-east-1",
+    rootDeviceName: "/dev/test-root",
+    resolvedAt: "2026-11-03T10:00:00.000Z",
+    parameterVersion: 7,
+    ownerId: null,
+  };
+  const f = await fixture(true, async (_spec, _key, _ids, attempt) => {
+    if (attempt === 2) throw new Error("Test provider interruption");
+    return [{ instanceId: "i-first-test", imageProvenance: image }];
+  });
+  try {
+    const requested = { ...spec, count: 2 };
+    const review = await f.app.inject({
+      method: "POST",
+      url: "/api/cloud/reviews",
+      headers: f.headers,
+      payload: requested,
+    });
+    const payload = {
+      reviewId: review.json().id,
+      spec: requested,
+      idempotencyKey: randomUUID(),
+    };
+    const response = await f.app.inject({
+      method: "POST",
+      url: "/api/workers",
+      headers: f.headers,
+      payload,
+    });
+    assert.equal(response.statusCode, 200);
+    const operation = response.json();
+    assert.equal(operation.state, "incomplete");
+    assert.deepEqual(operation.targets[0].imageProvenance, image);
+    assert.equal(operation.targets[1].imageProvenance, null);
+    const first = await f.store.get("workers", operation.targets[0].id),
+      second = await f.store.get("workers", operation.targets[1].id);
+    assert.equal(first.instanceId, "i-first-test");
+    assert.deepEqual(first.imageProvenance, image);
+    assert.equal(second.imageProvenance, null);
+    assert.equal(second.instanceId, undefined);
+    assert.deepEqual(
+      (
+        await f.app.inject({
+          url: `/api/workers/${first.id}`,
+          headers: f.headers,
+        })
+      ).json().imageProvenance,
+      image,
+    );
+    const repeated = await f.app.inject({
+      method: "POST",
+      url: "/api/workers",
+      headers: f.headers,
+      payload,
+    });
+    assert.deepEqual(repeated.json(), operation);
+    assert.equal(f.launches(), 2);
+  } finally {
+    await f.close();
+  }
+});
+test("a review expiring after admission does not change the already-admitted launch or fabricate image pinning", async () => {
+  let expire = async () => {};
+  const f = await fixture(true, async (_spec, _key, _ids, attempt) => {
+    if (attempt === 1) await expire();
+    return [
+      {
+        instanceId: `i-test-${attempt}`,
+        imageProvenance: {
+          imageId: `ami-at-resolution-${attempt}`,
+          parameterName:
+            "/aws/service/ami-windows-latest/Windows_Server-2025-English-Full-Base",
+          source: "aws:ssm-public-parameter",
+          region: "us-east-1",
+          rootDeviceName: "/dev/test-root",
+          resolvedAt: `2026-11-03T10:00:0${attempt}.000Z`,
+          parameterVersion: attempt,
+          ownerId: null,
+        },
+      },
+    ];
+  });
+  try {
+    const requested = { ...spec, count: 2 };
+    const review = await f.app.inject({
+      method: "POST",
+      url: "/api/cloud/reviews",
+      headers: f.headers,
+      payload: requested,
+    });
+    expire = async () => {
+      const current = await f.store.get("reviews", review.json().id);
+      current.expiresAt = "2000-01-01T00:00:00.000Z";
+      await f.store.put("reviews", current.id, current);
+    };
+    const response = await f.app.inject({
+      method: "POST",
+      url: "/api/workers",
+      headers: f.headers,
+      payload: {
+        reviewId: review.json().id,
+        spec: requested,
+        idempotencyKey: randomUUID(),
+      },
+    });
+    assert.equal(response.statusCode, 200);
+    assert.equal(f.launches(), 2);
+    assert.equal(
+      response.json().targets[0].imageProvenance.imageId,
+      "ami-at-resolution-1",
+    );
+    assert.equal(
+      response.json().targets[1].imageProvenance.imageId,
+      "ami-at-resolution-2",
+    );
+  } finally {
+    await f.close();
+  }
+});

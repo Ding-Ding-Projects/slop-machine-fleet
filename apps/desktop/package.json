@@ -1,0 +1,46 @@
+{
+  "name": "@fleet/desktop",
+  "version": "0.1.2",
+  "private": true,
+  "description": "Slop Machine Fleet secure desktop client",
+  "author": "Ding Ding Projects",
+  "main": "dist/main.cjs",
+  "scripts": {
+    "build": "node build.cjs",
+    "start": "electron .",
+    "package": "electron-builder --win squirrel --publish never"
+  },
+  "devDependencies": {
+    "electron": "39.2.7",
+    "electron-builder": "26.0.12"
+  },
+  "build": {
+    "appId": "org.dingdingprojects.slopmachinefleet",
+    "productName": "Slop Machine Fleet",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**",
+      "package.json",
+      "build/icon.ico",
+      "build/LICENSE.material-symbols"
+    ],
+    "asar": true,
+    "afterPack": "build/apply-icon.cjs",
+    "win": {
+      "target": [
+        "squirrel"
+      ],
+      "icon": "build/icon.ico",
+      "signAndEditExecutable": false,
+      "forceCodeSigning": false
+    },
+    "squirrelWindows": {
+      "name": "SlopMachineFleet",
+      "iconUrl": "https://raw.githubusercontent.com/Ding-Ding-Projects/slop-machine-fleet/main/apps/desktop/build/icon.ico",
+      "remoteReleases": false,
+      "artifactName": "Setup.exe"
+    }
+  }
+}

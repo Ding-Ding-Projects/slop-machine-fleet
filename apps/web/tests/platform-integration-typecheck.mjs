@@ -1,0 +1,18 @@
+import ts from 'typescript';
+import {execFileSync} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
+import path from 'node:path';
+const web=fileURLToPath(new URL('../',import.meta.url)),root=path.resolve(web,'../..');
+const virtual=new Map(),normalize=value=>path.resolve(value).replaceAll('\\','/').toLowerCase();
+const add=(ref,file)=>virtual.set(normalize(path.join(root,file)),execFileSync('git',['show',`${ref}:${file}`],{cwd:root,encoding:'utf8'}));
+for(const file of execFileSync('git',['ls-tree','-r','--name-only','6a90e50','apps/web/src/tools'],{cwd:root,encoding:'utf8'}).trim().split('\n').filter(Boolean))add('6a90e50',file);
+add('54b340b','apps/web/src/DesktopUpdates.tsx');
+const config=ts.readConfigFile(path.join(web,'tsconfig.json'),ts.sys.readFile);
+const parsed=ts.parseJsonConfigFileContent(config.config,ts.sys,web);
+const host=ts.createCompilerHost(parsed.options),originalRead=host.readFile,originalExists=host.fileExists,originalDirectory=host.directoryExists;
+host.readFile=file=>virtual.get(normalize(file))??originalRead(file);
+host.fileExists=file=>virtual.has(normalize(file))||originalExists(file);
+host.directoryExists=directory=>[...virtual.keys()].some(file=>file.startsWith(normalize(directory)+'/'))||originalDirectory(directory);
+host.getSourceFile=(file,languageVersion)=>{const text=host.readFile(file);return text===undefined?undefined:ts.createSourceFile(file,text,languageVersion,true);};
+const program=ts.createProgram(parsed.fileNames,parsed.options,host),diagnostics=ts.getPreEmitDiagnostics(program);
+if(diagnostics.length){process.stderr.write(ts.formatDiagnosticsWithColorAndContext(diagnostics,{getCurrentDirectory:()=>web,getCanonicalFileName:file=>file,getNewLine:()=> '\n'}));process.exitCode=1;}else console.log(`PASS: integration TypeScript with ${virtual.size} immutable peer files in a read-only virtual host.`);

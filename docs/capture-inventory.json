@@ -1,0 +1,132 @@
+{
+  "schemaVersion": 1,
+  "records": [
+    {
+      "id": "fleet-en-light-normal",
+      "active": true,
+      "path": "docs/captures/fleet-en-light-normal.png",
+      "sourceCommit": "c0544f72554f877cbda1882179ff4bc002283d25",
+      "artifactSha256": "3989b89f6b9829bcb8862228ef302e56d948a13e429c5b57ee372aad678b8228",
+      "captureSha256": "893a5c879cae1d977a6606e204affd8a58a3febfad0bdd443109b5f0ee5b192d",
+      "screen": "fleet",
+      "state": "empty-before-worker-creation",
+      "theme": "light",
+      "language": "en",
+      "viewportWidth": 1426,
+      "viewportHeight": 963,
+      "scale": 1,
+      "interactionProofId": "fleet-en-light-normal-interaction",
+      "interactionReceiptSha256": "b69173a38b5e3686cb166ef67eb1a665f51c814c2dfff33e45265d04df689459",
+      "inspectionStatus": "inspected",
+      "limitations": [
+        "Scale is CDP device-pixel-ratio emulation, not a physical Windows DPI matrix.",
+        "Prospective browser observations do not cover startup history, native exceptions or native stderr.",
+        "This is browser-hosted built-renderer evidence, not native wrapper, installer or updater proof."
+      ],
+      "capturedAtUtc": "2026-11-03T12:05:53.284Z",
+      "evidenceScope": "Built browser renderer, not cloud-worker, native-wrapper or updater acceptance"
+    },
+    {
+      "id": "features-en-dark-normal",
+      "active": true,
+      "path": "docs/captures/features-en-dark-normal.png",
+      "sourceCommit": "c0544f72554f877cbda1882179ff4bc002283d25",
+      "artifactSha256": "3989b89f6b9829bcb8862228ef302e56d948a13e429c5b57ee372aad678b8228",
+      "captureSha256": "e443ebdd0ce7476502ae31671435458be7d94bff806202c5a85d60512f6ea436",
+      "screen": "features",
+      "state": "inventory-loaded-115",
+      "theme": "dark",
+      "language": "en",
+      "viewportWidth": 1426,
+      "viewportHeight": 963,
+      "scale": 1,
+      "interactionProofId": "features-en-dark-normal-interaction",
+      "interactionReceiptSha256": "a7b32bcb8c76427b789b981b8c45791f967c81b71ae4cf6730a2533091792dba",
+      "inspectionStatus": "inspected",
+      "limitations": [
+        "Scale is CDP device-pixel-ratio emulation, not a physical Windows DPI matrix.",
+        "Prospective browser observations do not cover startup history, native exceptions or native stderr.",
+        "This is browser-hosted built-renderer evidence, not native wrapper, installer or updater proof."
+      ],
+      "capturedAtUtc": "2026-11-03T12:06:18.709Z",
+      "evidenceScope": "Built browser renderer, not cloud-worker, native-wrapper or updater acceptance"
+    },
+    {
+      "id": "feature-article-en-dark-normal",
+      "active": true,
+      "path": "docs/captures/feature-article-en-dark-normal.png",
+      "sourceCommit": "c0544f72554f877cbda1882179ff4bc002283d25",
+      "artifactSha256": "3989b89f6b9829bcb8862228ef302e56d948a13e429c5b57ee372aad678b8228",
+      "captureSha256": "bd56466cd317211bfea3491f81553002e4167be0ec75b9fb42ebc3486c4b3fb3",
+      "screen": "features",
+      "state": "complete-language-article",
+      "theme": "dark",
+      "language": "en",
+      "viewportWidth": 1426,
+      "viewportHeight": 963,
+      "scale": 1,
+      "interactionProofId": "feature-article-en-dark-normal-interaction",
+      "interactionReceiptSha256": "675871bdc3f56212e15af4c08cab3fb2e333e232328bc94eede6d3900a956655",
+      "inspectionStatus": "inspected",
+      "limitations": [
+        "Scale is CDP device-pixel-ratio emulation, not a physical Windows DPI matrix.",
+        "Prospective browser observations do not cover startup history, native exceptions or native stderr.",
+        "This is browser-hosted built-renderer evidence, not native wrapper, installer or updater proof."
+      ],
+      "capturedAtUtc": "2026-11-03T12:06:35.759Z",
+      "evidenceScope": "Built browser renderer, not cloud-worker, native-wrapper or updater acceptance"
+    },
+    {
+      "id": "settings-bilingual-light-narrow",
+      "active": true,
+      "path": "docs/captures/settings-bilingual-light-narrow.png",
+      "sourceCommit": "c0544f72554f877cbda1882179ff4bc002283d25",
+      "artifactSha256": "3989b89f6b9829bcb8862228ef302e56d948a13e429c5b57ee372aad678b8228",
+      "captureSha256": "a40cf40ce6096ba0c7bfbea544835eee1257aa58d4ffe9c6ca6f75643382801d",
+      "screen": "settings",
+      "state": "appearance-controls",
+      "theme": "light",
+      "language": "bilingual",
+      "viewportWidth": 320,
+      "viewportHeight": 900,
+      "scale": 1,
+      "interactionProofId": "settings-bilingual-light-narrow-interaction",
+      "interactionReceiptSha256": "074ee7938559b907ce053aeca99549729b683e7f4cdaccefa8e7ff0beebda26f",
+      "inspectionStatus": "inspected",
+      "limitations": [
+        "Responsive sidebar footer is hidden; version0.1.2 was verified in the same live DOM at normal viewport before and after this capture. No physical-scale claim.",
+        "Scale is CDP device-pixel-ratio emulation, not a physical Windows DPI matrix.",
+        "Prospective browser observations do not cover startup history, native exceptions or native stderr.",
+        "This is browser-hosted built-renderer evidence, not native wrapper, installer or updater proof."
+      ],
+      "capturedAtUtc": "2026-11-03T12:07:15.592Z",
+      "evidenceScope": "Built browser renderer, not cloud-worker, native-wrapper or updater acceptance"
+    },
+    {
+      "id": "features-cantonese-dark-normal",
+      "active": true,
+      "path": "docs/captures/features-cantonese-dark-normal.png",
+      "sourceCommit": "c0544f72554f877cbda1882179ff4bc002283d25",
+      "artifactSha256": "3989b89f6b9829bcb8862228ef302e56d948a13e429c5b57ee372aad678b8228",
+      "captureSha256": "eaa28a08c91d4afb69a9fc162cca69140a044fe18cf4ac7c7f4ae6b110a10841",
+      "screen": "features",
+      "state": "inventory-loaded-115",
+      "theme": "dark",
+      "language": "zh-HK",
+      "viewportWidth": 1426,
+      "viewportHeight": 963,
+      "scale": 1,
+      "interactionProofId": "features-cantonese-dark-normal-interaction",
+      "interactionReceiptSha256": "af8c1dc32f2ccb65eb3135c1030752d2b87d82d1aaf98d9cd9a188c7cf1c44aa",
+      "inspectionStatus": "inspected",
+      "limitations": [
+        "Cantonese interface controls; inventory card titles and supplied article prose remain English. This is not complete localization acceptance.",
+        "Scale is CDP device-pixel-ratio emulation, not a physical Windows DPI matrix.",
+        "Prospective browser observations do not cover startup history, native exceptions or native stderr.",
+        "This is browser-hosted built-renderer evidence, not native wrapper, installer or updater proof."
+      ],
+      "capturedAtUtc": "2026-11-03T12:07:41.790Z",
+      "evidenceScope": "Built browser renderer, not cloud-worker, native-wrapper or updater acceptance"
+    }
+  ]
+}

@@ -1,0 +1,242 @@
+name: Publish documentation
+on:
+  push:
+    branches: [main]
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      reviewed_source:
+        description: Optional previously reviewed immutable main-source commit
+        required: false
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: documentation-pages
+  cancel-in-progress: false
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    outputs:
+      source: ${{ steps.source.outputs.sha }}
+      eligible: ${{ steps.source.outputs.eligible }}
+      reason: ${{ steps.source.outputs.reason }}
+    steps:
+      - name: Resolve immutable main-channel documentation source
+        id: source
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_REF: ${{ github.ref }}
+          EVENT_SHA: ${{ github.sha }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          REVIEWED_SOURCE: ${{ inputs.reviewed_source }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $repository = 'Ding-Ding-Projects/slop-machine-fleet'
+          function Read-Api([string]$Path) {
+            $value = gh api "repos/$repository/$Path"
+            if ($LASTEXITCODE) { throw 'Authenticated documentation source readback failed.' }
+            return ($value | ConvertFrom-Json)
+          }
+          if ($env:EVENT_NAME -eq 'push') {
+            if ($env:EVENT_REF -ne 'refs/heads/main' -or $env:EVENT_SHA -notmatch '^[a-f0-9]{40}$') { throw 'Only an immutable main push may deploy documentation.' }
+            $source = $env:EVENT_SHA
+          } else {
+            if ($env:EVENT_NAME -notin @('workflow_dispatch','release')) { throw 'Unsupported documentation deployment event.' }
+            $main = Read-Api 'git/ref/heads/main'
+            $source = $main.object.sha
+            if ($main.object.type -ne 'commit' -or $source -notmatch '^[a-f0-9]{40}$') { throw 'Main source identity is invalid.' }
+            if ($env:EVENT_NAME -eq 'workflow_dispatch' -and $env:REVIEWED_SOURCE) {
+              $reviewed = $env:REVIEWED_SOURCE
+              if ($reviewed -notmatch '^[a-f0-9]{40}$') { throw 'Reviewed documentation source must be a full immutable commit SHA.' }
+              $comparison = Read-Api "compare/${reviewed}...$source"
+              if ($comparison.status -notin @('ahead','identical') -or $comparison.merge_base_commit.sha -ne $reviewed) { throw 'Reviewed documentation source is not an ancestor of authenticated main.' }
+              $source = $reviewed
+            }
+            if ($env:EVENT_NAME -eq 'release') {
+              $tag = $env:RELEASE_TAG
+              if ($tag -notmatch '^[A-Za-z0-9._-]{1,100}$') { throw 'Published release identity is invalid.' }
+              $release = Read-Api "releases/tags/$tag"
+              if ($release.draft -or $release.prerelease -or $release.tag_name -ne $tag) { throw 'Only a normal published release may deploy documentation.' }
+              $text = gh release download $tag --repo $repository --pattern source-manifest.json --output -
+              if ($LASTEXITCODE) { throw 'Published channel manifest readback failed.' }
+              $manifest = $text | ConvertFrom-Json
+              if ($manifest.updateChannel -isnot [string] -or $manifest.sourceBranch -isnot [string]) { throw 'Published release channel metadata is malformed or contradictory.' }
+              if ($manifest.source -isnot [string] -or $manifest.source -notmatch '^[a-f0-9]{40}$') { throw 'The published release source identity is invalid.' }
+              $preservation = $manifest.updateChannel -ceq 'preservation' -and $manifest.sourceBranch.Length -gt 0 -and $manifest.sourceBranch.Length -le 255 -and $manifest.sourceBranch -cne 'main'
+              if ($preservation) {
+                git check-ref-format --branch $manifest.sourceBranch | Out-Null
+                if ($LASTEXITCODE) { throw 'Preservation release branch metadata is invalid.' }
+              } elseif ($manifest.updateChannel -cne 'stable' -or $manifest.sourceBranch -cne 'main') { throw 'Published release channel metadata is malformed or contradictory.' }
+              $reference = Read-Api "git/ref/tags/$tag"
+              $object = $reference.object
+              for ($depth = 0; $object.type -eq 'tag' -and $depth -lt 3; $depth++) {
+                if ($object.sha -notmatch '^[a-f0-9]{40}$') { throw 'Annotated release tag identity is invalid.' }
+                $object = (Read-Api "git/tags/$($object.sha)").object
+              }
+              if ($object.type -ne 'commit' -or $object.sha -ne $manifest.source) { throw 'Published release tag and source manifest differ.' }
+              if ($preservation) {
+                'eligible=false' | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+                'reason=preservation-channel' | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+                Write-Host 'Valid non-main preservation release: documentation refresh is deliberately ineligible. No deployment source was accepted.'
+                exit 0
+              }
+              $comparison = Read-Api "compare/$($manifest.source)...$source"
+              if ($comparison.status -notin @('ahead','identical') -or $comparison.merge_base_commit.sha -ne $manifest.source) { throw 'Published release source is not an ancestor of the resolved main source.' }
+            }
+          }
+          $commit = Read-Api "commits/$source"
+          if ($commit.sha -ne $source) { throw 'Immutable source readback differs from the selected commit.' }
+          "sha=$source" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          'eligible=true' | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          'reason=verified-main-source' | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          Write-Host "Resolved immutable documentation source: $source."
+  refresh-main:
+    needs: resolve
+    if: github.event_name == 'release' && needs.resolve.outputs.eligible == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - name: Request a main-ref deployment with the reviewed immutable source
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REVIEWED_SOURCE: ${{ needs.resolve.outputs.source }}
+        run: |
+          if ($env:REVIEWED_SOURCE -notmatch '^[a-f0-9]{40}$') { throw 'Release refresh source is invalid.' }
+          gh workflow run pages.yml --repo Ding-Ding-Projects/slop-machine-fleet --ref main --field "reviewed_source=$env:REVIEWED_SOURCE"
+          if ($LASTEXITCODE) { throw 'Main-ref documentation refresh dispatch failed.' }
+          Write-Host "Requested main-ref refresh for reviewed source $env:REVIEWED_SOURCE. Deployment remains unverified."
+  build:
+    needs: resolve
+    if: github.event_name != 'release' && needs.resolve.outputs.eligible == 'true'
+    runs-on: windows-latest
+    permissions:
+      contents: read
+      pages: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.source }}
+          fetch-depth: 0
+      - name: Verify immutable checkout
+        shell: pwsh
+        env:
+          RESOLVED_SOURCE: ${{ needs.resolve.outputs.source }}
+        run: |
+          $actual = git rev-parse HEAD
+          if ($LASTEXITCODE -or $actual -ne $env:RESOLVED_SOURCE) { throw 'Documentation checkout differs from its resolved immutable source.' }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - uses: actions/configure-pages@v5
+      - name: Verify published downloads against source-bound payload hashes
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $repository = 'Ding-Ding-Projects/slop-machine-fleet'
+          $releases = gh release list --repo $repository --limit 20 --json tagName,isDraft,isPrerelease
+          if ($LASTEXITCODE) { throw 'Published release discovery failed.' }
+          $selected = $null
+          foreach ($candidate in ($releases | ConvertFrom-Json)) {
+            if ($candidate.isDraft -or $candidate.isPrerelease -or $candidate.tagName -notmatch '^[A-Za-z0-9._-]{1,100}$') { continue }
+            $tag = $candidate.tagName
+            $release = gh api "repos/$repository/releases/tags/$tag" | ConvertFrom-Json
+            if ($LASTEXITCODE) { throw 'Published release readback failed.' }
+            $manifestAsset = @($release.assets | Where-Object name -eq 'source-manifest.json')
+            if ($manifestAsset.Count -ne 1 -or $manifestAsset[0].size -gt 1048576) { continue }
+            $manifestText = gh release download $tag --repo $repository --pattern source-manifest.json --output -
+            if ($LASTEXITCODE) { throw 'Published source manifest download failed.' }
+            $manifest = $manifestText | ConvertFrom-Json
+            if ($manifest.source -notmatch '^[a-f0-9]{40}$' -or -not $manifest.files -or $manifest.files.Count -gt 64) { continue }
+            if ($manifest.updateChannel -isnot [string] -or $manifest.sourceBranch -isnot [string] -or $manifest.updateChannel -cne 'stable' -or $manifest.sourceBranch -cne 'main') { continue }
+            git fetch origin "refs/tags/${tag}:refs/tags/${tag}"
+            if ($LASTEXITCODE) { throw 'Release tag readback failed.' }
+            $tagSource = git rev-parse "${tag}^{commit}"
+            if ($LASTEXITCODE -or $tagSource -ne $manifest.source) { throw 'Published release tag differs from its source manifest.' }
+            git merge-base --is-ancestor $manifest.source HEAD
+            if ($LASTEXITCODE -ne 0) { continue }
+            $selected = @{ tag=$tag; release=$release; manifest=$manifest }
+            break
+          }
+          if (-not $selected) { throw 'No normal source-proven main release is available. Documentation downloads were not fabricated.' }
+          $directory = Join-Path $env:RUNNER_TEMP ('verified-downloads-' + [guid]::NewGuid())
+          New-Item -ItemType Directory -Path $directory | Out-Null
+          $assets = @(); $names = @{}; [long]$total = 0
+          foreach ($entry in $selected.manifest.files) {
+            if ($entry.name -notmatch '^(Setup\.exe|RELEASES|[^/\\\s]+-(full|delta)\.nupkg|Fleet-(build|host|docs)-[0-9][^/\\\s]*\.exe|Fleet\.Worker\.exe|Bootstrap-Worker\.ps1)$' -or $names.ContainsKey($entry.name) -or $entry.bytes -lt 1 -or $entry.bytes -gt 1500000000 -or $entry.sha256 -notmatch '^[a-fA-F0-9]{64}$') { throw 'Published payload inventory is invalid.' }
+            $names[$entry.name] = $true; $total += $entry.bytes
+            if ($total -gt 4000000000) { throw 'Published download inventory exceeds its bounded verification budget.' }
+            $asset = @($selected.release.assets | Where-Object name -eq $entry.name)
+            $url = "https://github.com/$repository/releases/download/$($selected.tag)/$($entry.name)"
+            if ($asset.Count -ne 1 -or $asset[0].size -ne $entry.bytes -or $asset[0].browser_download_url -ne $url) { throw 'Stored release payload metadata does not match its source inventory.' }
+            gh release download $selected.tag --repo $repository --pattern $entry.name --dir $directory
+            if ($LASTEXITCODE) { throw 'Published payload download failed.' }
+            $file = Get-Item -LiteralPath (Join-Path $directory $entry.name)
+            $hash = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($file.Length -ne $entry.bytes -or $hash -ne $entry.sha256.ToLowerInvariant()) { throw 'Downloaded payload bytes do not match their source-bound hash.' }
+            $assets += @{ name=$entry.name; size=$file.Length; sha256=$hash; url=$url }
+          }
+          if (-not $names.ContainsKey('Setup.exe') -or -not $names.ContainsKey('RELEASES') -or -not ($assets | Where-Object name -like '*-full.nupkg')) { throw 'The published installable delivery is incomplete.' }
+          @{ verified=$true; isDraft=$false; isPrerelease=$false; tag=$selected.tag; sourceCommit=$selected.manifest.source; assets=$assets } | ConvertTo-Json -Depth 6 | Set-Content apps/docs/release.json
+          Write-Host "Verified $($assets.Count) actual release downloads ($total bytes) from $($selected.tag)."
+      - name: Include complete available public wiki articles and assets
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $wiki = 'https://github.com/Ding-Ding-Projects/slop-machine-fleet.wiki.git'
+          $reference = git ls-remote $wiki HEAD 2>$null
+          if ($LASTEXITCODE -eq 0 -and $reference) {
+            $clone = Join-Path $env:RUNNER_TEMP ('published-wiki-' + [guid]::NewGuid())
+            git clone --depth 1 $wiki $clone
+            if ($LASTEXITCODE) { throw 'Available public wiki could not be imported completely.' }
+            $destination = 'docs/wiki/published'
+            New-Item -ItemType Directory -Force $destination | Out-Null
+            foreach ($item in Get-ChildItem -LiteralPath $clone -Force | Where-Object Name -ne '.git') {
+              if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw 'Wiki links are not accepted as source files.' }
+              if ($item.PSIsContainer -and @(Get-ChildItem -LiteralPath $item.FullName -Recurse -Force | Where-Object { ($_.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 }).Count -gt 0) { throw 'Nested wiki links are not accepted as source files.' }
+              $target = Join-Path $destination $item.Name
+              if (Test-Path -LiteralPath $target) { throw 'Published wiki import would overwrite existing source.' }
+              Copy-Item -LiteralPath $item.FullName -Destination $target -Recurse
+            }
+            Write-Host "Imported complete public wiki at $reference. Source navigation and local assets are retained."
+          } else {
+            Write-Warning 'The public wiki is not initialized or unavailable. Existing prepared wiki articles remain included; published wiki synchronization is unverified.'
+            # The optional probe was handled; required clone and download failures still throw.
+            $global:LASTEXITCODE = 0
+          }
+      - name: Build the complete documentation through the supported root entrypoint
+        shell: cmd
+        run: build.bat /s
+      - name: Require genuine built documentation output
+        shell: pwsh
+        run: |
+          if (-not (Test-Path apps/docs/dist/index.html) -or -not (Test-Path apps/docs/src/content.generated.json)) { throw 'Documentation build output is missing.' }
+          $content = Get-Content apps/docs/src/content.generated.json -Raw | ConvertFrom-Json
+          if (-not $content.release -or -not $content.articles -or $content.articles.Count -lt 1) { throw 'Complete documentation content and verified downloads must be bundled before deployment.' }
+          Write-Host "Built documentation: $($content.articles.Count) complete articles; release $($content.release.tag); source $($content.commit)."
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: apps/docs/dist
+  deploy:
+    needs: [resolve, build]
+    if: github.event_name != 'release' && needs.resolve.outputs.eligible == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy reviewed static documentation
+        id: deployment
+        uses: actions/deploy-pages@v4

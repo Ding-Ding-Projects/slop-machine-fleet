@@ -1,0 +1,2236 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-11-03T06:47:58.339Z",
+  "sourceCount": 115,
+  "surfaces": [
+    "desktop",
+    "browser",
+    "onboarding",
+    "settings",
+    "documentation",
+    "hosting-wizard",
+    "build-companion"
+  ],
+  "features": [
+    {
+      "id": "job-experience-document-label",
+      "title": "Job Experience Document default product wording",
+      "category": "Language, voice, and personalization",
+      "applicable": false,
+      "state": "not-applicable",
+      "reason": "This product does not author employment documents or provide employment-document controls.",
+      "surfaces": [],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/job-experience-document-label.md"
+    },
+    {
+      "id": "language",
+      "title": "Language modes",
+      "category": "Language, voice, and personalization",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/language.md"
+    },
+    {
+      "id": "funny-emoji",
+      "title": "Funny-level sliders and the dialog emoji switch",
+      "category": "Language, voice, and personalization",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/funny-emoji.md"
+    },
+    {
+      "id": "personal-vocabulary",
+      "title": "Local personal-vocabulary JSON upload",
+      "category": "Language, voice, and personalization",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/personal-vocabulary.md"
+    },
+    {
+      "id": "vocabulary-drop-apply",
+      "title": "Drop a personal-vocabulary JSON onto the application",
+      "category": "Language, voice, and personalization",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/vocabulary-drop-apply.md"
+    },
+    {
+      "id": "school-mode",
+      "title": "Universal School mode",
+      "category": "Language, voice, and personalization",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/school-mode.md"
+    },
+    {
+      "id": "narration",
+      "title": "Spoken narrator and voice pickers",
+      "category": "Language, voice, and personalization",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/narration.md"
+    },
+    {
+      "id": "action-sound-effects",
+      "title": "Polished action sounds with a Settings switch",
+      "category": "Language, voice, and personalization",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/action-sound-effects.md"
+    },
+    {
+      "id": "scheduled-settings",
+      "title": "Scheduled and external settings sources",
+      "category": "Language, voice, and personalization",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/scheduled-settings.md"
+    },
+    {
+      "id": "display-name",
+      "title": "Renaming the application",
+      "category": "Language, voice, and personalization",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/display-name.md"
+    },
+    {
+      "id": "adhd-modes",
+      "title": "ADHD modes",
+      "category": "Language, voice, and personalization",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/adhd-modes.md"
+    },
+    {
+      "id": "dim-sum",
+      "title": "Dim sum surprise",
+      "category": "Language, voice, and personalization",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/dim-sum.md"
+    },
+    {
+      "id": "dim-sum-photo-source",
+      "title": "Public dim-sum photo source",
+      "category": "Language, voice, and personalization",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/dim-sum-photo-source.md"
+    },
+    {
+      "id": "material-design",
+      "title": "Material Design 3 conformance",
+      "category": "Material Design 3, appearance, and layout",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/material-design.md"
+    },
+    {
+      "id": "workflow-navigation",
+      "title": "Workflow navigation and window chrome",
+      "category": "Material Design 3, appearance, and layout",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/workflow-navigation.md"
+    },
+    {
+      "id": "motion",
+      "title": "Material Design 3 motion with a complete reduced-motion path",
+      "category": "Material Design 3, appearance, and layout",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/motion.md"
+    },
+    {
+      "id": "live-charts",
+      "title": "Live charts in the Liveline style",
+      "category": "Material Design 3, appearance, and layout",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/live-charts.md"
+    },
+    {
+      "id": "appearance-editor",
+      "title": "Per-element appearance editor",
+      "category": "Material Design 3, appearance, and layout",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/appearance-editor.md"
+    },
+    {
+      "id": "color-picker",
+      "title": "Infinite colour picker and translator",
+      "category": "Material Design 3, appearance, and layout",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/color-picker.md"
+    },
+    {
+      "id": "logo-customization",
+      "title": "application logo customization",
+      "category": "Material Design 3, appearance, and layout",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/logo-customization.md"
+    },
+    {
+      "id": "overlay-panels",
+      "title": "Overlays and panels",
+      "category": "Material Design 3, appearance, and layout",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/overlay-panels.md"
+    },
+    {
+      "id": "collapse-filters",
+      "title": "Collapsible filters and statistics",
+      "category": "Material Design 3, appearance, and layout",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/collapse-filters.md"
+    },
+    {
+      "id": "accessibility-sizing",
+      "title": "Accessibility, sizing, and layout without layout clipping defect",
+      "category": "Material Design 3, appearance, and layout",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/accessibility-sizing.md"
+    },
+    {
+      "id": "functional-ui",
+      "title": "Functional UI and truthful empty states",
+      "category": "Material Design 3, appearance, and layout",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/functional-ui.md"
+    },
+    {
+      "id": "onboarding-wizard",
+      "title": "Practical in-app onboarding",
+      "category": "Navigation, search, and commands",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/onboarding-wizard.md"
+    },
+    {
+      "id": "tabs",
+      "title": "Browser-style tabbed navigation",
+      "category": "Navigation, search, and commands",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/tabs.md"
+    },
+    {
+      "id": "regex-search",
+      "title": "Regex builder on every search surface",
+      "category": "Navigation, search, and commands",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/regex-search.md"
+    },
+    {
+      "id": "command-palette",
+      "title": "`Ctrl+Shift+F` command palette",
+      "category": "Navigation, search, and commands",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/command-palette.md"
+    },
+    {
+      "id": "context-menus",
+      "title": "A context menu on every element",
+      "category": "Navigation, search, and commands",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/context-menus.md"
+    },
+    {
+      "id": "menu-shortcuts",
+      "title": "Context menus show working shortcuts",
+      "category": "Navigation, search, and commands",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/menu-shortcuts.md"
+    },
+    {
+      "id": "rich-controls",
+      "title": "Rich controls wherever a value is shown",
+      "category": "Navigation, search, and commands",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/rich-controls.md"
+    },
+    {
+      "id": "guided-forms",
+      "title": "Guided forms",
+      "category": "Navigation, search, and commands",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/guided-forms.md"
+    },
+    {
+      "id": "info-icon-guidance",
+      "title": "Per-control info icon buttons",
+      "category": "Navigation, search, and commands",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/info-icon-guidance.md"
+    },
+    {
+      "id": "settings-explanations",
+      "title": "Settings that explain themselves",
+      "category": "Navigation, search, and commands",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/settings-explanations.md"
+    },
+    {
+      "id": "blank-editors",
+      "title": "Presets for blank-slate editors",
+      "category": "Navigation, search, and commands",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/blank-editors.md"
+    },
+    {
+      "id": "super-confirmation",
+      "title": "Two-key super confirmation",
+      "category": "Safety, locks, and authentication",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/super-confirmation.md"
+    },
+    {
+      "id": "element-locks",
+      "title": "Toy locks on every element",
+      "category": "Safety, locks, and authentication",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/element-locks.md"
+    },
+    {
+      "id": "support-tickets",
+      "title": "Support Tickets recovery desk",
+      "category": "Safety, locks, and authentication",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/support-tickets.md"
+    },
+    {
+      "id": "unlock-ladder",
+      "title": "The unlock ladder",
+      "category": "Safety, locks, and authentication",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/unlock-ladder.md"
+    },
+    {
+      "id": "authenticator",
+      "title": "Built-in authenticator",
+      "category": "Safety, locks, and authentication",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/authenticator.md"
+    },
+    {
+      "id": "qr-pairing",
+      "title": "QR pairing for OTP registration",
+      "category": "Safety, locks, and authentication",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/qr-pairing.md"
+    },
+    {
+      "id": "honest-monetization",
+      "title": "Free by default, honest when paid, never nagging",
+      "category": "Safety, locks, and authentication",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/honest-monetization.md"
+    },
+    {
+      "id": "local-history",
+      "title": "Local version history",
+      "category": "Records, history, and messages",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/local-history.md"
+    },
+    {
+      "id": "exports",
+      "title": "Export everything, in every format",
+      "category": "Records, history, and messages",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/exports.md"
+    },
+    {
+      "id": "bulk-actions",
+      "title": "Bulk actions everywhere",
+      "category": "Records, history, and messages",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/bulk-actions.md"
+    },
+    {
+      "id": "changelog",
+      "title": "Changelog viewer",
+      "category": "Records, history, and messages",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/changelog.md"
+    },
+    {
+      "id": "offline-docs",
+      "title": "Offline documentation browser in every application",
+      "category": "Records, history, and messages",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/offline-docs.md"
+    },
+    {
+      "id": "rendered-provider-text",
+      "title": "Provider-authored text is rendered",
+      "category": "Records, history, and messages",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/rendered-provider-text.md"
+    },
+    {
+      "id": "notifications",
+      "title": "Non-blocking notifications and their centre",
+      "category": "Records, history, and messages",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/notifications.md"
+    },
+    {
+      "id": "file-converter",
+      "title": "Universal local file converter",
+      "category": "Built-in tools and hand-off",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/file-converter.md"
+    },
+    {
+      "id": "base64-tools",
+      "title": "Full local Base64 toolkit",
+      "category": "Built-in tools and hand-off",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/base64-tools.md"
+    },
+    {
+      "id": "minecraft-server-manager",
+      "title": "Full Minecraft server creator and manager",
+      "category": "Built-in tools and hand-off",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/minecraft-server-manager.md"
+    },
+    {
+      "id": "minecraft-world-generator",
+      "title": "Minecraft world generator in every server tab",
+      "category": "Built-in tools and hand-off",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/minecraft-world-generator.md"
+    },
+    {
+      "id": "ollama-suite",
+      "title": "Universal local Ollama suite manager",
+      "category": "Built-in tools and hand-off",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/ollama-suite.md"
+    },
+    {
+      "id": "external-editor",
+      "title": "External editor and VS Code hand-off",
+      "category": "Built-in tools and hand-off",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/external-editor.md"
+    },
+    {
+      "id": "download-handoff",
+      "title": "Browser-extension download hand-off surfaces",
+      "category": "Built-in tools and hand-off",
+      "applicable": false,
+      "state": "not-applicable",
+      "reason": "This product is not a browser extension and does not intercept browser downloads.",
+      "surfaces": [],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/download-handoff.md"
+    },
+    {
+      "id": "forge-publishing",
+      "title": "Publishing to a forge",
+      "category": "Built-in tools and hand-off",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/forge-publishing.md"
+    },
+    {
+      "id": "progress-recovery",
+      "title": "Progress where it started, recovery where it broke",
+      "category": "Built-in tools and hand-off",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/progress-recovery.md"
+    },
+    {
+      "id": "drawesome-drawing",
+      "title": "Drawing and annotation with Drawesome",
+      "category": "Built-in tools and hand-off",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/drawesome-drawing.md"
+    },
+    {
+      "id": "completeness-parity",
+      "title": "Per-surface completeness inventory and parity",
+      "category": "Completeness and evidence",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/completeness-parity.md"
+    },
+    {
+      "id": "front-provenance",
+      "title": "Front-screen version and updated-at provenance",
+      "category": "Completeness and evidence",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/front-provenance.md"
+    },
+    {
+      "id": "product-evidence",
+      "title": "Real screenshots wherever a surface is described",
+      "category": "Completeness and evidence",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/product-evidence.md"
+    },
+    {
+      "id": "screen-recording",
+      "title": "committed screen recording",
+      "category": "Completeness and evidence",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/screen-recording.md"
+    },
+    {
+      "id": "design-reference-parity",
+      "title": "Checked-in design-reference parity",
+      "category": "Completeness and evidence",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/design-reference-parity.md"
+    },
+    {
+      "id": "design-folder",
+      "title": "Design surfaces live in the repository",
+      "category": "Completeness and evidence",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/design-folder.md"
+    },
+    {
+      "id": "layout-matrix",
+      "title": "layout clipping defect matrix for every built surface",
+      "category": "Completeness and evidence",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/layout-matrix.md"
+    },
+    {
+      "id": "public-evidence-gallery",
+      "title": "Public screenshot gallery at usage limit reached",
+      "category": "Completeness and evidence",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/public-evidence-gallery.md"
+    },
+    {
+      "id": "landing-site",
+      "title": "A Material Design 3 GitHub Pages carrying every feature",
+      "category": "GitHub Pages and shared links",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/landing-site.md"
+    },
+    {
+      "id": "responsive-documentation",
+      "title": "A mobile-friendly GitHub Pages",
+      "category": "GitHub Pages and shared links",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/responsive-documentation.md"
+    },
+    {
+      "id": "installer-download-button",
+      "title": "Verified installer download on Home",
+      "category": "GitHub Pages and shared links",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/installer-download-button.md"
+    },
+    {
+      "id": "feature-articles",
+      "title": "One detailed article per feature on the GitHub Pages",
+      "category": "GitHub Pages and shared links",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/feature-articles.md"
+    },
+    {
+      "id": "vendored-fonts",
+      "title": "Complete, scripted font vendoring",
+      "category": "GitHub Pages and shared links",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/vendored-fonts.md"
+    },
+    {
+      "id": "shared-link-embed",
+      "title": "A real picture when a link is pasted into Discord",
+      "category": "GitHub Pages and shared links",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/shared-link-embed.md"
+    },
+    {
+      "id": "homepage-link",
+      "title": "The GitHub Pages linked from the repository",
+      "category": "GitHub Pages and shared links",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/homepage-link.md"
+    },
+    {
+      "id": "vocabulary-unlock-boundary",
+      "title": "private vocabulary only after authentication",
+      "category": "GitHub Pages and shared links",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/vocabulary-unlock-boundary.md"
+    },
+    {
+      "id": "private-documentation-package",
+      "title": "Private GitHub Pages delivered as a packaged desktop application",
+      "category": "GitHub Pages and shared links",
+      "applicable": false,
+      "state": "not-applicable",
+      "reason": "The source repository is public. Its public documentation and additional companion delivery remain required separately.",
+      "surfaces": [],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/private-documentation-package.md"
+    },
+    {
+      "id": "status-hub",
+      "title": "Status Hub registration and status surface",
+      "category": "Status Hub",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/status-hub.md"
+    },
+    {
+      "id": "discord-status-bridge",
+      "title": "Discord status bridge",
+      "category": "Status Hub",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/discord-status-bridge.md"
+    },
+    {
+      "id": "panic-webhooks",
+      "title": "Verified panic dispatch",
+      "category": "Status Hub",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/panic-webhooks.md"
+    },
+    {
+      "id": "tidbyt-displays",
+      "title": "Tidbyt status frames",
+      "category": "Status Hub",
+      "applicable": false,
+      "state": "not-applicable",
+      "reason": "The maintainer suspended per-event display updates. No active display delivery is claimed.",
+      "surfaces": [],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/tidbyt-displays.md"
+    },
+    {
+      "id": "build-entrypoints",
+      "title": "Root `build.bat` and `build-installer.bat`",
+      "category": "Build and install",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/build-entrypoints.md"
+    },
+    {
+      "id": "fresh-build-run-command",
+      "title": "One fresh Microsoft Windows build-and-run command",
+      "category": "Build and install",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/fresh-build-run-command.md"
+    },
+    {
+      "id": "dependency-fetcher",
+      "title": "One-click dependency or prerequisite fetcher",
+      "category": "Build and install",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/dependency-fetcher.md"
+    },
+    {
+      "id": "bundled-dependencies",
+      "title": "Every application bundles its dependencies and prerequisites",
+      "category": "Build and install",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/bundled-dependencies.md"
+    },
+    {
+      "id": "squirrel-installer",
+      "title": "Genuine Squirrel.Windows installers",
+      "category": "Build and install",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/squirrel-installer.md"
+    },
+    {
+      "id": "self-signing",
+      "title": "Required-format self-signing only",
+      "category": "Build and install",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/self-signing.md"
+    },
+    {
+      "id": "auto-updates",
+      "title": "Chrome-style automatic updates",
+      "category": "Build and install",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/auto-updates.md"
+    },
+    {
+      "id": "app-icon",
+      "title": "Original logo and packaged icon",
+      "category": "Build and install",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/app-icon.md"
+    },
+    {
+      "id": "release-workflow",
+      "title": "A real release on every push",
+      "category": "Release pipeline",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/release-workflow.md"
+    },
+    {
+      "id": "release-timing",
+      "title": "End-to-end workflow timing in release notes",
+      "category": "Release pipeline",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/release-timing.md"
+    },
+    {
+      "id": "release-line-counts",
+      "title": "Line counts counted by GitHub Actions",
+      "category": "Release pipeline",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/release-line-counts.md"
+    },
+    {
+      "id": "release-dim-sum-photo",
+      "title": "Public dim-sum photo references in releases",
+      "category": "Release pipeline",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/release-dim-sum-photo.md"
+    },
+    {
+      "id": "dim-sum-code-names",
+      "title": "Dim sum release code names",
+      "category": "Release pipeline",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/dim-sum-code-names.md"
+    },
+    {
+      "id": "ci-bootstrap",
+      "title": "GitHub Actions dependency or prerequisite bootstrap and safe outputs",
+      "category": "Release pipeline",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/ci-bootstrap.md"
+    },
+    {
+      "id": "runner-selection",
+      "title": "Live GitHub Actions runner selection",
+      "category": "Release pipeline",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/runner-selection.md"
+    },
+    {
+      "id": "encrypted-public-builder",
+      "title": "Encrypted public builder for private repositories",
+      "category": "Release pipeline",
+      "applicable": false,
+      "state": "not-applicable",
+      "reason": "The product source is public; no private source is sent to a public builder.",
+      "surfaces": [],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/encrypted-public-builder.md"
+    },
+    {
+      "id": "tabbed-readme",
+      "title": "A tabbed README, not a scroll",
+      "category": "repository records and README",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/tabbed-readme.md"
+    },
+    {
+      "id": "human-time-estimate",
+      "title": "How long a human would have taken",
+      "category": "repository records and README",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/human-time-estimate.md"
+    },
+    {
+      "id": "sanitized-instruction-copy",
+      "title": "Sanitized instruction mirror",
+      "category": "repository records and README",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/sanitized-instruction-copy.md"
+    },
+    {
+      "id": "agents-md-vocabulary-block",
+      "title": "Sanitized vocabulary-discipline block in `AGENTS.md`",
+      "category": "repository records and README",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/agents-md-vocabulary-block.md"
+    },
+    {
+      "id": "vocabulary-hash-lock",
+      "title": "Vocabulary hash lock",
+      "category": "repository records and README",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/vocabulary-hash-lock.md"
+    },
+    {
+      "id": "roadmap-checklist",
+      "title": "`ROADMAP.md` checklist",
+      "category": "repository records and README",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/roadmap-checklist.md"
+    },
+    {
+      "id": "feature-docs",
+      "title": "One Markdown file per feature",
+      "category": "repository records and README",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/feature-docs.md"
+    },
+    {
+      "id": "postman-collections",
+      "title": "Postman collections for HTTP APIs",
+      "category": "repository records and README",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/postman-collections.md"
+    },
+    {
+      "id": "wiki-documentation-sync",
+      "title": "Wiki and GitHub Pages source kept current",
+      "category": "repository records and README",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/wiki-documentation-sync.md"
+    },
+    {
+      "id": "handoff-record",
+      "title": "`HANDOFF.md` and the GitHub handoff section",
+      "category": "repository records and README",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/handoff-record.md"
+    },
+    {
+      "id": "closeout-prompt",
+      "title": "pushed `CLOSEOUT_PROMPT.md`",
+      "category": "repository records and README",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/closeout-prompt.md"
+    },
+    {
+      "id": "discussion-records",
+      "title": "Discussions as the running record",
+      "category": "repository records and README",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/discussion-records.md"
+    },
+    {
+      "id": "project-board",
+      "title": "GitHub Project linked to the repository",
+      "category": "repository records and README",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/project-board.md"
+    },
+    {
+      "id": "operational-skill",
+      "title": "repository operational skill",
+      "category": "repository records and README",
+      "applicable": true,
+      "state": "unfinished",
+      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "surfaces": [
+        "desktop",
+        "browser",
+        "onboarding",
+        "settings",
+        "documentation",
+        "hosting-wizard",
+        "build-companion"
+      ],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/operational-skill.md"
+    },
+    {
+      "id": "readme-prompt-banner",
+      "title": "README opens with the prompt banner",
+      "category": "the global-memory repository canonical deliverables",
+      "applicable": false,
+      "state": "not-applicable",
+      "reason": "This product is not the private instruction corpus and must not publish its activation prompt.",
+      "surfaces": [],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/readme-prompt-banner.md"
+    },
+    {
+      "id": "instruction-corpus-editions",
+      "title": "Single-file editions of the global-memory repository",
+      "category": "the global-memory repository canonical deliverables",
+      "applicable": false,
+      "state": "not-applicable",
+      "reason": "This product does not distribute the private instruction corpus.",
+      "surfaces": [],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/instruction-corpus-editions.md"
+    },
+    {
+      "id": "project-profile",
+      "title": "Project memory folders",
+      "category": "the global-memory repository canonical deliverables",
+      "applicable": false,
+      "state": "not-applicable",
+      "reason": "Private maintainer project memory belongs outside the public product source.",
+      "surfaces": [],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/project-profile.md"
+    },
+    {
+      "id": "roblox-model-catalogue",
+      "title": "Every shared Roblox model, meaningfully used",
+      "category": "games",
+      "applicable": false,
+      "state": "not-applicable",
+      "reason": "This product does not contain a Roblox game or use the private model catalogue.",
+      "surfaces": [],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/roblox-model-catalogue.md"
+    },
+    {
+      "id": "roblox-visual-realism",
+      "title": "Roblox visual realism",
+      "category": "games",
+      "applicable": false,
+      "state": "not-applicable",
+      "reason": "This product does not render a Roblox game.",
+      "surfaces": [],
+      "implementation": [],
+      "verification": [],
+      "documentation": "docs/features/requirements/roblox-visual-realism.md"
+    }
+  ]
+}
