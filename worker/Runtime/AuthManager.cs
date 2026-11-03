@@ -3,8 +3,8 @@ using System.Text.RegularExpressions;
 using System.Text.Json;
 namespace Fleet.Worker;
 public sealed record AuthState(string State,string? VerificationUrl=null,string? UserCode=null,DateTimeOffset? ExpiresAt=null,string? ErrorCode=null);
-public sealed class AuthManager(WorkerSettings settings) : IDisposable {
-    sealed class Session { public AuthState State=new("pending"); public CancellationTokenSource Stop=new(TimeSpan.FromMinutes(15)); public PseudoTerminal? Terminal; }
+public sealed class AuthManager(WorkerSettings settings,IPairingRuntime? pairingRuntime=null) : IDisposable {
+    sealed class Session { public AuthState State=new("pending"); public CancellationTokenSource Stop=new(TimeSpan.FromMinutes(15)); public PseudoTerminal? Terminal; public Task Completion=Task.CompletedTask; }
     readonly ConcurrentDictionary<string,Session> sessions=new();
     static void Validate(string provider) { if(provider is not ("codex" or "github" or "pairing")) throw new ArgumentException("Unknown provider."); }
     public AuthState Start(string provider) {
@@ -12,9 +12,10 @@ public sealed class AuthManager(WorkerSettings settings) : IDisposable {
         var session=new Session();
         if(sessions.TryGetValue(provider,out var previous)) { if(previous.State.State is "pending" or "code-issued") throw new InvalidOperationException("Authentication already exists; cancel before restarting."); sessions.TryRemove(provider,out _); }
         if(!sessions.TryAdd(provider,session)) throw new InvalidOperationException("Authentication already exists.");
-        _=Run(provider,session);
+        session.Completion=Run(provider,session);
         return session.State;
     }
+    internal Task Completion(string provider)=>sessions.TryGetValue(provider,out var session)?session.Completion:Task.CompletedTask;
     public AuthState Status(string provider) { Validate(provider); return sessions.TryGetValue(provider,out var session) ? session.State : new("unknown"); }
     public async Task Input(string provider,string value) {
         Validate(provider);
@@ -27,16 +28,18 @@ public sealed class AuthManager(WorkerSettings settings) : IDisposable {
     async Task Run(string provider,Session session) {
         try {
             if(provider=="pairing") {
-                var start=await Commands.Run(settings.CodexPath,["remote-control","start","--json"],cancellation:session.Stop.Token);
+                var runtime=pairingRuntime??SystemPairingRuntime.Instance;
+                var start=await runtime.Run(settings.CodexPath,["remote-control","start","--json"],session.Stop.Token);
                 if(start.Code!=0) { Set(session,new("error",ErrorCode:"REMOTE_START_FAILED")); return; }
-                var pair=await Commands.Run(settings.CodexPath,["remote-control","pair","--json"],cancellation:session.Stop.Token);
+                var pair=await runtime.Run(settings.CodexPath,["remote-control","pair","--json"],session.Stop.Token);
                 if(pair.Code!=0) { Set(session,new("error",ErrorCode:"PAIRING_FAILED")); return; }
                 using var document=JsonDocument.Parse(pair.Output);
                 var root=document.RootElement;
                 // An issued code does not prove a remote connection.
-                var paired=ParsePairing(root); Set(session,paired);
-                var duration=paired.ExpiresAt!.Value-DateTimeOffset.UtcNow;
-                if(duration>TimeSpan.Zero) await Task.Delay(duration>TimeSpan.FromMinutes(15)?TimeSpan.FromMinutes(15):duration,session.Stop.Token);
+                var paired=ParsePairing(root,runtime.UtcNow); Set(session,paired);
+                if(paired.State!="code-issued"||paired.ExpiresAt is not {} expiresAt) return;
+                var duration=expiresAt-runtime.UtcNow;
+                if(duration>TimeSpan.Zero) await runtime.Delay(duration>TimeSpan.FromMinutes(15)?TimeSpan.FromMinutes(15):duration,session.Stop.Token);
                 Set(session,new("expired")); return;
             }
             var executable=provider=="github"?settings.GhPath:settings.CodexPath;
@@ -56,11 +59,11 @@ public sealed class AuthManager(WorkerSettings settings) : IDisposable {
         finally { session.Terminal=null; }
     }
     static string? Read(JsonElement value,string key)=>value.TryGetProperty(key,out var property)&&property.ValueKind==JsonValueKind.String?property.GetString():null;
-    public static AuthState ParsePairing(JsonElement root) {
+    public static AuthState ParsePairing(JsonElement root,DateTimeOffset? now=null) {
         var code=Read(root,"manualPairingCode");
         if(string.IsNullOrWhiteSpace(code)||code.Length>128||!root.TryGetProperty("expiresAt",out var expiry)||!expiry.TryGetInt64(out var seconds)) throw new InvalidOperationException("Unsupported pairing response.");
         var at=DateTimeOffset.FromUnixTimeSeconds(seconds);
-        return at<=DateTimeOffset.UtcNow?new("expired"):new("code-issued",UserCode:code,ExpiresAt:at);
+        return at<=(now??DateTimeOffset.UtcNow)?new("expired"):new("code-issued",UserCode:code,ExpiresAt:at);
     }
     static async Task Read(PseudoTerminal terminal,Session session) {
         var buffer=new char[1024]; var recent="";
