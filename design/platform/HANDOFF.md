@@ -47,3 +47,9 @@ Safety consumer inventory: Fleet selection/bulk confirmation and mutation; Creat
 Tools peers are read from `6a90e50` and DesktopUpdates from `8115fd7` in a read-only TypeScript virtual host; no peer duplicates are committed. Live Tools state is unknown until the actual callback reports; failed preference/Help/onboarding persistence remains blocked until explicit successful recovery. No provider text, prompts, authentication values or private wording are copied into safety records or generic notifications.
 
 Checks: virtual integrated TypeScript passes; six focused integration tests cover actual API counter failures/overlap, stale workflow decisions, all unknown updater inputs and opaque repository identity. Parent build and native update behavior remain unverified.
+
+## Integration review repairs
+
+Update safety is now unknown during every reconciliation read, on stream disconnection and on every API mutation begin/end. Successful task snapshots carry an actual read timestamp, expire after four seconds and are refreshed every three seconds. A read that overlaps any API-write revision cannot restore readiness, even if that write has already settled. The updater remains subject to native bridge freshness and actual runtime acceptance.
+
+Sign-out composes workflow vetoes with platform appearance-draft vetoes. Exact setting preparation waits for a scoped mounted Settings registration and the real target, instead of broadcasting before mount. Teleport includes genuine Material button hosts and verifies focus acceptance. Eight integration tests and the immutable-peer virtual TypeScript check pass. Background throttling, native bridge expiry, real custom-element focus and complete dirty-flow interactions remain runtime acceptance.
