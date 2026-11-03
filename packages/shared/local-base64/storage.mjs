@@ -38,7 +38,7 @@ export function storageBudget(size, mode, wrap = 0) {
     estimate =
       mode === "encode"
         ? encoded + (wrap ? 2 * Math.floor(encoded / wrap) : 0)
-        : Math.ceil((size * 3) / 4);
+        : size;
   if (!Number.isSafeInteger(estimate + 1048576)) throw new Base64Error("size");
   return estimate + 1048576;
 }

@@ -108,7 +108,7 @@ self.onmessage = async ({ data }) => {
       mime = "text/plain";
     } else if (data.action === "decode") {
       const source = decodeText(bytes, data.file ? "utf-8" : data.encoding);
-      if (source.startsWith("data:")) {
+      if (/^data:/i.test(source)) {
         const parsed = parseDataURL(source);
         output = parsed.bytes;
         parameters = parsed.parameters;

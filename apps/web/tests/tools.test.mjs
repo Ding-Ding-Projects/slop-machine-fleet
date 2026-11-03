@@ -39,7 +39,7 @@ test("text codecs preserve UTF-16 and Latin-1 without Windows-1252 substitution"
   assert.throws(() => encodeText("貓", "latin1"));
   assert.throws(() => decodeText(new Uint8Array([255])));
 });
-test("data URL parser accepts bounded base64 only and preserves parameters", () => {
+test("Base64 data URL parser preserves its existing bounded behavior and parameters", () => {
   const result = parseDataURL("data:text/plain;charset=utf-8;base64,aGk=");
   assert.equal(decodeText(result.bytes), "hi");
   assert.deepEqual(result.parameters, ["charset=utf-8"]);

@@ -34,3 +34,17 @@ Clipboard import and copy require explicit buttons. The editor and complete-text
 The separately exported `Base64Workspace.tsx` wraps the Base64 UI with independent lifecycle safety. A future public documentation integration must provide its safe public preference binding for every tools import of `../preferences`; it must not import the authenticated application's private preference provider. The pure shared modules are UI-independent. No documentation surface integration is claimed by this export.
 
 Action cues honor the existing sound switch, volume and low-stimulation preference; sound failures never change conversion results. Actual media playback, clipboard permission, sound and browser-storage acceptance remain unverified until the built UI is exercised.
+
+## Non-Base64 data URLs
+
+Both the bounded editor and streaming decoder accept `data:[mediatype][;parameters],payload` without a `;base64` flag. The payload is a sequence of raw octets, not a form submission or a UTF-8 string. Each `%HH` escape produces exactly one byte, uppercase/lowercase hex digits are equivalent, literal `+` remains byte 43, and decoding occurs once. For example, `%FF%00+%2520` produces bytes `FF 00 2B 25 32 30`; it is not normalized through Unicode and `%2520` does not become a space.
+
+The header is parsed before the payload. Omitted media type defaults to `text/plain` with `charset=US-ASCII` unless a charset parameter is supplied. Escaped parameter values are decoded as octets with a reversible one-byte-to-character representation, without applying a charset or evaluating their contents. `base64=value` is an ordinary parameter, not the Base64 flag. Existing Base64 data URL decoding retains its previous byte and parameter behavior.
+
+The header remains bounded to 4096 bytes. The percent decoder retains at most two pending hexadecimal digits and reports the absolute offset of the opening `%` for malformed or incomplete escapes, including when the escape crosses chunks. Raw whitespace, control bytes, non-ASCII bytes and characters outside RFC 2396's `urlchar` set must be percent-encoded. The supplied string is treated as one data-URL value; an unescaped fragment marker is rejected rather than silently stripped. Decoder quota estimates now conservatively allow one output byte per source byte, since a non-Base64 payload can be mostly literal text. Actual output remains bounded by the approved temporary-storage claim.
+
+Output still passes actual-file hash readback and byte round-trip verification. Parsing adds no evaluation, network requests, automatic opening or changes to preview sandboxing. Browser acceptance remains pending.
+
+Primary references: [RFC 2397 sections 2–3](https://www.rfc-editor.org/info/rfc2397/), [RFC 3986 sections 2.1 and 2.4](https://www.rfc-editor.org/info/rfc3986/), [RFC 2396 URI-character grammar](https://www.rfc-editor.org/info/rfc2396/) and [RFC 2045 section 5.1](https://www.rfc-editor.org/info/rfc2045/).
+
+Six focused regressions cover independent byte vectors across chunk splits, all 256 octets, literal plus signs, decoding once, exact malformed-percent offsets and abort behavior, preserved Base64 examples, and a 5 MiB mostly literal URI. No browser execution is claimed by these checks.

@@ -6,7 +6,11 @@ import {
   CHUNK_BYTES,
   createControl,
 } from "./codec.mjs";
-import { DataURLStripper, dataURLPrefix } from "./data-url.mjs";
+import {
+  DataURLStripper,
+  dataURLPrefix,
+  PercentOctetDecoder,
+} from "./data-url.mjs";
 const hex = (bytes) =>
   Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("");
 export async function convertStream({
@@ -26,7 +30,8 @@ export async function convertStream({
   let inputSize = 0,
     outputSize = 0,
     iteration = 0;
-  const transform =
+  let percentMode = false;
+  let transform =
     mode === "encode" ? new Base64Encoder(options) : new Base64Decoder(options);
   const write = async (bytes) => {
     for (let at = 0; at < bytes.length; at += CHUNK_BYTES) {
@@ -48,9 +53,15 @@ export async function convertStream({
       const payload = inputStripper ? inputStripper.push(chunk) : chunk;
       if (inputStripper?.mime) {
         options = { ...options, url: false };
-        transform.options.url = false;
-        if (transform.offset === 0)
-          transform.offset = inputStripper.headerLength;
+        if (inputStripper.base64 === false && !percentMode) {
+          transform = new PercentOctetDecoder(inputStripper.headerLength);
+          percentMode = true;
+        }
+        if (!percentMode) {
+          transform.options.url = false;
+          if (transform.offset === 0)
+            transform.offset = inputStripper.headerLength;
+        }
       }
       await write(transform.push(payload));
       onProgress({ phase: "transform", inputSize, outputSize });
