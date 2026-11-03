@@ -24,3 +24,13 @@ The regex engine is the current browser's JavaScript RegExp, not an emulation of
 
 Type checking and loader unit tests do not prove built UI interaction, layout parity, real cloud provisioning, remote account authentication or release acceptance. Those require the integrated service, actual configuration, deterministic built captures and the owning repository's acceptance record.
 
+
+## Task transcript
+
+The task detail reads the authenticated same-task `/api/tasks/:id/output` endpoint with a sequence cursor. It renders actual assistant text, commands, command output, file changes, progress, state and results. Assistant and result content use a safe Markdown subset (paragraphs, headings, lists, emphasis, inline code, fenced code and explicit HTTP/HTTPS links). Raw HTML is inert, images are never fetched, credential-bearing URLs are not linked and external links open with no opener relationship. Other event classes remain escaped text. Combined command output is labelled combined; stdout and stderr labels appear only when the service supplies those real stream values.
+
+Each request is abortable and owned by the current task generation. Changing tasks, closing the detail or losing authentication cancels owned reads and rejects late responses. Local retention is bounded to 512 events and 256 KiB of content; a visible warning reports local removal, server replay gaps, worker resets, truncation and redaction. A successful later poll does not erase a prior gap. No progress percentage, completion claim or missing event is synthesized.
+
+Following pauses when the reader scrolls more than 48 pixels away from the bottom. Pause following keeps receiving data without forcing scroll position. Follow latest is an explicit action that returns to the bottom. A named keyboard-scrollable region contains output; a separate polite status reports retained-event count without reading every incoming line aloud. The transcript has its own independent search and adjacent regex editor.
+
+Local tests cover cross-task rejection, unknown event kinds, sequence order, duplicate replay, reset semantics, retention bounds, sticky truncation/gap markers and inert Markdown/link handling. These are protocol and rendering-model checks, not built-browser scrolling or assistive-technology proof.

@@ -7,8 +7,9 @@ export type Discovery = {account:string;regions:string[];subnets:{id:string;vpcI
 let csrf = '';
 export function setCsrf(value:string) { csrf=value; }
 export class ApiError extends Error { constructor(public code:string,message:string,public status:number){super(message);} }
-export async function api<T>(path:string,method='GET',body?:unknown):Promise<T>{
-  const response=await fetch(`/api${path}`,{method,credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(method==='GET'?15000:60000),headers:{Accept:'application/json',...(body!==undefined?{'Content-Type':'application/json'}:{}),...(method!=='GET'?{'x-csrf-token':csrf}:{})},...(body!==undefined?{body:JSON.stringify(body)}:{})});
+export async function api<T>(path:string,method='GET',body?:unknown,signal?:AbortSignal):Promise<T>{
+  const timeout=AbortSignal.timeout(method==='GET'?15000:60000);
+  const response=await fetch(`/api${path}`,{method,credentials:'same-origin',cache:'no-store',signal:signal?AbortSignal.any([signal,timeout]):timeout,headers:{Accept:'application/json',...(body!==undefined?{'Content-Type':'application/json'}:{}),...(method!=='GET'?{'x-csrf-token':csrf}:{})},...(body!==undefined?{body:JSON.stringify(body)}:{})});
   const value=await response.json().catch(()=>null);
   if(response.status===401)window.dispatchEvent(new Event('fleet:session-expired'));
   if(!response.ok) throw new ApiError(value?.error?.code||'REQUEST_FAILED',value?.error?.message||`Request failed (${response.status})`,response.status);
