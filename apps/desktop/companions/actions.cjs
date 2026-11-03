@@ -1,6 +1,7 @@
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
+const { randomUUID } = require('node:crypto');
 
 const fields = ['FLEET_HOST', 'FLEET_HTTPS_PORT', 'FLEET_IMAGE'];
 async function validateSource(root) {
@@ -36,7 +37,13 @@ async function saveConfig(root, input) {
   const config = validateConfig(input);
   const file = path.join(root, '.env');
   let body = '';
-  try { body = await fs.readFile(file, 'utf8'); } catch (e) { if (e.code !== 'ENOENT') throw e; }
+  let existed = false;
+  try {
+    const stat = await fs.lstat(file);
+    if (!stat.isFile() || stat.isSymbolicLink()) throw new Error('Existing configuration must be a regular file.');
+    body = await fs.readFile(file, 'utf8'); existed = true;
+  } catch (e) { if (e.code !== 'ENOENT') throw e; }
+  const previous = body;
   if (body.length > 65536) throw new Error('Existing configuration is too large to update safely.');
   for (const [key, value] of Object.entries(config)) {
     const expression = new RegExp(`^${key}=.*$`, 'gm');
@@ -45,7 +52,27 @@ async function saveConfig(root, input) {
   }
   // This file holds only public endpoint/image settings. Existing unrelated keys are preserved.
   // Authentication material is created separately by host.ps1 in its ACL-protected directory.
-  await fs.writeFile(file, body, { mode: 0o600 });
+  const temporary = path.join(root, `.fleet-config-${randomUUID()}.tmp`);
+  let handle;
+  try {
+    handle = await fs.open(temporary, 'wx', 0o600);
+    if (existed && process.platform === 'win32') {
+      await new Promise((resolve, reject) => {
+        const child = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-File', path.join(__dirname, 'protect-config.ps1'), file, temporary], { windowsHide: true, shell: false, stdio: 'ignore' });
+        child.once('error', () => reject(new Error('Could not preserve configuration permissions. Existing configuration was retained.')));
+        child.once('close', code => code === 0 ? resolve() : reject(new Error('Configuration permission verification failed. Existing configuration was retained.')));
+      });
+    }
+    // Apply the existing ACL before any retained values enter the replacement file.
+    await handle.writeFile(body, 'utf8'); await handle.sync(); await handle.close(); handle = null;
+    let current = null;
+    try { current = await fs.readFile(file, 'utf8'); } catch (e) { if (e.code !== 'ENOENT') throw e; }
+    if (current !== (existed ? previous : null)) throw new Error('Configuration changed during review. Existing configuration was retained; reload and retry.');
+    await fs.rename(temporary, file);
+  } finally {
+    if (handle) await handle.close().catch(() => {});
+    await fs.unlink(temporary).catch(error => { if (error.code !== 'ENOENT') throw error; });
+  }
   return config;
 }
 function redact(text) {
@@ -78,19 +105,25 @@ class Actions {
       this.child = child;
       // Buffer entire lines before redaction so a credential split between chunks cannot escape.
       const streams = [child.stdout, child.stderr];
-      const buffers = new Map(streams.map(stream => [stream, '']));
+      const buffers = new Map(streams.map(stream => [stream, { pending: '', dropping: false }]));
       const send = text => this.emit({ kind: 'log', text: redact(text) });
       for (const stream of streams) stream.on('data', chunk => {
-        let pending = buffers.get(stream) + chunk.toString('utf8');
-        const end = pending.lastIndexOf('\n');
-        if (end >= 0) { send(pending.slice(0, end + 1)); pending = pending.slice(end + 1); }
-        // Never expose a truncated partial line that might contain a protected value.
-        if (pending.length > 65536) pending = '[oversized output line suppressed]';
-        buffers.set(stream, pending);
+        const buffer = buffers.get(stream);
+        for (const segment of chunk.toString('utf8').split(/(?<=\n)/)) {
+          const complete = segment.endsWith('\n');
+          if (!buffer.dropping) {
+            buffer.pending += segment;
+            if (buffer.pending.length > 65536) { buffer.pending = ''; buffer.dropping = true; }
+          }
+          if (complete) {
+            send(buffer.dropping ? '[oversized output line suppressed]\n' : buffer.pending);
+            buffer.pending = ''; buffer.dropping = false;
+          }
+        }
       });
       child.once('error', () => { this.child = null; reject(new Error(`${executable} could not start. Check its supported installation.`)); });
       child.once('close', code => {
-        for (const pending of buffers.values()) if (pending) send(pending);
+        for (const buffer of buffers.values()) if (buffer.dropping) send('[oversized output line suppressed]\n'); else if (buffer.pending) send(buffer.pending);
         this.child = null;
         this.emit({ kind: 'exit', code });
         if (this.cancelled) reject(new Error('Cancelled. Completed files and running containers are preserved.'));
