@@ -27,8 +27,9 @@ test('bounded local retention reports removed events instead of claiming complet
  let state=emptyTranscript();
  for(let index=1;index<=600;index+=100)state=mergeOutputPage(state,page(Array.from({length:100},(_,i)=>event(index+i))));
  assert.equal(state.events.length,512);assert.equal(state.discarded,88);assert.equal(state.events[0].sequence,89);
- state=mergeOutputPage(state,page([event(601,'界'.repeat(2048))]));
- assert.ok(state.events.reduce((sum,e)=>sum+new TextEncoder().encode(e.content).length,0)<=262144);
+ const large=mergeOutputPage(emptyTranscript(),page(Array.from({length:100},(_,i)=>event(i+1,'界'.repeat(2048)))));
+ assert.equal(large.events.length,42);assert.equal(large.discarded,58);
+ assert.ok(large.events.reduce((sum,e)=>sum+new TextEncoder().encode(e.content).length,0)<=262144);
 });
 test('backward cursors require an explicit reset and keep a truthful reset marker',()=>{
  const previous=mergeOutputPage(emptyTranscript(),page([event(20)]));
