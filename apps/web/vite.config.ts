@@ -1,11 +1,15 @@
 import { defineConfig } from 'vite';
-import {readFileSync} from 'node:fs';
+import {readFileSync,existsSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {createHash} from 'node:crypto';
 
 const designRoot=new URL('../../design/design-system/',import.meta.url);
 const packageVersion:unknown=JSON.parse(readFileSync(new URL('./package.json',import.meta.url),'utf8')).version;
 if(typeof packageVersion!=='string'||!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/.test(packageVersion))throw new Error('Web package version must use major.minor.patch with an optional version suffix.');
+const identityFile=new URL('../../build-identity.json',import.meta.url);
+const identity=existsSync(identityFile)?JSON.parse(readFileSync(identityFile,'utf8')):null;
+if(identity&&(identity.version!==packageVersion||!(/^[a-f0-9]{40}$/).test(identity.source)))throw new Error('Renderer build identity differs from its package or source.');
+const buildSource=identity?.source||process.env.FLEET_BUILD_SOURCE||'local';
 export default defineConfig({
  server:{proxy:{'/api':'http://127.0.0.1:3000'}},
  build:{outDir:'dist',sourcemap:false},
@@ -13,7 +17,7 @@ export default defineConfig({
  plugins:[{
   name:'preserved-design-font-provenance',
   generateBundle(){
-   this.emitFile({type:'asset',fileName:'build-version.json',source:JSON.stringify({version:packageVersion,source:process.env.FLEET_BUILD_SOURCE||'local',buildTime:process.env.FLEET_BUILD_TIME||''})});
+   this.emitFile({type:'asset',fileName:'build-version.json',source:JSON.stringify({version:packageVersion,source:buildSource,buildTime:process.env.FLEET_BUILD_TIME||''})});
    const fontFiles=['Geist-Variable.woff2','GeistMono-Variable.woff2','MaterialSymbolsRounded.woff2'];
    const fonts=fontFiles.map(name=>{const bytes=readFileSync(fileURLToPath(new URL(`fonts/${name}`,designRoot)));return {name,sha256:createHash('sha256').update(bytes).digest('hex'),bytes:bytes.length};});
    for(const name of ['LICENSE-Geist.txt','LICENSE-MaterialSymbols.txt'])this.emitFile({type:'asset',fileName:`licenses/${name}`,source:readFileSync(fileURLToPath(new URL(`fonts/${name}`,designRoot)))});

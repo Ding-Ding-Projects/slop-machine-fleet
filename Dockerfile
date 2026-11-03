@@ -8,8 +8,6 @@ COPY apps/desktop/package*.json apps/desktop/
 COPY apps/docs/package*.json apps/docs/
 COPY scripts/release-version.mjs scripts/release-version-policy.json scripts/
 ARG FLEET_RELEASE_IDENTITY64
-RUN FLEET_RELEASE_IDENTITY64="$FLEET_RELEASE_IDENTITY64" node scripts/release-version.mjs apply-image
-RUN npm install --ignore-scripts --no-audit --no-fund
 COPY packages/shared packages/shared
 COPY apps/service apps/service
 COPY apps/web apps/web
@@ -17,7 +15,9 @@ COPY design/design-system design/design-system
 COPY docs docs
 COPY deploy deploy
 COPY README.md ROADMAP.md HANDOFF.md ./
-RUN npm run build --workspace packages/shared && npm run build --workspace apps/service && npm run build --workspace apps/web
+RUN FLEET_RELEASE_IDENTITY64="$FLEET_RELEASE_IDENTITY64" node scripts/release-version.mjs apply-image
+RUN npm install --ignore-scripts --no-audit --no-fund
+RUN npm run build --workspace packages/shared && npm run build --workspace apps/service && npm run build --workspace apps/web && node scripts/release-version.mjs verify-image
 RUN npm prune --omit=dev --ignore-scripts
 FROM node:22.16.0-bookworm-slim
 ENV NODE_ENV=production HOST=0.0.0.0 PORT=3000
