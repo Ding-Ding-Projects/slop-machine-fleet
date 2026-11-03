@@ -46,11 +46,18 @@ function Enter-HostLock([string]$Local) {
   try{return [IO.File]::Open((Join-Path $Local 'hosting.lock'),[IO.FileMode]::OpenOrCreate,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None)}catch{throw 'Another hosting operation owns this deployment, or its lock is inaccessible. No concurrent update is started.'}
 }
 function Save-HostDatabase([object]$Context,[object[]]$Existing,[string]$Local) {
-  if(-not @($Existing | Where-Object {$_.project -eq $Context.Project -and $_.service -eq 'database'}).Count){return ''}
+  $databases=@($Existing | Where-Object {$_.project -eq $Context.Project -and $_.service -eq 'database'})
+  if(-not $databases.Count){return ''}
+  if($databases.Count -ne 1 -or $databases[0].id -notmatch '^[a-f0-9]{12,64}$'){throw 'Existing database data has no unique original container. Restore its known container configuration before automatic update.'}
+  $databaseId=$databases[0].id
   Write-Host 'Preserving the existing database with its supported dump tool before updating services.'
-  $null=Invoke-HostCompose $Context @('up','-d','--wait','--wait-timeout','120','database') 180
+  $running=Invoke-HostDocker $Context @('inspect','--format','{{.State.Running}}',$databaseId) 20
+  if($running -ceq 'false'){$null=Invoke-HostDocker $Context @('start',$databaseId) 60}elseif($running -cne 'true'){throw 'Original database running state could not be verified.'}
+  $ready=$false
+  for($attempt=0;$attempt -lt 20;$attempt++){try{$null=Invoke-HostDocker $Context @('exec',$databaseId,'pg_isready','-U','fleet','-d','fleet') 5;$ready=$true;break}catch{Start-Sleep -Seconds 1}}
+  if(-not $ready){throw 'The original database did not become ready for preservation. Controller services were not updated.'}
   $file=Join-Path $Local ('database-before-'+[DateTimeOffset]::UtcNow.ToString('yyyyMMddTHHmmssfffZ')+'.dump')
-  $arguments=(Get-HostComposeArguments $Context)+@('exec','-T','database','pg_dump','-U','fleet','-d','fleet','--format=custom')
+  $arguments=@('--context',$Context.DockerContext,'exec',$databaseId,'pg_dump','-U','fleet','-d','fleet','--format=custom')
   $null=Invoke-HostCommand $Context.Docker $arguments 180 $Context.Environment $file
   if((Get-Item -LiteralPath $file).Length -le 0){throw 'Database preservation produced no data. Services were not updated.'}
   Save-HostJson ($file+'.receipt.json') @{complete=$true;project=$Context.Project;createdAt=[DateTimeOffset]::UtcNow.ToString('o');tool='pg_dump';restoreVerified=$false}

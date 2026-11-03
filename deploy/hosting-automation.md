@@ -29,7 +29,7 @@ Docker Desktop and Compose must already be installed and the chosen engine avail
 
 Only `FLEET_HOST`, `FLEET_HTTPS_PORT`, `FLEET_IMAGE` and `COMPOSE_PROJECT_NAME` are managed in `.env`. Other keys remain. Replacements are prepared privately, compared with the prior contents and applied atomically with an exact prior backup in protected `.local/` storage. A concurrent edit stops replacement.
 
-For an existing database or retained database volume, the script starts only the preserved database if necessary, then runs its supported `pg_dump` into a protected local file before updating controller services. A successful dump receives a separate receipt. This is backup-production evidence, not a tested restore. Configuration, worker metadata and public certificate predecessors are also retained. Backups are not automatically deleted, uploaded or placed in version control. No `down --volumes`, data reset or automatic rollback occurs.
+For an existing database, the script starts its exact original container if stopped, waits for readiness, then runs its supported `pg_dump` into a protected local file before updating services. It never recreates the database through Compose before this backup. Retained data without its original container requires context recovery. A successful dump receives a separate receipt. This is backup-production evidence, not a tested restore. Configuration, worker metadata and public certificate predecessors are also retained. Backups are not automatically deleted, uploaded or placed in version control. No `down --volumes`, data reset or automatic rollback occurs.
 
 ## Current-user certificate trust
 
