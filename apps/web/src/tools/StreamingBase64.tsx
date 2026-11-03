@@ -2,6 +2,7 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useUI } from "../preferences";
 import { useBase64Stream } from "./useBase64Stream";
 import { ToolSafety } from "./ToolSafetyContext";
+import { streamingSafety } from "../../../../packages/shared/local-base64/cleanup.mjs";
 import { useToolCue } from "./useToolCue";
 import { StreamOutput, StreamEntry as Entry } from "./StreamOutput";
 export function StreamingBase64({
@@ -62,12 +63,24 @@ export function StreamingBase64({
     };
   }, [stream.dispose]);
   useLayoutEffect(() => {
-    callbacks.current.onSafety({
-      known: !stream.cleanupError,
-      dirty: !!files?.length || entries.length > 0,
-      pendingWrites: running || stream.busy,
-    });
-  }, [files, entries.length, running, stream.busy, stream.cleanupError]);
+    callbacks.current.onSafety(
+      streamingSafety({
+        hasFiles: !!files?.length,
+        hasOutputs: entries.length > 0,
+        running,
+        busy: stream.busy,
+        cleanupPending: stream.cleanupPending,
+        cleanupError: stream.cleanupError,
+      }),
+    );
+  }, [
+    files,
+    entries.length,
+    running,
+    stream.busy,
+    stream.cleanupError,
+    stream.cleanupPending,
+  ]);
   useEffect(() => {
     alive.current = true;
     return () => {
@@ -424,6 +437,14 @@ export function StreamingBase64({
             {stream.progress.total.toLocaleString()}
           </p>
         </>
+      )}
+      {stream.cleanupPending > 0 && (
+        <p role="status">
+          {t(
+            "Removing owned temporary outputs. Safety remains pending until removal is verified.",
+            "正在移除所屬暫存輸出，驗證移除前安全狀態仍待確認。",
+          )}
+        </p>
       )}
       {(message || stream.cleanupError) && (
         <p role="alert">

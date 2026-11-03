@@ -95,11 +95,17 @@ self.onmessage = async ({ data }) => {
             ) || "application/octet-stream";
     self.postMessage({ type: "complete", id, result, file });
   } catch (error) {
-    await sink?.abort();
+    let cleanupFailed = false;
+    try {
+      await sink?.abort();
+    } catch {
+      cleanupFailed = true;
+    }
     self.postMessage({
       type: "error",
       code: error.code || "processing",
       offset: error.offset,
+      cleanupFailed,
     });
   } finally {
     control = null;

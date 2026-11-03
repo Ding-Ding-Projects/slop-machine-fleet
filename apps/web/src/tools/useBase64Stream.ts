@@ -8,6 +8,7 @@ import {
 import { textByteLength } from "../../../../packages/shared/local-base64/data-url.mjs";
 import { zipPlan } from "../../../../packages/shared/local-base64/archive.mjs";
 import { createRunLifecycle } from "../../../../packages/shared/local-base64/lifecycle.mjs";
+import { temporaryCleanup } from "./temporary-cleanup.mjs";
 type Claim = { id: string; owner: string; expectedBytes: number };
 export type StreamResult = {
   id: string;
@@ -27,7 +28,7 @@ export type StreamResult = {
 export function useBase64Stream() {
   const worker = useRef<Worker | null>(null),
     generation = useRef(0),
-    owned = useRef(new Map<string, Claim>()),
+    owned = useRef(new Set<string>()),
     activeId = useRef<string | null>(null),
     alive = useRef(true),
     timer = useRef<ReturnType<typeof setTimeout> | null>(null),
@@ -41,21 +42,20 @@ export function useBase64Stream() {
       verifiedBytes: 0,
       total: 0,
     }),
-    [cleanupError, setCleanupError] = useState(false);
+    [cleanupState, setCleanupState] = useState(temporaryCleanup.snapshot);
+  useEffect(
+    () =>
+      temporaryCleanup.subscribe(
+        (value: { pending: number; failed: number; owned: number }) => {
+          setCleanupState(value);
+        },
+      ),
+    [],
+  );
   const retire = useCallback(async (id: string) => {
-    const claim = owned.current.get(id);
-    if (!claim) return;
-    for (let attempt = 0; attempt < 3; attempt++) {
-      try {
-        await removeTemporary(claim);
-        owned.current.delete(id);
-        return;
-      } catch {
-        if (attempt < 2)
-          await new Promise((resolve) => setTimeout(resolve, 100));
-      }
-    }
-    if (alive.current) setCleanupError(true);
+    if (!owned.current.has(id)) return;
+    const success = await temporaryCleanup.retire(id);
+    if (success) owned.current.delete(id);
   }, []);
   const lifecycle = useMemo(
     () =>
@@ -81,7 +81,8 @@ export function useBase64Stream() {
   const stop = lifecycle.stop;
   const dispose = useCallback(() => {
     stop();
-    for (const id of owned.current.keys()) void retire(id);
+    for (const id of owned.current) void retire(id);
+    void temporaryCleanup.retryFailed();
   }, [stop, retire]);
   useEffect(() => {
     alive.current = true;
@@ -131,74 +132,87 @@ export function useBase64Stream() {
           reject(error);
           return;
         }
-        void acquireAndStart({
-          acquire: () => claimTemporary({ consent, expectedBytes }),
-          retain: (claim: Claim) => {
-            owned.current.set(claim.id, claim);
-            if (current === generation.current) activeId.current = claim.id;
-          },
-          isCurrent: () => alive.current && current === generation.current,
-          retire,
-          start: (claim: Claim) => {
-            const active = new Worker(
-              new URL("./base64-stream-worker.js", import.meta.url),
-              { type: "module" },
-            );
-            worker.current = active;
-            const finish = () => lifecycle.finish(current);
-            active.onmessage = ({ data }) => {
-              if (current !== generation.current) return;
-              if (data.type === "progress") {
-                setProgress(data);
-                return;
-              }
-              if (data.type === "paused") {
-                setPaused(true);
-                return;
-              }
-              if (data.type === "resumed") {
-                setPaused(false);
-                return;
-              }
-              if (data.type === "complete") {
-                activeId.current = null;
-                finish();
-                resolve(data);
-                return;
-              }
-              if (data.type === "error") {
-                const id = activeId.current;
-                activeId.current = null;
-                finish();
-                if (id) void retire(id);
-                reject(
-                  Error(
-                    data.code +
-                      (Number.isInteger(data.offset) ? ":" + data.offset : ""),
-                  ),
+        void temporaryCleanup
+          .trackAcquisition(() =>
+            acquireAndStart({
+              acquire: () => claimTemporary({ consent, expectedBytes }),
+              retain: (claim: Claim) => {
+                temporaryCleanup.retain(claim);
+                owned.current.add(claim.id);
+                if (current === generation.current) activeId.current = claim.id;
+              },
+              isCurrent: () => alive.current && current === generation.current,
+              retire,
+              start: (claim: Claim) => {
+                const active = new Worker(
+                  new URL("./base64-stream-worker.js", import.meta.url),
+                  { type: "module" },
                 );
-              }
-            };
-            active.onerror = () => {
-              if (current !== generation.current) return;
-              const id = activeId.current;
-              activeId.current = null;
-              finish();
-              if (id) void retire(id);
-              reject(Error("processing"));
-            };
-            active.postMessage({ type: "start", file, mode, options, claim });
-          },
-        }).catch((error: Error) => {
-          if (current !== generation.current) return;
-          worker.current?.terminate();
-          worker.current = null;
-          activeId.current = null;
-          pending.current = null;
-          setBusy(false);
-          setPaused(false);
-          reject(error);
-        });
+                worker.current = active;
+                const finish = () => lifecycle.finish(current);
+                active.onmessage = ({ data }) => {
+                  if (current !== generation.current) return;
+                  if (data.type === "progress") {
+                    setProgress(data);
+                    return;
+                  }
+                  if (data.type === "paused") {
+                    setPaused(true);
+                    return;
+                  }
+                  if (data.type === "resumed") {
+                    setPaused(false);
+                    return;
+                  }
+                  if (data.type === "complete") {
+                    activeId.current = null;
+                    finish();
+                    resolve(data);
+                    return;
+                  }
+                  if (data.type === "error") {
+                    const id = activeId.current;
+                    activeId.current = null;
+                    finish();
+                    if (id) void retire(id);
+                    reject(
+                      Error(
+                        data.code +
+                          (Number.isInteger(data.offset)
+                            ? ":" + data.offset
+                            : ""),
+                      ),
+                    );
+                  }
+                };
+                active.onerror = () => {
+                  if (current !== generation.current) return;
+                  const id = activeId.current;
+                  activeId.current = null;
+                  finish();
+                  if (id) void retire(id);
+                  reject(Error("processing"));
+                };
+                active.postMessage({
+                  type: "start",
+                  file,
+                  mode,
+                  options,
+                  claim,
+                });
+              },
+            }),
+          )
+          .catch((error: Error) => {
+            if (current !== generation.current) return;
+            worker.current?.terminate();
+            worker.current = null;
+            activeId.current = null;
+            pending.current = null;
+            setBusy(false);
+            setPaused(false);
+            reject(error);
+          });
       });
     },
     [stop, retire, lifecycle],
@@ -210,7 +224,8 @@ export function useBase64Stream() {
     busy,
     paused,
     progress,
-    cleanupError,
+    cleanupError: cleanupState.failed > 0,
+    cleanupPending: cleanupState.pending,
     pause: () => worker.current?.postMessage({ type: "pause" }),
     resume: () => worker.current?.postMessage({ type: "resume" }),
     release: retire,
