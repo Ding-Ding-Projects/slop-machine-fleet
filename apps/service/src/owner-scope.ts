@@ -22,19 +22,23 @@ export function ownerScopeKey(
     .digest("hex");
 }
 export async function initializeOwnerIdentity(store: Store) {
-  let controller = await store.get("state", "controller-identity");
-  if (!controller) {
-    controller = { id: randomUUID() };
-    await store.put("state", "controller-identity", controller);
-  }
+  await store.db.query(
+    "INSERT INTO fleet_state (id,value) VALUES ('controller-identity',$1::jsonb) ON CONFLICT (id) DO NOTHING",
+    [JSON.stringify({ id: randomUUID() })],
+  );
+  const controller = await store.get("state", "controller-identity");
   if (!opaqueId.test(controller.id))
     throw new Error("Stored controller identity is invalid");
-  const owner = await store.get("state", "owner");
+  let owner = await store.get("state", "owner");
   if (!owner) return;
   const previous = await store.get("state", "active-owner-identity");
   if (!owner.id) {
-    owner.id = randomUUID();
-    await store.put("state", "owner", owner);
+    const identified = { ...owner, id: randomUUID() };
+    await store.db.query(
+      "UPDATE fleet_state SET value=$1::jsonb WHERE id='owner' AND value=$2::jsonb",
+      [JSON.stringify(identified), JSON.stringify(owner)],
+    );
+    owner = await store.get("state", "owner");
   }
   if (!opaqueId.test(owner.id))
     throw new Error("Stored owner identity is invalid");

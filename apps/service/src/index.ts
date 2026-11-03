@@ -70,7 +70,6 @@ const app = await createService({
   featureManifestFile:
     process.env.FEATURE_MANIFEST_FILE ??
     resolve(import.meta.dirname, "../../../docs/required-features.json"),
-  setupCodeFile: process.env.SETUP_CODE_FILE,
   secureCookies: parsed.protocol === "https:",
 });
 lease.on("error", () => {

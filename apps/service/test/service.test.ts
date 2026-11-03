@@ -3,10 +3,10 @@ import assert from "node:assert/strict";
 import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { randomUUID } from "node:crypto";
+import { randomUUID, scryptSync } from "node:crypto";
 import { newDb } from "pg-mem";
 import { createService } from "../src/app.js";
-import { Store } from "../src/db.js";
+import { Store, migrate } from "../src/db.js";
 async function fixture(
   pricing = true,
   onLaunch?: (
@@ -16,18 +16,28 @@ async function fixture(
     attempt: number,
   ) => Promise<any[]>,
 ) {
-  const memory = newDb(),
+  const memory = newDb({ noAstCoverageCheck: true }),
     pg = memory.adapters.createPg(),
     db = new pg.Pool();
   const directory = await mkdtemp(join(tmpdir(), "fleet-test-"));
   const file = join(directory, "setup");
-  await writeFile(file, "test-only-setup-authorization");
+  await migrate(db);
+  const testStore = new Store(db),
+    fixtureSalt = "test-only-fixture-salt";
+  await testStore.put("state", "owner", {
+    id: randomUUID(),
+    username: "TestOwner",
+    usernameKey: "testowner",
+    salt: fixtureSalt,
+    digest: scryptSync("test-only-password-long", fixtureSalt, 64).toString(
+      "hex",
+    ),
+  });
   let launches = 0,
     dispatches = 0;
   const app = await createService({
     db,
     origin: "https://fleet.test",
-    setupCodeFile: file,
     provisioner: { reconcile: async (w) => w, reset: async () => {} },
     cloud: {
       dataVolume: async () => "vol-ab12",
@@ -120,10 +130,10 @@ async function fixture(
   await app.ready();
   const setup = await app.inject({
     method: "POST",
-    url: "/api/auth/setup",
+    url: "/api/auth/login",
     headers: { origin: "https://fleet.test" },
     payload: {
-      setupCode: "test-only-setup-authorization",
+      username: "TestOwner",
       password: "test-only-password-long",
     },
   });
@@ -182,9 +192,12 @@ test("authentication, CSRF and origin protect mutations and setup is one-time", 
       (
         await f.app.inject({
           method: "POST",
-          url: "/api/auth/setup",
+          url: "/api/auth/signup",
           headers: { origin: f.headers.origin },
-          payload: {},
+          payload: {
+            username: "another-owner",
+            password: "test-only-password-long",
+          },
         })
       ).statusCode,
       409,
@@ -553,6 +566,7 @@ test("authenticated scope is stable across login sessions, absent publicly and i
     const scope = initial.json().scopeKey;
     assert.match(scope, /^[a-f0-9]{64}$/);
     assert.deepEqual(Object.keys(initial.json()).sort(), [
+      "account",
       "authenticated",
       "csrfToken",
       "scopeKey",
@@ -566,14 +580,16 @@ test("authenticated scope is stable across login sessions, absent publicly and i
     const publicStatus = await f.app.inject({ url: "/api/auth/status" });
     assert.deepEqual(Object.keys(publicStatus.json()).sort(), [
       "authenticated",
+      "loginMode",
       "setupAvailable",
+      "signupAvailable",
     ]);
     assert.equal(publicStatus.json().scopeKey, undefined);
     const login = await f.app.inject({
       method: "POST",
       url: "/api/auth/login",
       headers: { origin: f.headers.origin },
-      payload: { password: "test-only-password-long" },
+      payload: { username: "TestOwner", password: "test-only-password-long" },
     });
     assert.equal(login.statusCode, 200);
     assert.equal(login.json().scopeKey, scope);
@@ -594,7 +610,7 @@ test("authenticated scope is stable across login sessions, absent publicly and i
       method: "POST",
       url: "/api/auth/login",
       headers: { origin: f.headers.origin },
-      payload: { password: "test-only-password-long" },
+      payload: { username: "TestOwner", password: "test-only-password-long" },
     });
     assert.notEqual(replacementLogin.json().scopeKey, scope);
     assert.equal(

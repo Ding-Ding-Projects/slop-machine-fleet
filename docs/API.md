@@ -5,8 +5,9 @@ The service owns authentication, fleet state, durable operations and task dispat
 ## Core routes
 
 - `GET /api/health`: public readiness without configuration disclosure.
-- `GET /api/auth/status`: authentication and initial setup availability.
-- `POST /api/auth/setup`: create first owner, once, using host-provided setup authorization.
+- `GET /api/auth/status`: `{ authenticated, signupAvailable, setupAvailable, loginMode }`; setup availability is the signup compatibility alias, and legacy password-only mode remains explicit.
+- `POST /api/auth/signup`: atomically create the first owner and initial session using `{ username, password }` on an unclaimed controller. Competing or later claims return 409. No setup code is required. The retired `POST /api/auth/setup` returns 410.
+- `PUT /api/auth/username`: authenticated, CSRF-protected, password-verified one-time username adoption for a legacy owner. Existing credentials, identity, sessions and scope are preserved.
 - `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/session`.
 - `GET /api/settings`, `PUT /api/settings`: validated nonsecret product configuration.
 - `GET /api/cloud/discovery`: configured provider identity, regions, networks and instance capabilities; no credentials.
@@ -32,3 +33,5 @@ Worker service binds loopback on port 8765. Controller reaches it only through a
 - `POST /drain`: reject new work, await active task completion.
 
 Identifiers are UUIDs. Timestamps use UTC ISO 8601. Worker infrastructure, authentication, pairing and task states are independent. Never report code issuance as connection verification.
+
+Named login uses `{ username, password }`; only legacy owners without a username retain `{ password }` login until deliberate adoption. Authenticated login/session responses include `account: { username, usernameRequired }`. Public status contains no owner name or password material. See the [owner signup contract](features/fleet/owner-signup.md) for migration and isolated PostgreSQL verification.
