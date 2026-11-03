@@ -3,7 +3,7 @@ import { useUI } from "../preferences";
 import { MAX_BYTES } from "./core.mjs";
 import { Result, useProcessor } from "./useProcessor";
 import { Output, useErrors } from "./Output";
-import { useToolSafety } from "./Safety";
+import { useToolSafety } from "./ToolSafetyContext";
 import { deriveToolSafety } from "./safety.mjs";
 type Item = {
   file: File;
