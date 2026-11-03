@@ -2,6 +2,7 @@ FROM node:22.16.0-bookworm-slim AS build
 WORKDIR /app
 COPY package*.json ./
 COPY packages/shared/package*.json packages/shared/
+COPY packages/shared/local-base64/package*.json packages/shared/local-base64/
 COPY apps/service/package*.json apps/service/
 COPY apps/web/package*.json apps/web/
 COPY apps/desktop/package*.json apps/desktop/
@@ -14,7 +15,7 @@ COPY design/design-system design/design-system
 COPY docs docs
 COPY deploy deploy
 COPY README.md ROADMAP.md HANDOFF.md ./
-RUN npm run build --workspace packages/shared && npm run build --workspace apps/service && npm run build --workspace apps/web
+RUN npm run build --workspace @fleet/shared && npm run build --workspace apps/service && npm run build --workspace apps/web
 RUN npm prune --omit=dev --ignore-scripts
 FROM node:22.16.0-bookworm-slim
 ENV NODE_ENV=production HOST=0.0.0.0 PORT=3000

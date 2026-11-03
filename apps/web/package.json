@@ -12,7 +12,8 @@
   "dependencies": {
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "@material/web": "^2.4.0"
+    "@material/web": "^2.4.0",
+    "@fleet/local-base64": "0.1.0"
   },
   "devDependencies": {
     "@types/react": "^19.1.0",
