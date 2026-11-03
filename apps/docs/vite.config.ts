@@ -13,7 +13,7 @@ export default defineConfig({
           source === "./preferences" &&
           importer?.replaceAll("\\", "/").endsWith("/web/src/Search.tsx")
         )
-          return path.join(root, "src/preferences.tsx");
+          return path.join(root, "src/preferences.tsx").replaceAll("\\", "/");
       },
       generateBundle() {
         for (const id of this.getModuleIds()) {
