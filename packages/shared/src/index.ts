@@ -16,10 +16,25 @@ export interface LaunchSpec {
   bootGiB: number;
   dataGiB: number;
 }
+export interface ResolvedImageProvenance {
+  imageId: string;
+  parameterName: string;
+  source: "aws:ssm-public-parameter";
+  region: string;
+  rootDeviceName: string;
+  resolvedAt: string;
+  parameterVersion: number | null;
+  ownerId: string | null;
+}
+export interface LaunchedInstance {
+  instanceId: string;
+  imageProvenance: ResolvedImageProvenance;
+}
 export interface Worker {
   id: string;
   instanceId?: string;
   dataVolumeId?: string;
+  imageProvenance?: ResolvedImageProvenance | null;
   name: string;
   region: string;
   state: string;
@@ -42,11 +57,24 @@ export interface Task {
   createdAt: string;
   result?: unknown;
 }
+export interface BulkAttempt {
+  id: string;
+  startedAt: string;
+  phase: "dispatching" | "acknowledged" | "uncertain";
+  acknowledgedAt?: string;
+}
 export interface Operation {
   id: string;
   action: string;
   state: string;
-  targets: Array<{ id: string; state: string; message?: string }>;
+  targets: Array<{
+    id: string;
+    state: string;
+    message?: string;
+    dispatchState?: "never-dispatched" | "acknowledged" | "uncertain";
+    attempt?: BulkAttempt | null;
+    imageProvenance?: ResolvedImageProvenance | null;
+  }>;
   createdAt: string;
 }
 export interface CostEstimate {

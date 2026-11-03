@@ -24,6 +24,8 @@ import type {
   CostEstimate,
   WorkerAction,
   Worker,
+  LaunchedInstance,
+  ResolvedImageProvenance,
 } from "@fleet/shared";
 export interface CloudProvider {
   identity(region: string): Promise<string>;
@@ -31,7 +33,11 @@ export interface CloudProvider {
   dataVolume(worker: Worker): Promise<string>;
   discovery(region: string): Promise<unknown>;
   estimate(spec: LaunchSpec): Promise<CostEstimate>;
-  launch(spec: LaunchSpec, key: string, ids: string[]): Promise<string[]>;
+  launch(
+    spec: LaunchSpec,
+    key: string,
+    ids: string[],
+  ): Promise<LaunchedInstance[]>;
   action(worker: any, action: WorkerAction): Promise<void>;
 }
 function prices(items: string[] | undefined, unit: string): number[] {
@@ -344,11 +350,20 @@ export class AwsProvider implements CloudProvider {
     spec: LaunchSpec,
     key: string,
     ids: string[],
-  ): Promise<string[]> {
-    const ec2 = new EC2Client({ region: spec.region });
-    const parameter = await new SSMClient({ region: spec.region }).send(
+    clients?: {
+      ec2: Pick<EC2Client, "send">;
+      ssm: Pick<SSMClient, "send">;
+      now?: () => Date;
+    },
+  ): Promise<LaunchedInstance[]> {
+    const ec2 = clients?.ec2 ?? new EC2Client({ region: spec.region });
+    const parameterName =
+      "/aws/service/ami-windows-latest/Windows_Server-2025-English-Full-Base";
+    const parameter = await (
+      clients?.ssm ?? new SSMClient({ region: spec.region })
+    ).send(
       new GetParameterCommand({
-        Name: "/aws/service/ami-windows-latest/Windows_Server-2025-English-Full-Base",
+        Name: parameterName,
       }),
     );
     if (!parameter.Parameter?.Value)
@@ -361,9 +376,19 @@ export class AwsProvider implements CloudProvider {
         }),
       )
     ).Images?.[0];
-    if (!image?.RootDeviceName)
+    if (!image?.ImageId || !image.RootDeviceName)
       throw new Error("Official image metadata unavailable");
-    const result: string[] = [];
+    const provenance: ResolvedImageProvenance = {
+      imageId: image.ImageId,
+      parameterName,
+      source: "aws:ssm-public-parameter",
+      region: spec.region,
+      rootDeviceName: image.RootDeviceName,
+      resolvedAt: (clients?.now?.() ?? new Date()).toISOString(),
+      parameterVersion: parameter.Parameter.Version ?? null,
+      ownerId: image.OwnerId ?? null,
+    };
+    const result: LaunchedInstance[] = [];
     for (let i = 0; i < ids.length; i++) {
       const launched = await ec2.send(
         new RunInstancesCommand({
@@ -423,7 +448,7 @@ export class AwsProvider implements CloudProvider {
       );
       const id = launched.Instances?.[0]?.InstanceId;
       if (!id) throw new Error("Launch did not return an instance identifier");
-      result.push(id);
+      result.push({ instanceId: id, imageProvenance: { ...provenance } });
     }
     return result;
   }

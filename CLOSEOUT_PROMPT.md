@@ -1,5 +1,15 @@
 # Fleet continuation
 
+## Latest checkpoint, superseding older pending states below
+
+Main1e7114ee79caf2a63e99532ec514ce3c511d005c is pushed and read back. Each new worker and matching operation target now record the actual resolved launch image; absent historical facts stay null. Independent review accepted the repair. Source tree8b08f215a0337f00b6e4bcbeecf0cb56fdef6746 matches18c9df7 exactly, whose root build passed and30 service tests passed. The full outgoing-history privacy scan passed. Provider runs41660602078,41660602082 and41660602130 are not yet verified successful.
+
+Normal0.1.2 releasebuild-41646405880-1/source4c0 has eight payload sizes/hashes and package/feed integrity verified. Installed0.1.1 remains the applied-and-verified baseline. The updater download operation was rejected before execution, with reason "blocked by policy". No updater ran. Browser use remains disabled in Work settings; do not retry either operation through another helper. Native trust awaits the existing user choice.
+
+Base64 tools50ad71f has47 focused tests and an independent dry source review. The public documentation workspace and parser are combined on the isolated interface branch atc6d30ad42787f6b851516ae6a33fa93bd1730618: exact root build passed,47 tools and18 documentation tests passed, and four actual module graphs excluded protected application-state imports. These results do not establish browser OPFS, clipboard, navigation, audio or lifecycle acceptance. No Base64 interface activation on main is authorized by these source results. Read back newer branch preservation before claiming it pushed.
+
+Bulk restart/reconciliation is under bounded source audit. Preserve concrete findings and independent refutation separately. The complete product goal remains unfinished: real approved cloud provisioning, bootstrap, login, pairing, model turns, native update, both hosting modes and full required-feature/runtime acceptance are still pending. No paid resource was launched. Status Hub owner-data privacy remains unverified; no private writes are claimed.
+
 Objective: deliver the isolated Windows Server2025 EC2 coding-worker fleet with shared desktop/browser management, Slop Machine device login, interactive GitHub CLI login, remote pairing, coding tasks and bulk lifecycle controls, plus all applicable required features.
 
 Main95872c98c13ab7564760e24fbcbdd553d0d3ce3d was pushed and read back. Its exact root build passed with148 complete documentation articles. The next local candidate is0.1.2, needed for a genuine update pair from the accepted installed0.1.1. Review HANDOFF.md and ROADMAP.md for the full evidence and remaining work.
@@ -11,3 +21,26 @@ Incomplete: approved native HTTPS trust, both host modes, actual automatic-updat
 Documentation workflow41625691315 failed at a handled optional wiki probe's residual native exit1. Its focused repair and real TLS regression are integrated locally. Preserve the exact technical source receipts and require the complete outgoing-history scan before the next push. Protected policy data stays outside public source; no private wording was transmitted. Fresh source-bound UI evidence must begin and end on the same source revision.
 
 Continue the authorized independent work while the native certificate-route choice is pending. Do not alter trust without that choice, launch paid resources without exact review, expose protected values, force-push, discard unfinished work or claim complete delivery. Preserve every result's actual source and artifact identity.
+
+## Current preserved milestone for the next source checkpoint
+
+Five sourcec0544f7 browser screenshots passed complete promotion checks and are staged with exact inventory and README links. The initial live documentation148-article content, source hashes, fonts and eight download records passed HTTP/source verification; the exact About homepage is stored and read back. Live interaction/persistence/keyboard/accessibility/narrow proofs remain unavailable.
+
+The version-label fix reads the actual package manifest. The release-refresh correction now uses a reviewed immutable source in a main-ref child without expanding environment permissions; its provider result is pending. Base64 streaming work and its independent repair loop remain isolated and unactivated. Preserve and verify this documentation milestone before integrating any later UI work. Keep the private raw capture/build receipts and exact-byte archive; do not replace unavailable runtime proof with source checks.
+## Verified 0.1.2 delivery milestone
+
+Main4c0bc037bfafcaf9bed7ab2bcb278f15fe762b4b is published. Build/release41646405880, publication privacy41646405896 and the main documentation deployment succeeded. The release-parent refresh41649088811 dispatched a main-ref child41649149159 successfully; the parent skipped deployment and the child deployed under the unchanged main-only environment rule.
+
+The live documentation now identifies source4c0 and version0.1.2. All149 unique articles match their declared hashes and normalized source blobs; nine prepared wiki pages are bundled. All five promoted screenshots return HTTP200 and match their source inventory byte-for-byte, retaining capture sourcec0544f7. Original font assets match, all eight download records match the selected normal releasebuild-41646405880-1/source4c0, and the exact About homepage is verified.
+
+The downloaded0.1.2 release passed all eight payload size/SHA256 checks, RELEASES SHA1, full-package CRC/path/identity checks and five NotSigned observations. Signer-process audit and native automatic-updater UI proof remain unverified. Installed0.1.1 remains the last applied-and-verified baseline; a supported non-GUI download-only staging operation is assigned separately and must not be reported as applied.
+
+Base64 streaming source is preserved on its owned branch at3d3eaed79b44022bb6b2e635b4a89596be42327a with all four findings independently repaired. Root workspace/dependency build integration is continuing in that isolated branch. It has not been activated on main. Actual browser OPFS, IndexedDB, clipboard/media/sound and lifecycle acceptance remains pending.
+
+Browser controls are unavailable in this verification environment. Continue authorized source, build, package and HTTP work; do not relay rejected browser actions through alternate tooling. Native HTTPS trust also awaits the explicit user choice. All remaining required-feature, cloud-account, live worker authentication/pairing/task and full layout duties remain incomplete.
+
+## Preserved Base64 branch and stopped staging
+
+The reviewed Base64 workspace is now preserved on ai/feature/20261103-local-tools at8fd472a947f5021ad23a66e1adcc7155f2a118a7, with exact remote-ref readback. Its complete17-revision outgoing history passed the trusted publication scan after one narrowly reviewed historical test-data allowance. The exact build entrypoint passed and41 tools tests passed. GUI acceptance remains pending; this branch is not activated on main.
+
+The assigned non-GUI updater download was rejected by automatic approval review before process creation, with reason blocked by policy. No updater ran and no package was staged through that route. Installed0.1.1 remains preserved; baseline RELEASES and package bytes were copied and verified before the rejected launch. Do not retry that operation through another route. Continue independent source and delivery work while the required interactive environment and certificate choice remain pending.

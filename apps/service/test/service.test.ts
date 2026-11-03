@@ -7,7 +7,15 @@ import { randomUUID } from "node:crypto";
 import { newDb } from "pg-mem";
 import { createService } from "../src/app.js";
 import { Store } from "../src/db.js";
-async function fixture(pricing = true) {
+async function fixture(
+  pricing = true,
+  onLaunch?: (
+    spec: any,
+    key: string,
+    ids: string[],
+    attempt: number,
+  ) => Promise<any[]>,
+) {
   const memory = newDb(),
     pg = memory.adapters.createPg(),
     db = new pg.Pool();
@@ -37,7 +45,21 @@ async function fixture(pricing = true) {
       }),
       launch: async (_s, _k, ids) => {
         launches++;
-        return ids.map(() => `i-test`);
+        if (onLaunch) return onLaunch(_s, _k, ids, launches);
+        return ids.map(() => ({
+          instanceId: "i-test",
+          imageProvenance: {
+            imageId: "ami-test",
+            parameterName:
+              "/aws/service/ami-windows-latest/Windows_Server-2025-English-Full-Base",
+            source: "aws:ssm-public-parameter" as const,
+            region: _s.region,
+            rootDeviceName: "/dev/sda1",
+            resolvedAt: "2026-11-03T10:00:00.000Z",
+            parameterVersion: 12,
+            ownerId: "amazon-test-owner",
+          },
+        }));
       },
       action: async () => {},
     },
@@ -387,6 +409,7 @@ test("queued tasks cannot dispatch before verified worker readiness and terminat
     const id = randomUUID();
     await f.store.put("workers", id, {
       id,
+      instanceId: "i-test",
       name: "test",
       state: "bootstrapping",
       transport: "unenrolled",
@@ -577,6 +600,132 @@ test("authenticated scope is stable across login sessions, absent publicly and i
     assert.equal(
       (await f.app.inject({ url: "/api/auth/session" })).statusCode,
       401,
+    );
+  } finally {
+    await f.close();
+  }
+});
+
+test("partial launch persists first actual image provenance and keeps an unknown second target and idempotent receipt", async () => {
+  const image = {
+    imageId: "ami-first-test",
+    parameterName:
+      "/aws/service/ami-windows-latest/Windows_Server-2025-English-Full-Base",
+    source: "aws:ssm-public-parameter",
+    region: "us-east-1",
+    rootDeviceName: "/dev/test-root",
+    resolvedAt: "2026-11-03T10:00:00.000Z",
+    parameterVersion: 7,
+    ownerId: null,
+  };
+  const f = await fixture(true, async (_spec, _key, _ids, attempt) => {
+    if (attempt === 2) throw new Error("Test provider interruption");
+    return [{ instanceId: "i-first-test", imageProvenance: image }];
+  });
+  try {
+    const requested = { ...spec, count: 2 };
+    const review = await f.app.inject({
+      method: "POST",
+      url: "/api/cloud/reviews",
+      headers: f.headers,
+      payload: requested,
+    });
+    const payload = {
+      reviewId: review.json().id,
+      spec: requested,
+      idempotencyKey: randomUUID(),
+    };
+    const response = await f.app.inject({
+      method: "POST",
+      url: "/api/workers",
+      headers: f.headers,
+      payload,
+    });
+    assert.equal(response.statusCode, 200);
+    const operation = response.json();
+    assert.equal(operation.state, "incomplete");
+    assert.deepEqual(operation.targets[0].imageProvenance, image);
+    assert.equal(operation.targets[1].imageProvenance, null);
+    const first = await f.store.get("workers", operation.targets[0].id),
+      second = await f.store.get("workers", operation.targets[1].id);
+    assert.equal(first.instanceId, "i-first-test");
+    assert.deepEqual(first.imageProvenance, image);
+    assert.equal(second.imageProvenance, null);
+    assert.equal(second.instanceId, undefined);
+    assert.deepEqual(
+      (
+        await f.app.inject({
+          url: `/api/workers/${first.id}`,
+          headers: f.headers,
+        })
+      ).json().imageProvenance,
+      image,
+    );
+    const repeated = await f.app.inject({
+      method: "POST",
+      url: "/api/workers",
+      headers: f.headers,
+      payload,
+    });
+    assert.deepEqual(repeated.json(), operation);
+    assert.equal(f.launches(), 2);
+  } finally {
+    await f.close();
+  }
+});
+test("a review expiring after admission does not change the already-admitted launch or fabricate image pinning", async () => {
+  let expire = async () => {};
+  const f = await fixture(true, async (_spec, _key, _ids, attempt) => {
+    if (attempt === 1) await expire();
+    return [
+      {
+        instanceId: `i-test-${attempt}`,
+        imageProvenance: {
+          imageId: `ami-at-resolution-${attempt}`,
+          parameterName:
+            "/aws/service/ami-windows-latest/Windows_Server-2025-English-Full-Base",
+          source: "aws:ssm-public-parameter",
+          region: "us-east-1",
+          rootDeviceName: "/dev/test-root",
+          resolvedAt: `2026-11-03T10:00:0${attempt}.000Z`,
+          parameterVersion: attempt,
+          ownerId: null,
+        },
+      },
+    ];
+  });
+  try {
+    const requested = { ...spec, count: 2 };
+    const review = await f.app.inject({
+      method: "POST",
+      url: "/api/cloud/reviews",
+      headers: f.headers,
+      payload: requested,
+    });
+    expire = async () => {
+      const current = await f.store.get("reviews", review.json().id);
+      current.expiresAt = "2000-01-01T00:00:00.000Z";
+      await f.store.put("reviews", current.id, current);
+    };
+    const response = await f.app.inject({
+      method: "POST",
+      url: "/api/workers",
+      headers: f.headers,
+      payload: {
+        reviewId: review.json().id,
+        spec: requested,
+        idempotencyKey: randomUUID(),
+      },
+    });
+    assert.equal(response.statusCode, 200);
+    assert.equal(f.launches(), 2);
+    assert.equal(
+      response.json().targets[0].imageProvenance.imageId,
+      "ami-at-resolution-1",
+    );
+    assert.equal(
+      response.json().targets[1].imageProvenance.imageId,
+      "ami-at-resolution-2",
     );
   } finally {
     await f.close();

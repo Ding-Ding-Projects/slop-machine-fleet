@@ -261,6 +261,7 @@ const documentedRoutes: Array<[string, string]> = [
   ["POST", "/api/bulk"],
   ["GET", "/api/operations"],
   ["GET", "/api/operations/:id"],
+  ["POST", "/api/operations/:id/resume"],
   ["POST", "/api/workers/:id/auth/:provider/start"],
   ["GET", "/api/workers/:id/auth/:provider"],
   ["POST", "/api/workers/:id/auth/:provider/input"],

@@ -13,3 +13,5 @@ Start with a real task, then inspect its result before moving to the next step.
 ## API tools
 
 This project has an HTTP API. See [the API contract](../API.md) and [the Postman collection](../api/fleet.postman_collection.json). Supply your own trusted service URL and authenticated session; the collection contains no credentials.
+
+- [Built browser evidence and exact limits](evidence/README.md)
