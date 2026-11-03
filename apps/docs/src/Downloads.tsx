@@ -30,7 +30,10 @@ export function Downloads() {
       {release ? (
         <div>
           <p>
-            {t("Release", "版本")} {release.tag}
+            {t("Selected download release", "所選下載版本")}: {release.tag}
+          </p>
+          <p>
+            {t("Release source", "下載版本來源")}: <code>{release.sourceCommit.slice(0, 12)}</code>
           </p>
           {release.assets.map((asset) => (
             <p key={asset.url}>
