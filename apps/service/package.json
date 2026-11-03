@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-ec2": "^3.922.0",
+    "@aws-sdk/client-iam": "^3.1161.0",
     "@aws-sdk/client-pricing": "^3.922.0",
     "@aws-sdk/client-ssm": "^3.922.0",
     "@aws-sdk/client-sts": "^3.922.0",

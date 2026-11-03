@@ -1,5 +1,7 @@
 import {
   EC2Client,
+  type DescribeSecurityGroupsCommandOutput,
+  type DescribeVpcEndpointsCommandOutput,
   DescribeRegionsCommand,
   DescribeSubnetsCommand,
   DescribeInstanceTypesCommand,
@@ -10,9 +12,12 @@ import {
   TerminateInstancesCommand,
   DescribeInstancesCommand,
   DescribeImagesCommand,
+  DescribeSecurityGroupsCommand,
+  DescribeVpcEndpointsCommand,
 } from "@aws-sdk/client-ec2";
 import { SSMClient, GetParameterCommand } from "@aws-sdk/client-ssm";
 import { STSClient, GetCallerIdentityCommand } from "@aws-sdk/client-sts";
+import { IAMClient, ListInstanceProfilesCommand } from "@aws-sdk/client-iam";
 import { PricingClient, GetProductsCommand } from "@aws-sdk/client-pricing";
 import type {
   LaunchSpec,
@@ -84,26 +89,178 @@ export class AwsProvider implements CloudProvider {
     return mapping.Ebs.VolumeId;
   }
 
-  async discovery(region: string) {
-    const ec2 = new EC2Client({ region });
-    const [identity, regions, subnets, types] = await Promise.all([
-      new STSClient({ region }).send(new GetCallerIdentityCommand({})),
+  async discovery(
+    region: string,
+    clients?: {
+      ec2: Pick<EC2Client, "send">;
+      sts: Pick<STSClient, "send">;
+      iam: Pick<IAMClient, "send">;
+    },
+  ) {
+    const ec2 = clients?.ec2 ?? new EC2Client({ region });
+    const [identity, regions, types] = await Promise.all([
+      (clients?.sts ?? new STSClient({ region })).send(
+        new GetCallerIdentityCommand({}),
+      ),
       ec2.send(new DescribeRegionsCommand({})),
-      ec2.send(new DescribeSubnetsCommand({})),
       ec2.send(
         new DescribeInstanceTypesCommand({
           InstanceTypes: ["m7i.large", "m7i.xlarge", "m7i.2xlarge"],
         }),
       ),
     ]);
+    const subnets: any[] = [],
+      securityGroups: any[] = [],
+      endpoints: any[] = [];
+    let next: string | undefined,
+      subnetsTruncated = false,
+      groupsTruncated = false,
+      endpointsTruncated = false;
+    for (let page = 0; page < 20; page++) {
+      const result = await ec2.send(
+        new DescribeSubnetsCommand({ MaxResults: 100, NextToken: next }),
+      );
+      subnets.push(
+        ...(result.Subnets ?? []).map((s) => ({
+          id: s.SubnetId,
+          vpcId: s.VpcId,
+          availabilityZone: s.AvailabilityZone,
+          availableAddresses: s.AvailableIpAddressCount,
+          autoAssignPublicIPv4: s.MapPublicIpOnLaunch,
+          networkVerified: false,
+        })),
+      );
+      next = result.NextToken;
+      if (!next) break;
+      subnetsTruncated = page === 19;
+    }
+    let groupsAvailable = true;
+    next = undefined;
+    try {
+      for (let page = 0; page < 20; page++) {
+        const result: DescribeSecurityGroupsCommandOutput = await ec2.send(
+          new DescribeSecurityGroupsCommand({
+            MaxResults: 100,
+            NextToken: next,
+          }),
+        );
+        securityGroups.push(
+          ...(result.SecurityGroups ?? []).map((s) => ({
+            id: s.GroupId,
+            name: s.GroupName,
+            vpcId: s.VpcId,
+            description: s.Description,
+            permissionsVerified: false,
+          })),
+        );
+        next = result.NextToken;
+        if (!next) break;
+        groupsTruncated = page === 19;
+      }
+    } catch {
+      groupsAvailable = false;
+    }
+    let endpointsAvailable = true;
+    next = undefined;
+    try {
+      for (let page = 0; page < 20; page++) {
+        const result: DescribeVpcEndpointsCommandOutput = await ec2.send(
+          new DescribeVpcEndpointsCommand({
+            MaxResults: 100,
+            NextToken: next,
+            Filters: [
+              {
+                Name: "service-name",
+                Values: [
+                  `com.amazonaws.${region}.ssm`,
+                  `com.amazonaws.${region}.ssmmessages`,
+                  `com.amazonaws.${region}.ec2messages`,
+                ],
+              },
+            ],
+          }),
+        );
+        endpoints.push(
+          ...(result.VpcEndpoints ?? []).map((e) => ({
+            id: e.VpcEndpointId,
+            vpcId: e.VpcId,
+            serviceName: e.ServiceName,
+            state: e.State,
+            privateDnsEnabled: e.PrivateDnsEnabled,
+            subnetIds: e.SubnetIds,
+            networkVerified: false,
+          })),
+        );
+        next = result.NextToken;
+        if (!next) break;
+        endpointsTruncated = page === 19;
+      }
+    } catch {
+      endpointsAvailable = false;
+    }
+    const profiles: any[] = [];
+    let profilesAvailable = true,
+      profilesTruncated = false;
+    let marker: string | undefined;
+    try {
+      const iam = clients?.iam ?? new IAMClient({ region });
+      for (let page = 0; page < 20; page++) {
+        const result = await iam.send(
+          new ListInstanceProfilesCommand({ MaxItems: 100, Marker: marker }),
+        );
+        profiles.push(
+          ...(result.InstanceProfiles ?? []).map((p) => ({
+            name: p.InstanceProfileName,
+            arn: p.Arn,
+            roleNames: p.Roles?.map((r) => r.RoleName),
+            permissionsVerified: false,
+          })),
+        );
+        if (!result.IsTruncated) break;
+        marker = result.Marker;
+        profilesTruncated = page === 19;
+        if (!marker) throw new Error("Incomplete profile pagination");
+      }
+    } catch {
+      profilesAvailable = false;
+    }
     return {
       account: identity.Account,
       regions: regions.Regions?.map((r) => r.RegionName),
-      subnets: subnets.Subnets?.map((s) => ({
-        id: s.SubnetId,
-        vpcId: s.VpcId,
-        availabilityZone: s.AvailabilityZone,
-      })),
+      subnets,
+      securityGroups,
+      instanceProfiles: profiles,
+      discoveryState: {
+        subnets: { available: true, truncated: subnetsTruncated },
+        securityGroups: {
+          available: groupsAvailable,
+          truncated: groupsTruncated,
+        },
+        instanceProfiles: {
+          available: profilesAvailable,
+          truncated: profilesTruncated,
+          reason: profilesAvailable
+            ? undefined
+            : "Existing instance profiles could not be listed. Grant read access or supply an existing worker profile through the reviewed launch form.",
+        },
+      },
+      network: {
+        automaticSetup: false,
+        verified: false,
+        endpointsAvailable,
+        endpointsTruncated,
+        endpoints,
+        requirements: [
+          "Worker role permissions for Systems Manager and scoped package downloads must be configured.",
+          "Outbound HTTPS and DNS must reach regional Systems Manager control and message endpoints.",
+          "Public release downloads require an approved outbound HTTPS route.",
+          "Existing endpoint, route, DNS, ACL and security-group listings are not connectivity verification.",
+        ],
+        setupRequired:
+          subnets.length === 0 ||
+          securityGroups.length === 0 ||
+          profiles.length === 0,
+      },
       instanceTypes: types.InstanceTypes?.map((t) => ({
         name: t.InstanceType,
         vcpus: t.VCpuInfo?.DefaultVCpus,
