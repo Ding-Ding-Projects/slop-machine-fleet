@@ -520,3 +520,65 @@ test("task output requires the owner session, bounds replay and never enters gen
     await f.close();
   }
 });
+test("authenticated scope is stable across login sessions, absent publicly and invalidated by owner replacement", async () => {
+  const f = await fixture();
+  try {
+    const initial = await f.app.inject({
+      url: "/api/auth/session",
+      headers: f.headers,
+    });
+    const scope = initial.json().scopeKey;
+    assert.match(scope, /^[a-f0-9]{64}$/);
+    assert.deepEqual(Object.keys(initial.json()).sort(), [
+      "authenticated",
+      "csrfToken",
+      "scopeKey",
+    ]);
+    const owner = await f.store.get("state", "owner"),
+      controller = await f.store.get("state", "controller-identity");
+    assert.equal(JSON.stringify(initial.json()).includes(owner.id), false);
+    assert.equal(JSON.stringify(initial.json()).includes(controller.id), false);
+    assert.equal(JSON.stringify(initial.json()).includes(owner.salt), false);
+    assert.equal(JSON.stringify(initial.json()).includes(owner.digest), false);
+    const publicStatus = await f.app.inject({ url: "/api/auth/status" });
+    assert.deepEqual(Object.keys(publicStatus.json()).sort(), [
+      "authenticated",
+      "setupAvailable",
+    ]);
+    assert.equal(publicStatus.json().scopeKey, undefined);
+    const login = await f.app.inject({
+      method: "POST",
+      url: "/api/auth/login",
+      headers: { origin: f.headers.origin },
+      payload: { password: "test-only-password-long" },
+    });
+    assert.equal(login.statusCode, 200);
+    assert.equal(login.json().scopeKey, scope);
+    assert.notEqual(login.json().csrfToken, initial.json().csrfToken);
+    await f.store.put("state", "owner", { ...owner, id: randomUUID() });
+    assert.equal(
+      (await f.app.inject({ url: "/api/auth/session", headers: f.headers }))
+        .statusCode,
+      401,
+    );
+    assert.equal(
+      (
+        await f.app.inject({ url: "/api/auth/status", headers: f.headers })
+      ).json().authenticated,
+      false,
+    );
+    const replacementLogin = await f.app.inject({
+      method: "POST",
+      url: "/api/auth/login",
+      headers: { origin: f.headers.origin },
+      payload: { password: "test-only-password-long" },
+    });
+    assert.notEqual(replacementLogin.json().scopeKey, scope);
+    assert.equal(
+      (await f.app.inject({ url: "/api/auth/session" })).statusCode,
+      401,
+    );
+  } finally {
+    await f.close();
+  }
+});

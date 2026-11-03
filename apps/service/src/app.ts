@@ -14,6 +14,7 @@ import { z } from "zod";
 import type { Worker, Task } from "@fleet/shared";
 import { Store, migrate, type Database } from "./db.js";
 import type { CloudProvider } from "./cloud.js";
+import { initializeOwnerIdentity, currentOwnerScope } from "./owner-scope.js";
 import { outputQuerySchema, validateTaskOutput } from "./task-output.js";
 import type { Provisioner } from "./provisioning.js";
 import type { WorkerTransport } from "./transport.js";
@@ -68,6 +69,7 @@ export async function createService(o: ServiceOptions) {
   const app = Fastify({ logger: false, bodyLimit: 65536, trustProxy: false }),
     store = new Store(o.db);
   await migrate(o.db);
+  await initializeOwnerIdentity(store);
   await app.register(cookie);
   await app.register(rateLimit, { max: 120, timeWindow: "1 minute" });
   let serial = Promise.resolve();
@@ -120,7 +122,8 @@ export async function createService(o: ServiceOptions) {
       return;
     const raw = req.cookies.fleet_session,
       s = raw ? await store.get("sessions", hash(raw)) : undefined;
-    if (!s || s.expiresAt < Date.now())
+    const owner = await store.get("state", "owner");
+    if (!s || s.expiresAt < Date.now() || !owner?.id || s.ownerId !== owner.id)
       throw fail(401, "AUTH_REQUIRED", "Sign in to continue.");
     if (write && !same(String(req.headers["x-csrf-token"] ?? ""), s.csrfToken))
       throw fail(403, "CSRF_REQUIRED", "A valid CSRF token is required.");
@@ -131,6 +134,7 @@ export async function createService(o: ServiceOptions) {
       s = {
         csrfToken: randomBytes(32).toString("base64url"),
         expiresAt: Date.now() + 8 * 3600000,
+        ownerId: (await store.get("state", "owner"))?.id,
       };
     await store.put("sessions", hash(raw), s);
     res.setCookie("fleet_session", raw, {
@@ -140,7 +144,11 @@ export async function createService(o: ServiceOptions) {
       path: "/",
       maxAge: 28800,
     });
-    return { authenticated: true, csrfToken: s.csrfToken };
+    return {
+      authenticated: true,
+      csrfToken: s.csrfToken,
+      scopeKey: await currentOwnerScope(store, o.origin),
+    };
   };
   app.get("/api/health", async () => {
     await o.db.query("SELECT 1");
@@ -151,7 +159,12 @@ export async function createService(o: ServiceOptions) {
       ? await store.get("sessions", hash(req.cookies.fleet_session))
       : undefined;
     return {
-      authenticated: Boolean(s && s.expiresAt > Date.now()),
+      authenticated: Boolean(
+        s &&
+          s.expiresAt > Date.now() &&
+          Boolean((await store.get("state", "owner"))?.id) &&
+          s.ownerId === (await store.get("state", "owner"))?.id,
+      ),
       setupAvailable:
         !(await store.get("state", "owner")) && Boolean(o.setupCodeFile),
     };
@@ -188,6 +201,7 @@ export async function createService(o: ServiceOptions) {
           );
         const salt = randomBytes(16).toString("hex");
         await store.put("state", "owner", {
+          id: randomUUID(),
           salt,
           digest: scryptSync(b.password, salt, 64).toString("hex"),
         });
@@ -216,6 +230,7 @@ export async function createService(o: ServiceOptions) {
   app.get("/api/auth/session", async (req) => ({
     authenticated: true,
     csrfToken: (req as any).session.csrfToken,
+    scopeKey: await currentOwnerScope(store, o.origin),
   }));
   app.post("/api/auth/logout", async (req, res) => {
     if (req.cookies.fleet_session)
@@ -747,7 +762,11 @@ export async function createService(o: ServiceOptions) {
         const current = req.cookies.fleet_session
           ? await store.get("sessions", hash(req.cookies.fleet_session))
           : undefined;
-        if (!current || current.expiresAt < Date.now()) {
+        if (
+          !current ||
+          current.expiresAt < Date.now() ||
+          current.ownerId !== (await store.get("state", "owner"))?.id
+        ) {
           res.raw.end();
           return;
         }

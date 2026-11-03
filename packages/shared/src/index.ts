@@ -121,3 +121,9 @@ export interface TaskOutputPage {
   truncated: boolean;
   resetReason?: string | null;
 }
+
+export interface AuthenticatedSession {
+  authenticated: true;
+  csrfToken: string;
+  scopeKey: string;
+}
