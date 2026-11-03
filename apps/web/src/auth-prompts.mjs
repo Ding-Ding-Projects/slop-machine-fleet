@@ -42,4 +42,9 @@ export function isCurrentPrompt(current,request){
 }
 export function cancellationPath(path,current){if(!uuid(current?.sessionId))throw Error('AUTH_SESSION_UNAVAILABLE');return `${path}?sessionId=${encodeURIComponent(current.sessionId)}`;}
 export function isAuthInputAcknowledgement(value){return object(value)&&Object.keys(value).length===1&&value.accepted===true;}
+export async function resolveAuthReply({reply,provider,expectedSessionId,isInput,readStatus,isCurrent}){
+ if(!isCurrent())return null;
+ if(isInput){if(!isAuthInputAcknowledgement(reply))throw Error('AUTH_RESPONSE_INVALID');reply=await readStatus();if(!isCurrent())return null;}
+ return readAuthState(reply,provider,expectedSessionId);
+}
 export function createAuthOwnership(){let sequence=0,alive=false;return {mount(){alive=true;sequence++;},dispose(){alive=false;sequence++;},begin(){if(!alive)throw Error('AUTH_VIEW_UNAVAILABLE');return ++sequence;},isCurrent(ticket){return alive&&ticket===sequence;}};}
