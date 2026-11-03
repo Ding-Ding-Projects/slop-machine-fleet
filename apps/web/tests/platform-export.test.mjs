@@ -1,0 +1,10 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {initialState,recordMutation} from '../src/platform/core.mjs';
+import {decodeTableCell,exportFormats,serializeExport,tableCell} from '../src/platform/export.mjs';
+const state=recordMutation(initialState(),'appearance',{...initialState(),appearance:{panel:{padding:12,foreground:'#abcdef',reduceMotion:true}}},'2026-01-01T00:00:00Z','panel');
+test('all nine formats contain complete safe records and explicit exclusion disclosures',()=>{assert.equal(exportFormats.length,9);for(const format of exportFormats){const output=serializeExport(state,format);assert.ok(output.text.length>0);assert.ok(output.mime);assert.match(output.text,/appearance/);assert.match(output.text,/history/);assert.match(output.text,/exclusions/);assert.match(output.text,/abcdef/);}});
+test('JSON and YAML 1.2 subset retain nested numeric and boolean types',()=>{for(const format of ['json','yaml']){const data=JSON.parse(serializeExport(state,format).text);assert.equal(data.appearance.panel.padding,12);assert.equal(data.appearance.panel.reduceMotion,true);assert.equal(data.history[0].sequence,1);assert.equal('tabs'in data,false);}});
+test('typed table cells resist formula interpretation and round-trip every supported JSON type',()=>{for(const value of ['=1+1','+SUM(A1)','@command','-1',12,true,[],{nested:[1,'two',false]}]){const cell=tableCell(value);assert.ok(cell.startsWith('json:'));assert.deepEqual(decodeTableCell(cell),value);}assert.throws(()=>decodeTableCell('=1+1'));});
+test('HTML is inert and SQL uses fixed identifiers with JSON values',()=>{const html=serializeExport(state,'html').text;assert.match(html,/<pre>/);assert.match(html,/&quot;/);assert.doesNotMatch(html,/<script/i);const sql=serializeExport(state,'sql').text;assert.match(sql,/BEGIN TRANSACTION;/);assert.match(sql,/CREATE TABLE IF NOT EXISTS platform_export/);assert.match(sql,/COMMIT;/);});
+test('export rejects unsupported formats and contaminated state',()=>{assert.throws(()=>serializeExport(state,'exe'));assert.throws(()=>serializeExport({...state,credentials:'not allowed'},'json'));});
