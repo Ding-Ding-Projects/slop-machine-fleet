@@ -24,6 +24,7 @@ async function fixture(pricing = true) {
     cloud: {
       dataVolume: async () => "vol-ab12",
       identity: async () => "123456789012",
+      observe: async () => "running",
       discovery: async () => ({}),
       estimate: async () => ({
         available: pricing,
@@ -44,7 +45,14 @@ async function fixture(pricing = true) {
       ready: async () => true,
       request: async (_w, method, path) => {
         if (method === "POST" && path === "/tasks") dispatches++;
-        return { state: "running" };
+        return method === "GET" && path.startsWith("/tasks/")
+          ? {
+              id: path.split("/").pop(),
+              state: "running",
+              approvalRequestIds: ["approval-1"],
+              userCode: "must-not-forward",
+            }
+          : { state: "running" };
       },
     },
   });
@@ -256,6 +264,14 @@ test("FIFO dispatch keeps one active task and rejects credential-bearing reposit
     assert.equal(a.json().state, "running");
     assert.equal(b.json().state, "queued");
     assert.equal(f.dispatches(), 1);
+    const detail = await f.app.inject({
+      url: `/api/tasks/${a.json().id}`,
+      headers: f.headers,
+    });
+    assert.deepEqual(detail.json().workerTask.approvalRequestIds, [
+      "approval-1",
+    ]);
+    assert.equal(detail.json().workerTask.userCode, undefined);
     assert.equal(
       (
         await f.app.inject({
@@ -320,5 +336,66 @@ test("an established event stream closes after logout or session expiry", async 
     } finally {
       await f.close();
     }
+  }
+});
+test("queued tasks cannot dispatch before verified worker readiness and termination keeps capacity reserved", async () => {
+  const f = await fixture();
+  try {
+    const id = randomUUID();
+    await f.store.put("workers", id, {
+      id,
+      name: "test",
+      state: "bootstrapping",
+      transport: "unenrolled",
+      region: "us-east-1",
+      createdAt: new Date().toISOString(),
+    });
+    const task = await f.app.inject({
+      method: "POST",
+      url: "/api/tasks",
+      headers: f.headers,
+      payload: {
+        workerId: id,
+        repository: "https://github.com/example/project.git",
+        prompt: "Build",
+      },
+    });
+    assert.equal(task.json().state, "queued");
+    assert.equal(f.dispatches(), 0);
+    const stopped = await f.app.inject({
+      method: "POST",
+      url: `/api/workers/${id}/actions`,
+      headers: f.headers,
+      payload: { action: "terminate" },
+    });
+    assert.equal(stopped.json().state, "terminate-requested");
+    await f.store.put("state", "settings", {
+      region: "us-east-1",
+      maxWorkers: 1,
+      theme: "system",
+      language: "en",
+      soundEnabled: true,
+    });
+    const review = await f.app.inject({
+      method: "POST",
+      url: "/api/cloud/reviews",
+      headers: f.headers,
+      payload: spec,
+    });
+    const launch = await f.app.inject({
+      method: "POST",
+      url: "/api/workers",
+      headers: f.headers,
+      payload: {
+        reviewId: review.json().id,
+        spec,
+        idempotencyKey: randomUUID(),
+      },
+    });
+    assert.equal(launch.statusCode, 409);
+    assert.equal(launch.json().error.code, "CAPACITY_LIMIT");
+    assert.equal(f.launches(), 0);
+  } finally {
+    await f.close();
   }
 });

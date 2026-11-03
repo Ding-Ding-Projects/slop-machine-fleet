@@ -5,7 +5,7 @@ import {
   timingSafeEqual,
   createHash,
 } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { readFile, realpath } from "node:fs/promises";
 import { dirname, resolve, relative, isAbsolute, sep } from "node:path";
 import Fastify from "fastify";
 import cookie from "@fastify/cookie";
@@ -424,7 +424,7 @@ export async function createService(o: ServiceOptions) {
       w.state = "draining";
     } else {
       await o.cloud.action(w, a);
-      w.state = a === "terminate" ? "terminated" : `${a}-requested`;
+      w.state = `${a}-requested`;
     }
     await store.put("workers", w.id, w);
     return w;
@@ -529,18 +529,14 @@ export async function createService(o: ServiceOptions) {
     return t;
   };
   async function dispatch(id: string) {
-    const tasks = (await store.all<Task>("tasks"))
-      .filter((t) => t.workerId === id)
-      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    const tasks = (await store.all<Task>("tasks")).filter(
+      (t) => t.workerId === id,
+    );
     if (tasks.some((t) => ["running", "dispatching"].includes(t.state))) return;
     const t = tasks.find((t) => t.state === "queued");
     if (!t) return;
     const w = await worker(id);
-    if (
-      ["draining", "terminated"].includes(w.state) ||
-      !(await o.transport.ready(w))
-    )
-      return;
+    if (w.state !== "ready" || !(await o.transport.ready(w))) return;
     t.state = "dispatching";
     await store.put("tasks", t.id, t);
     try {
@@ -561,9 +557,7 @@ export async function createService(o: ServiceOptions) {
     await store.event("task.updated", { id: t.id, state: t.state });
   }
   app.get("/api/tasks", async () => ({
-    tasks: (await store.all<Task>("tasks")).sort((a, b) =>
-      a.createdAt.localeCompare(b.createdAt),
-    ),
+    tasks: await store.all<Task>("tasks"),
   }));
   app.post("/api/tasks", async (req) =>
     lock(async () => {
@@ -606,9 +600,35 @@ export async function createService(o: ServiceOptions) {
       return task(t.id);
     }),
   );
-  app.get<{ Params: { id: string } }>("/api/tasks/:id", async (req) =>
-    task(req.params.id),
-  );
+  app.get<{ Params: { id: string } }>("/api/tasks/:id", async (req) => {
+    const current = await task(req.params.id);
+    if (["running", "dispatching"].includes(current.state)) {
+      try {
+        const value = await o.transport.request(
+          await worker(current.workerId),
+          "GET",
+          `/tasks/${current.id}`,
+        );
+        const workerTask = z
+          .object({
+            id: uuid,
+            state: z.string().max(80),
+            threadId: z.string().max(256).nullable().optional(),
+            turnId: z.string().max(256).nullable().optional(),
+            errorCode: z.string().max(160).nullable().optional(),
+            approvalRequestIds: z
+              .array(z.string().max(128))
+              .max(100)
+              .optional(),
+          })
+          .parse(value);
+        return { ...current, workerTask };
+      } catch {
+        return { ...current, workerDetailUnavailable: true };
+      }
+    }
+    return current;
+  });
   app.post<{ Params: { id: string } }>("/api/tasks/:id/cancel", async (req) =>
     lock(async () => {
       const t = await task(req.params.id);
@@ -732,6 +752,33 @@ export async function createService(o: ServiceOptions) {
           }
         }
       for (const w of await store.all<Worker>("workers")) {
+        if (
+          [
+            "start-requested",
+            "stop-requested",
+            "restart-requested",
+            "terminate-requested",
+          ].includes(w.state)
+        ) {
+          try {
+            const observed = await o.cloud.observe(w);
+            if (observed === "terminated") w.state = "terminated";
+            else if (observed === "stopped") w.state = "stopped";
+            else if (
+              observed === "running" &&
+              w.state !== "stop-requested" &&
+              w.state !== "terminate-requested"
+            ) {
+              const health = await o.transport.request(w, "GET", "/health");
+              if (health.workerId === w.id && health.ready === true)
+                w.state = "ready";
+            }
+            await store.put("workers", w.id, w);
+          } catch {
+            /* Provider acceptance is not terminal-state proof. */
+          }
+        }
+
         if (
           o.provisioner &&
           ["bootstrapping", "enrollment-required"].includes(w.state)

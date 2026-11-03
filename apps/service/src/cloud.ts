@@ -22,6 +22,7 @@ import type {
 } from "@fleet/shared";
 export interface CloudProvider {
   identity(region: string): Promise<string>;
+  observe(worker: Worker): Promise<string>;
   dataVolume(worker: Worker): Promise<string>;
   discovery(region: string): Promise<unknown>;
   estimate(spec: LaunchSpec): Promise<CostEstimate>;
@@ -41,6 +42,19 @@ function prices(items: string[] | undefined, unit: string): number[] {
     .filter((n) => Number.isFinite(n) && n > 0);
 }
 export class AwsProvider implements CloudProvider {
+  async observe(worker: Worker) {
+    const i = (
+      await new EC2Client({ region: worker.region }).send(
+        new DescribeInstancesCommand({ InstanceIds: [worker.instanceId!] }),
+      )
+    ).Reservations?.[0]?.Instances?.[0];
+    if (
+      !i?.Tags?.some((t) => t.Key === "FleetWorkerId" && t.Value === worker.id)
+    )
+      throw new Error("Worker instance ownership could not be verified");
+    return i.State?.Name ?? "unknown";
+  }
+
   async identity(region: string) {
     const result = await new STSClient({ region }).send(
       new GetCallerIdentityCommand({}),
