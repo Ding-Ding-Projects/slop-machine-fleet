@@ -42,10 +42,16 @@ Search fields own separate plain/regex mode, pattern, flags, validity and saved 
 
 ## Localization and personal wording
 
-English, Cantonese and bilingual choices persist locally; bilingual labels wrap. Plain professional copy is the shipping default for this product. Theme, spacing and motion preferences persist separately from server configuration. Personal wording uses the documented versioned JSON contract with 256 KiB byte limit, depth 8, bounded string entries, duplicate/unsafe/unknown-key rejection, complete validation before atomic caching, revalidation on load, local-only application at owned UI text boundaries and immediate clear/reset. File paths, source filenames, actual mappings and external records never enter exports, requests or diagnostics. Global JSON drop and Settings upload share one loader. Successful import provides a nonblocking three-second celebration, reduced-motion behavior and optional outcome audio; invalid input preserves the prior wording.
+English, Cantonese and bilingual choices persist locally; bilingual labels wrap. Independent English and Cantonese tone controls both ship at level 5, with first-run disclosure; level 1 is serious. Facts and consequences remain unchanged at every level. Theme, spacing and motion preferences persist separately from server configuration. Personal wording uses the documented schemaVersion 1 and entries-object JSON contract with 256 KiB byte limit, depth 8, bounded string entries, duplicate/unsafe/unknown-key rejection, complete validation before atomic caching, revalidation on load, local-only application at owned UI text boundaries and immediate clear/reset. File paths, source filenames, actual mappings and external records never enter exports, requests or diagnostics. Global JSON drop and Settings upload share one loader. Successful import provides a nonblocking three-second celebration, reduced-motion behavior and optional outcome audio; invalid input preserves the prior wording.
 
 ## Deterministic references and acceptance
 
 Reference screen identifiers above are stable. Required tuples: 1440x900 and 320x720 browser viewports, English/Cantonese/bilingual, light/dark, 100/125/150/200% scale. Representative visual states include empty fleet, populated test-only fixture, create review, worker auth, task approval, operation partial result, settings and help. Test fixtures must be separately identified and must never populate production service state. Source inspection and this design document are not visual evidence. Capture receipts must name exact source commit and built asset hash.
 
 The complete required-feature inventory is maintained by the integrating owner. This handoff does not claim completion of universal tool suites, all appearance/context-menu controls, full regex parity, credential-vault features or release/runtime acceptance. Unfinished applicable items remain explicit in that inventory.
+
+
+## Independent review disposition
+
+Reviewed independently with gpt-6-astra before implementation. Core implementation may proceed with corrected tone defaults, schemaVersion 1 entries-object validation, separate authentication terminal states, expiry and retry handling, and explicit partial-operation results. This review is a design disposition, not built-interface acceptance.
+
