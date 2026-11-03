@@ -6,6 +6,8 @@ const workspacePattern=/^[a-f0-9]{32,64}$/;
 const safeKeys=(value,keys)=>value&&typeof value==='object'&&!Array.isArray(value)&&Object.keys(value).every(key=>keys.includes(key));
 export function validId(value){return typeof value==='string'&&idPattern.test(value);}
 export function validScope(value){return typeof value==='string'&&/^[a-f0-9]{64}$/.test(value);}
+export function reviewStillCurrent(before,current,scope,currentScope,version,currentVersion){return before===current&&validScope(scope)&&scope===currentScope&&version===currentVersion;}
+export function rovingTabId(visible,active){return visible.find(tab=>tab.id===active)?.id||visible[0]?.id||'';}
 export function registryMap(entries){const map=new Map();for(const entry of entries){if(!validId(entry.id)||map.has(entry.id))throw Error('Registry IDs must be unique bounded technical identifiers.');map.set(entry.id,entry);}return map;}
 export function initialState(){return {schemaVersion:1,tabs:[],activeTab:'',preferences:{dock:'left',showLabels:true},appearance:{},notifications:[],history:[],nextSequence:1};}
 export function validatePreferences(value){if(!safeKeys(value,['dock','showLabels'])||!['left','right','top','bottom'].includes(value.dock)||typeof value.showLabels!=='boolean')throw Error('Invalid platform preferences.');return {...value};}
