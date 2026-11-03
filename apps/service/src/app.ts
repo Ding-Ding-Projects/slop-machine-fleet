@@ -8,6 +8,7 @@ import {
 import { readFile } from "node:fs/promises";
 import { registerFeatureRoutes } from "./features.js";
 import Fastify from "fastify";
+import { isApiRequest } from "./request-routing.js";
 import cookie from "@fastify/cookie";
 import rateLimit from "@fastify/rate-limit";
 import { z } from "zod";
@@ -107,7 +108,7 @@ export async function createService(o: ServiceOptions) {
       .header("Cache-Control", "no-store")
       .header("X-Content-Type-Options", "nosniff")
       .header("Referrer-Policy", "no-referrer");
-    if (!req.url.startsWith("/api/")) return;
+    if (!isApiRequest(req)) return;
     const write = !["GET", "HEAD", "OPTIONS"].includes(req.method);
     if (write && req.headers.origin !== o.origin)
       throw fail(403, "ORIGIN_REQUIRED", "A matching origin is required.");
@@ -117,7 +118,7 @@ export async function createService(o: ServiceOptions) {
         "/api/auth/status",
         "/api/auth/setup",
         "/api/auth/login",
-      ].includes(req.url.split("?")[0])
+      ].includes(req.routeOptions.url ?? "")
     )
       return;
     const raw = req.cookies.fleet_session,

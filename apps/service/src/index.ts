@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { registerWebAssets } from "./web-assets.js";
 import { createService } from "./app.js";
 import { Store } from "./db.js";
 import { CertificateAuthority } from "./pki.js";
@@ -75,17 +76,7 @@ const app = await createService({
 lease.on("error", () => {
   void app.close();
 });
-if (process.env.WEB_ROOT) {
-  const plugin = await import("@fastify/static");
-  await app.register(plugin.default, { root: resolve(process.env.WEB_ROOT) });
-  app.setNotFoundHandler((req, res) =>
-    req.url.startsWith("/api/")
-      ? res.code(404).send({
-          error: { code: "NOT_FOUND", message: "Route was not found." },
-        })
-      : res.sendFile("index.html"),
-  );
-}
+if (process.env.WEB_ROOT) await registerWebAssets(app, process.env.WEB_ROOT);
 app.addHook("onClose", async () => {
   try {
     await lease.query("SELECT pg_advisory_unlock(723662801)");
