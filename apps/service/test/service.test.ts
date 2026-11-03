@@ -45,6 +45,35 @@ async function fixture(pricing = true) {
       ready: async () => true,
       request: async (_w, method, path) => {
         if (method === "POST" && path === "/tasks") dispatches++;
+        if (method === "GET" && path.includes("/output?")) {
+          const id = path.split("/")[2];
+          const after = Number(
+            new URL(path, "https://worker.test").searchParams.get("after"),
+          );
+          return {
+            taskId: id,
+            events:
+              after < 1
+                ? [
+                    {
+                      sequence: 1,
+                      kind: "command-output",
+                      content: "safe task transcript",
+                      at: new Date().toISOString(),
+                      stream: "combined",
+                      truncated: false,
+                      redacted: false,
+                    },
+                  ]
+                : [],
+            nextCursor: Math.max(after, 1),
+            oldestSequence: 1,
+            latestSequence: 1,
+            gap: false,
+            truncated: false,
+          };
+        }
+
         return method === "GET" && path.startsWith("/tasks/")
           ? {
               id: path.split("/").pop(),
@@ -409,6 +438,84 @@ test("queued tasks cannot dispatch before verified worker readiness and terminat
     assert.equal(launch.statusCode, 409);
     assert.equal(launch.json().error.code, "CAPACITY_LIMIT");
     assert.equal(f.launches(), 0);
+  } finally {
+    await f.close();
+  }
+});
+test("task output requires the owner session, bounds replay and never enters general events", async () => {
+  const f = await fixture();
+  try {
+    const workerId = randomUUID();
+    await f.store.put("workers", workerId, {
+      id: workerId,
+      name: "test",
+      state: "ready",
+      transport: "ready",
+      region: "us-east-1",
+      createdAt: new Date().toISOString(),
+    });
+    const created = await f.app.inject({
+      method: "POST",
+      url: "/api/tasks",
+      headers: f.headers,
+      payload: {
+        workerId,
+        repository: "https://github.com/example/project.git",
+        prompt: "Build",
+      },
+    });
+    const id = created.json().id;
+    assert.equal(
+      (await f.app.inject({ url: `/api/tasks/${id}/output` })).statusCode,
+      401,
+    );
+    const output = await f.app.inject({
+      url: `/api/tasks/${id}/output?after=0&limit=1`,
+      headers: f.headers,
+    });
+    assert.equal(output.statusCode, 200);
+    assert.equal(output.headers["cache-control"], "no-store");
+    assert.equal(output.json().events[0].stream, "combined");
+    assert.equal(output.json().events[0].content, "safe task transcript");
+    assert.equal(
+      (
+        await f.app.inject({
+          url: `/api/tasks/${id}/output?limit=201`,
+          headers: f.headers,
+        })
+      ).statusCode,
+      400,
+    );
+    assert.equal(
+      (
+        await f.app.inject({
+          url: `/api/tasks/${id}/output?after=-1`,
+          headers: f.headers,
+        })
+      ).statusCode,
+      400,
+    );
+    assert.equal(
+      (
+        await f.app.inject({
+          url: `/api/tasks/${randomUUID()}/output`,
+          headers: f.headers,
+        })
+      ).statusCode,
+      404,
+    );
+    assert.equal(
+      JSON.stringify(await f.store.get("tasks", id)).includes(
+        "safe task transcript",
+      ),
+      false,
+    );
+    assert.equal(
+      JSON.stringify(
+        (await f.store.db.query("SELECT value FROM fleet_events")).rows,
+      ).includes("safe task transcript"),
+      false,
+    );
   } finally {
     await f.close();
   }

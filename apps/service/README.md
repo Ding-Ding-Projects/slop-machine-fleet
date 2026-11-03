@@ -34,3 +34,19 @@ Bulk operations persist per-target states. Stop, restart and termination are blo
 ## Verification
 
 `npm run build --workspace @fleet/shared` and `npm run build --workspace @fleet/service` compile the two packages. `npm run test --workspace @fleet/service` runs isolated Fastify injection tests with an explicit in-memory PostgreSQL adapter and cloud/worker doubles. The suite also signs and rejects worker CSRs, validates release metadata, and verifies established event streams close after logout or expiry. These tests do not establish live AWS pricing, IAM permissions, EC2 launch, PostgreSQL advisory-lock behavior, SSM forwarding or mutual-TLS enrollment. Production uses the real PostgreSQL and AWS implementations only.
+
+## Bounded task output
+
+`GET /api/tasks/:id/output?after=0&limit=100` requires the current owner session, resolves the task and its worker from the database, and proxies only that worker's same-task output route. `after` is a nonnegative JavaScript-safe integer; `limit` is 1 through 200. The response is `{ taskId, events, nextCursor, oldestSequence, latestSequence, gap, truncated, resetReason? }`.
+
+Each event has `{ sequence, kind, content, at, itemId?, stream?, truncated, redacted }`. Kinds are `assistant`, `command`, `command-output`, `file-change`, `progress`, `state` and `result`. Content is limited to 2,048 characters. Streams are `combined`, `stdout` or `stderr` only when supplied by the actual worker protocol. Combined protocol output is never relabelled as separate stdout or stderr.
+
+The service rejects cross-task identifiers, oversized pages, unknown output fields and inconsistent ordering/cursors. The worker retains a bounded in-memory tail, so replay is not a permanent archive. `gap`, `truncated` and `resetReason` must remain visible to readers; a worker restart can reset the cursor and lose earlier output. Responses are `no-store`, never written to task records, and never copied into general fleet SSE or audit history. Authentication codes and credential-bearing protocol traffic are excluded by the worker before this explicit output schema. Connection or validation failures remain unavailable output, not a fabricated empty successful transcript.
+
+## Existing network and instance-profile discovery
+
+Cloud discovery reads existing paginated subnets, security groups, SSM VPC endpoint metadata and IAM instance-profile names. Each listing has truthful availability/truncation state. IAM or optional network discovery permission failures preserve the successful existing-subnet results and return an actionable setup limitation without including raw provider exception details.
+
+This service does not create IAM roles, profiles, VPCs, subnets, security groups, routes, endpoints or paid NAT gateways. Configure or select existing approved resources in the first-run launch workflow. An account without a usable profile or subnet still needs that setup; listing a profile does not prove its trust policy or runtime permissions. Required access includes the worker's scoped Systems Manager permissions and approved package-download access. Outbound HTTPS/DNS, route tables, network ACLs, endpoint policies and security groups must permit the selected route. Existing resource metadata is explicitly `verified: false`; it never claims reachability.
+
+Amazon documents [IAM instance-profile listing](https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/Package/-aws-sdk-client-iam/Class/ListInstanceProfilesCommand) and the [Systems Manager VPC endpoint requirements](https://docs.aws.amazon.com/systems-manager/latest/userguide/setup-create-vpc.html). Current agents prefer `ssmmessages` when available; `ec2messages` requirements depend on region and agent support. Worker package installation also needs an approved outbound route to the pinned release downloads. Native runtime checks remain necessary after any setup.

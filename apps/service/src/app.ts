@@ -14,6 +14,7 @@ import { z } from "zod";
 import type { Worker, Task } from "@fleet/shared";
 import { Store, migrate, type Database } from "./db.js";
 import type { CloudProvider } from "./cloud.js";
+import { outputQuerySchema, validateTaskOutput } from "./task-output.js";
 import type { Provisioner } from "./provisioning.js";
 import type { WorkerTransport } from "./transport.js";
 const uuid = z.string().uuid(),
@@ -641,6 +642,36 @@ export async function createService(o: ServiceOptions) {
       }
     }
     return current;
+  });
+  app.get<{
+    Params: { id: string };
+    Querystring: { after?: string; limit?: string };
+  }>("/api/tasks/:id/output", async (req) => {
+    const current = await task(req.params.id),
+      query = outputQuerySchema.parse(req.query);
+    let value: unknown;
+    try {
+      value = await o.transport.request(
+        await worker(current.workerId),
+        "GET",
+        `/tasks/${current.id}/output?after=${query.after}&limit=${query.limit}`,
+      );
+    } catch {
+      throw fail(
+        503,
+        "TASK_OUTPUT_UNAVAILABLE",
+        "Task output is unavailable. Worker memory may have reset; reconnect and inspect the replay state.",
+      );
+    }
+    try {
+      return validateTaskOutput(value, current.id, query.after, query.limit);
+    } catch {
+      throw fail(
+        502,
+        "TASK_OUTPUT_INVALID",
+        "Worker task output failed identity, bounds or replay validation.",
+      );
+    }
   });
   app.post<{ Params: { id: string } }>("/api/tasks/:id/cancel", async (req) =>
     lock(async () => {
