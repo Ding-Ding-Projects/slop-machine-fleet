@@ -1,9 +1,45 @@
-import React, { useState } from "react";
+import React, { useLayoutEffect, useRef, useState } from "react";
 import { useUI } from "../preferences";
 import { Base64Tool } from "./Base64Tool";
 import { Converter } from "./Converter";
 import "./tools.css";
-export function Tools() {
+import { createSafetyRegistry } from "./safety.mjs";
+import { SafetyContext, ToolSafety, ToolLifecycle } from "./Safety";
+export type { ToolSafety, ToolLifecycle } from "./Safety";
+export function Tools({
+  onSafety,
+  onLifecycle,
+}: {
+  onSafety?: (state: ToolSafety) => void;
+  onLifecycle?: (controls: ToolLifecycle | null) => void;
+} = {}) {
+  const [registry] = useState(() =>
+    createSafetyRegistry(["base64", "converter"]),
+  );
+  const [epoch, setEpoch] = useState(0),
+    callbacks = useRef({ onSafety, onLifecycle });
+  callbacks.current = { onSafety, onLifecycle };
+  useLayoutEffect(() => {
+    const unsubscribe = registry.subscribe((state: ToolSafety) =>
+      callbacks.current.onSafety?.(state),
+    );
+    callbacks.current.onLifecycle?.({
+      canLeave: () => registry.canLeave(),
+      discard: () => {
+        registry.discard();
+        setEpoch((value) => value + 1);
+      },
+    });
+    return () => {
+      unsubscribe();
+      callbacks.current.onSafety?.({
+        known: false,
+        dirty: false,
+        pendingWrites: false,
+      });
+      callbacks.current.onLifecycle?.(null);
+    };
+  }, [registry]);
   const { t } = useUI(),
     [active, setActive] = useState<"base64" | "converter">("base64");
   return (
@@ -34,7 +70,14 @@ export function Tools() {
           {t("File converter", "檔案轉換器")}
         </button>
       </nav>
-      {active === "base64" ? <Base64Tool /> : <Converter />}
+      <SafetyContext.Provider value={registry}>
+        <div hidden={active !== "base64"} key={"base64-" + epoch}>
+          <Base64Tool />
+        </div>
+        <div hidden={active !== "converter"} key={"converter-" + epoch}>
+          <Converter />
+        </div>
+      </SafetyContext.Provider>
     </main>
   );
 }

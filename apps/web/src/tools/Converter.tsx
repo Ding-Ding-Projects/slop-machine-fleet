@@ -3,6 +3,8 @@ import { useUI } from "../preferences";
 import { MAX_BYTES } from "./core.mjs";
 import { Result, useProcessor } from "./useProcessor";
 import { Output, useErrors } from "./Output";
+import { useToolSafety } from "./Safety";
+import { deriveToolSafety } from "./safety.mjs";
 type Item = {
   file: File;
   state: "queued" | "running" | "done" | "failed" | "cancelled";
@@ -22,6 +24,19 @@ export function Converter() {
   const processor = useProcessor(),
     revision = useRef(0),
     mounted = useRef(true);
+  useToolSafety(
+    "converter",
+    deriveToolSafety({
+      hasFiles: items.length > 0,
+      hasOutput: items.some((item) => !!item.result),
+      optionsChanged: source !== "csv" || target !== "json" || kind !== "data",
+      busy: running || processor.busy,
+    }),
+    () => {
+      revision.current++;
+      processor.cancel();
+    },
+  );
   useEffect(() => {
     mounted.current = true;
     let worker: Worker | null = null;

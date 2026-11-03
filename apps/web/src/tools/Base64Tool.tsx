@@ -3,6 +3,8 @@ import { useUI } from "../preferences";
 import { MAX_BYTES } from "./core.mjs";
 import { Result, useProcessor } from "./useProcessor";
 import { Output, useErrors } from "./Output";
+import { useToolSafety } from "./Safety";
+import { deriveToolSafety } from "./safety.mjs";
 const encodings = ["utf-8", "utf-16le", "utf-16be", "latin1"];
 export function Base64Tool() {
   const { t } = useUI(),
@@ -21,6 +23,26 @@ export function Base64Tool() {
   const processor = useProcessor(),
     revision = useRef(0),
     mounted = useRef(true);
+  useToolSafety(
+    "base64",
+    deriveToolSafety({
+      hasDraft: text.length > 0,
+      hasFiles: !!file,
+      hasOutput: !!result,
+      optionsChanged:
+        encoding !== "utf-8" ||
+        url ||
+        !padding ||
+        !strict ||
+        wrap !== 0 ||
+        dataURL,
+      busy: processor.busy,
+    }),
+    () => {
+      revision.current++;
+      processor.cancel();
+    },
+  );
   useEffect(() => {
     mounted.current = true;
     return () => {
