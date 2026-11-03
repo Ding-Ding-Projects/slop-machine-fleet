@@ -2,6 +2,7 @@ export function createWriteCounter(){let count=0,revision=0;const listeners=new 
 export const pendingApiWrites=createWriteCounter();
 export function snapshotIsFresh({ready,streamConnected,verifiedAt,now}){return ready===true&&streamConnected===true&&Number.isFinite(verifiedAt)&&verifiedAt>0&&Number.isFinite(now)&&now>=verifiedAt&&now-verifiedAt<=4000;}
 export function canAcceptSnapshot(startRevision,currentRevision,pendingCount){return startRevision===currentRevision&&pendingCount===0;}
+export function snapshotEvidence(verifiedAt,sourceGeneration){if(!Number.isSafeInteger(verifiedAt)||verifiedAt<=0||!Number.isSafeInteger(sourceGeneration)||sourceGeneration<0)throw Error('Authoritative snapshot evidence is unavailable.');return Object.freeze({verifiedAt,sourceGeneration});}
 export function createWorkflowRegistry(){
  const records=new Map(),listeners=new Set();let revision=0,snapshot={known:true,dirty:false,pendingWrites:false,count:0,revision};
  const publish=()=>{revision++;snapshot={known:[...records.values()].every(value=>value.known),dirty:[...records.values()].some(value=>value.dirty),pendingWrites:[...records.values()].some(value=>value.pendingWrites),count:records.size,revision};for(const listener of listeners)listener();};
