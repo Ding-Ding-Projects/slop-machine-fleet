@@ -1,15 +1,15 @@
 # Terminal
 
-A worker's live PowerShell session or log stream, read-only or interactive.
+A worker shell or log stream: short in overviews, full in its own tab.
+
+- **Material 3 primitive:** Card with a code surface
+- **Covers:** `external-editor`, `functional-ui`
 
 ## Provide
-- `.sf-term` with `.sf-term__bar` (icon, `.sf-term__title` "worker · shell", a StatusPill for the connection) and `.sf-term__body` holding pre-formatted lines.
-- Line marks: `.sf-term__prompt` (volt-text), `.sf-term__cmd` (ink), `.sf-term__ok` (running), `.sf-term__warn` (draining); plain output stays `ink-muted`.
-- `.sf-term__cursor` at the live prompt only.
+- Title bar with worker and shell, connection StatusChip, open-externally button; body in `code`.
 
 ## Do
-- Keep it short in overviews: the last few meaningful lines; full output belongs in the logs page.
-- Use Windows chrome conventions: no macOS traffic lights.
+- Colour only prompts and marks.
 
 ## Don't
-- Don't syntax-highlight output; color only marks and prompts.
+- Don't show authentication output or codes in logs.

@@ -3,31 +3,32 @@
 <html>
 <head><meta charset="utf-8"><title>Cover</title>
 <style>
-  html,body{margin:0;background:var(--canvas)}
-  .cover{position:relative;width:960px;height:300px;overflow:hidden;background:var(--canvas)}
-  svg{position:absolute;left:0;top:0}
-  .volt{fill:var(--volt)} .run{fill:var(--running)} .prov{fill:var(--provisioning)} .ink{fill:var(--ink)} .dot{fill:var(--volt-text)}
-  .b{rx:var(--radius-lg);ry:var(--radius-lg)}
-  .text{position:absolute;left:32px;bottom:32px;max-width:900px}
-  .name{margin:0;font:600 64px/0.95 var(--font-sans);letter-spacing:-0.035em;color:var(--ink);white-space:nowrap}
-  .tag{margin:8px 0 0;font:400 14px/20px var(--font-sans);color:var(--ink-muted)}
+ html,body{margin:0;background:var(--surface)}
+ .cover{position:relative;width:960px;height:300px;overflow:hidden;background:var(--surface)}
+ svg{position:absolute;left:0;top:0}
+ .volt{fill:var(--primary-fixed)} .teal{fill:var(--tertiary-fixed)} .run{fill:var(--status-running)} .ink{fill:var(--on-surface)} .dot{fill:var(--primary)}
+ .b{rx:var(--corner-extra-large-increased);ry:var(--corner-extra-large-increased)}
+ .pill{rx:40px;ry:40px}
+ .text{position:absolute;left:32px;bottom:32px}
+ .name{font:500 64px/0.95 var(--font-brand);letter-spacing:-0.035em;color:var(--on-surface);white-space:nowrap}
+ .tag{margin:8px 0 0;font:400 14px/20px var(--font-plain);color:var(--on-surface-variant)}
 </style></head>
 <body>
 <div class="cover">
 <svg width="960" height="112" viewBox="0 0 960 112" aria-hidden="true">
-  <!--
-    blocks: volt 352x128 (bleeds top), running 144x128, provisioning 80x128, ink 96x128 (bleeds top and right); radius-lg corners
-    arrangement: top-band strip of unequal bands, because the name is too wide for the 440px zone; heaviest volt at left
-    pattern: 4px-grid dot field at space-6 pitch in volt-text, 40 dots; chosen because the system is precise, mono and grid-built
-    scales: gaps space-4 (16), pitch space-6 (24), band 112 = space-12 + space-16-ish, radius radius-lg
-  -->
-  <rect class="volt b" x="0" y="-16" width="352" height="128"/>
-  <circle class="dot" cx="380" cy="16" r="3"/><circle class="dot" cx="404" cy="16" r="3"/><circle class="dot" cx="428" cy="16" r="3"/><circle class="dot" cx="452" cy="16" r="3"/><circle class="dot" cx="476" cy="16" r="3"/><circle class="dot" cx="500" cy="16" r="3"/><circle class="dot" cx="524" cy="16" r="3"/><circle class="dot" cx="548" cy="16" r="3"/><circle class="dot" cx="572" cy="16" r="3"/><circle class="dot" cx="596" cy="16" r="3"/><circle class="dot" cx="380" cy="40" r="3"/><circle class="dot" cx="404" cy="40" r="3"/><circle class="dot" cx="428" cy="40" r="3"/><circle class="dot" cx="452" cy="40" r="3"/><circle class="dot" cx="476" cy="40" r="3"/><circle class="dot" cx="500" cy="40" r="3"/><circle class="dot" cx="524" cy="40" r="3"/><circle class="dot" cx="548" cy="40" r="3"/><circle class="dot" cx="572" cy="40" r="3"/><circle class="dot" cx="596" cy="40" r="3"/><circle class="dot" cx="380" cy="64" r="3"/><circle class="dot" cx="404" cy="64" r="3"/><circle class="dot" cx="428" cy="64" r="3"/><circle class="dot" cx="452" cy="64" r="3"/><circle class="dot" cx="476" cy="64" r="3"/><circle class="dot" cx="500" cy="64" r="3"/><circle class="dot" cx="524" cy="64" r="3"/><circle class="dot" cx="548" cy="64" r="3"/><circle class="dot" cx="572" cy="64" r="3"/><circle class="dot" cx="596" cy="64" r="3"/><circle class="dot" cx="380" cy="88" r="3"/><circle class="dot" cx="404" cy="88" r="3"/><circle class="dot" cx="428" cy="88" r="3"/><circle class="dot" cx="452" cy="88" r="3"/><circle class="dot" cx="476" cy="88" r="3"/><circle class="dot" cx="500" cy="88" r="3"/><circle class="dot" cx="524" cy="88" r="3"/><circle class="dot" cx="548" cy="88" r="3"/><circle class="dot" cx="572" cy="88" r="3"/><circle class="dot" cx="596" cy="88" r="3"/>
-  <rect class="run b" x="624" y="-16" width="144" height="128"/>
-  <rect class="prov b" x="784" y="-16" width="80" height="128"/>
-  <rect class="ink b" x="880" y="-16" width="96" height="128"/>
+ <!--
+  blocks: primary-fixed 352x128 (bleeds top), tertiary-fixed 144x128, status-running 80x80 disc-pill, on-surface 96x128 (bleeds top and right); corners corner-extra-large-increased
+  arrangement: top-band strip of unequal bands, because the name is wider than the 440px zone; the volt brand block leads at left
+  pattern: dot grid at space-6 pitch in primary, 40 dots; the system is precise, mono-led and built on a 4px grid
+  scales: gaps space-4, pitch space-6, corners corner-extra-large-increased and corner-full for the pill
+ -->
+ <rect class="volt b" x="0" y="-16" width="352" height="128"/>
+ <circle class="dot" cx="380" cy="16" r="3"/><circle class="dot" cx="404" cy="16" r="3"/><circle class="dot" cx="428" cy="16" r="3"/><circle class="dot" cx="452" cy="16" r="3"/><circle class="dot" cx="476" cy="16" r="3"/><circle class="dot" cx="500" cy="16" r="3"/><circle class="dot" cx="524" cy="16" r="3"/><circle class="dot" cx="548" cy="16" r="3"/><circle class="dot" cx="572" cy="16" r="3"/><circle class="dot" cx="596" cy="16" r="3"/><circle class="dot" cx="380" cy="40" r="3"/><circle class="dot" cx="404" cy="40" r="3"/><circle class="dot" cx="428" cy="40" r="3"/><circle class="dot" cx="452" cy="40" r="3"/><circle class="dot" cx="476" cy="40" r="3"/><circle class="dot" cx="500" cy="40" r="3"/><circle class="dot" cx="524" cy="40" r="3"/><circle class="dot" cx="548" cy="40" r="3"/><circle class="dot" cx="572" cy="40" r="3"/><circle class="dot" cx="596" cy="40" r="3"/><circle class="dot" cx="380" cy="64" r="3"/><circle class="dot" cx="404" cy="64" r="3"/><circle class="dot" cx="428" cy="64" r="3"/><circle class="dot" cx="452" cy="64" r="3"/><circle class="dot" cx="476" cy="64" r="3"/><circle class="dot" cx="500" cy="64" r="3"/><circle class="dot" cx="524" cy="64" r="3"/><circle class="dot" cx="548" cy="64" r="3"/><circle class="dot" cx="572" cy="64" r="3"/><circle class="dot" cx="596" cy="64" r="3"/><circle class="dot" cx="380" cy="88" r="3"/><circle class="dot" cx="404" cy="88" r="3"/><circle class="dot" cx="428" cy="88" r="3"/><circle class="dot" cx="452" cy="88" r="3"/><circle class="dot" cx="476" cy="88" r="3"/><circle class="dot" cx="500" cy="88" r="3"/><circle class="dot" cx="524" cy="88" r="3"/><circle class="dot" cx="548" cy="88" r="3"/><circle class="dot" cx="572" cy="88" r="3"/><circle class="dot" cx="596" cy="88" r="3"/>
+ <rect class="teal b" x="624" y="-16" width="144" height="128"/>
+ <rect class="run pill" x="784" y="32" width="80" height="80"/>
+ <rect class="ink b" x="880" y="-16" width="96" height="128"/>
 </svg>
-<div class="text"><div class="name">Slop Machine Fleet</div><p class="tag">An instrument panel for isolated Windows coding workers on EC2.</p></div>
+<div class="text"><div class="name">Slop Machine Fleet</div><p class="tag">A Material 3 control plane for isolated Windows coding workers on EC2.</p></div>
 </div>
 </body>
 </html>

@@ -1,60 +1,73 @@
-Slop Machine Fleet is a desktop and self-hosted control plane for isolated Windows coding workers on Amazon EC2. The interface is an instrument panel: dark by default, quiet grays, one electric volt accent, and status colors that only ever mean a worker's state.
+Slop Machine Fleet is a desktop app and an authenticated LAN web app that manage isolated Windows Server 2025 coding workers on Amazon EC2: setup, guided sign-in and pairing, coding tasks, and bulk lifecycle actions. This system expresses it in **Material 3 Expressive**: a volt-lime seed, near-neutral surfaces, round shapes that morph on press, and status colours that only ever describe state.
 
 ## Principles
 
-- **The fleet is the content.** Worker names, states and numbers carry the color and weight; chrome stays in `surface`, `line` and `ink-muted`.
-- **Volt is said once.** One `volt` fill per view: the primary button, the active nav marker or the selected worker ring. Never decorative.
-- **State is word plus mark.** Every status uses a StatusPill with its word; color alone never carries meaning.
-- **Identifiers are mono, language is sans.** `code` for worker names, instance IDs, regions and commands; `body` for everything people read as sentences.
-- **Flat on borders, lifted only when floating.** Cards sit on `line` hairlines; only menus, popovers and the command bar get `shadow-pop`.
+- **Material 3 everywhere.** Every rendered control maps to a genuine Material 3 primitive (each component's guidelines name it). Chrome uses only the colour roles in `tokens.json`; status colours are data and stay in the `status-*` tokens.
+- **Volt is the brand, said once.** `primary-fixed` (the same volt in both themes) marks the one action a view exists for (`sf-btn--brand`, the rail FAB) and the cover. Everything else uses `primary`, `secondary-container` and the surface roles.
+- **State is word plus icon.** Machine, sign-in, pairing and task states are separate and each uses a StatusChip with a word and an icon.
+- **Truthful by default.** No sample data, no fake checks. Empty states state the fact and offer the real next action. A partial bulk result is never shown as success.
+- **Everything is reachable, customizable and recoverable.** Tabs instead of scrolling, `Ctrl+Shift+F` to any element, a context menu with "Edit appearance…" on every element, a search with its own regex builder everywhere, history and export for user data.
 
 ## Voice and content
 
-- Sentence case everywhere: "Launch worker", "Instance type". Uppercase only in the `eyebrow` style for regions (`US-EAST-1`).
-- Verb-first actions: Launch, Drain, Terminate, Assign task, Open shell. Name the object when it could be ambiguous ("Terminate fleet-w-07").
-- Plain, specific numbers: "Last heartbeat 4s ago", "8 vCPU, 32 GiB". No exclamation marks, no emoji.
-- Errors say what happened and how to fix it: "AMI IDs are 17 hex characters after ami-."
-- Map EC2 states onto five display states: pending → Provisioning/Booting, running → Running, stopping → Draining/Stopping, stopped → Stopped (idle), and any failed health check → Failed.
+- Sentence case; verb-first actions ("Launch worker", "Retry launch"); name the object when it could be ambiguous ("Terminate fleet-w-07").
+- Three language modes: English, playful Hong Kong-style Cantonese, and bilingual (primary label in the body or label role, secondary in `body-small` and `on-surface-variant`).
+- Two funny-level sliders (English and Cantonese, 1 to 5, ship at 5) change voice, never facts: numbers, names, errors and instructions stay identical at every level.
+- Emoji only inside dialogs and message boxes when the user's emoji switch is on; never in buttons, labels or accessible names.
+- Costs carry their source and time ("Estimate from AWS Price List, fetched 01:40") and what is not included.
+- Codes (sign-in, pairing, OTP) are hidden until revealed and never appear in notifications, logs, history, exports or screenshots.
 
-## Color
+## Colour
 
-- Ground: `canvas` behind everything; `surface` for panels and tiles; `surface-raised` for hover, menus and secondary buttons; `surface-sunken` for terminals and input wells.
-- Text: `ink` for primary text, `ink-muted` for metadata and labels, `ink-faint` for timestamps and placeholders. All three meet 4.5:1 on every surface they are noted for, in both themes.
-- Brand: `volt` fill with `on-volt` text for the primary action; `volt-text` for brand text and links; `volt-soft` for the selected row. On the light theme `volt` is a fill only, never text.
-- Status: `running`, `provisioning`, `draining`, `failed`, `idle`, each with a `-soft` fill for pills. The five differ in lightness as well as hue, and always ship with their word.
-- Focus: `focus` (an alias of `volt-text`), a solid 2px outline at 2px offset, 3:1 or better on every surface in both themes.
-- Themes: Hangar (dark) is the default; Daylight (light) mirrors every token. Set `data-theme="light"` on the root to switch.
+- Generated with Material Color Utilities from seed `#C6F02A`: vibrant primary at the seed hue, secondary at chroma 14, tertiary teal at hue 190, neutrals at chroma 2 so surfaces read nearly neutral.
+- Surfaces: `surface` for the window; `surface-container` for the title bar, tab strip and rail; `surface-container-low` for cards; `surface-container-high` for menus, dialogs and the palette; `surface-container-highest` for input fills and selected tabs; `surface-container-lowest` for terminals.
+- Text: `on-surface` and `on-surface-variant` on every surface role, both at 4.5:1 or better in dark and light.
+- Accents: `primary` for filled buttons and progress; `secondary-container` for tonal buttons, selected chips and the rail indicator; `tertiary` for links, the regex builder and live charts; `error` and `error-container` for destructive actions.
+- Status (data): `status-running`, `status-provisioning`, `status-draining`, `status-failed`, `status-idle`, each with a `-soft` fill. Every status text meets 4.5:1 on its soft fill and on `surface`, `surface-container-low` and `surface-container-high` in both themes.
+- Focus: a solid 3px `secondary` outline at 2px offset on every interactive element.
+- Themes: Dark is the default; Light mirrors every role. Users can change the seed; the roles regenerate from it.
 
 ## Type
 
-- Geist for UI and Geist Mono for identifiers and numbers, both from Google Fonts; fallbacks are the system UI stack and Cascadia Code or Consolas on Windows.
-- `display` once per page for the fleet headline number; `title-1` for the page title; `title-2` for panels and dialogs; `heading` inside panels.
-- `body` 14/20 is the default; `body-sm` for table cells and metadata; `label` for field labels and pill text.
-- `code` for identifiers, `numeric` for aligned figures (tabular numerals), `eyebrow` for one uppercase tag above a title.
+- Geist (variable, bundled in `fonts/`) for UI, Geist Mono (variable, bundled) for identifiers and numbers, Material Symbols Rounded (bundled) for icons. Cantonese falls back to Noto Sans HK, then Microsoft JhengHei UI; the shipped app vendors a complete CJK face by script.
+- The Material 3 scale: `display-large` for the fleet headline number, `headline-*` for page and dialog headlines, `title-*` for cards and sections, `body-*` for text, `label-*` for buttons, chips and keys.
+- Mono roles: `code` for worker names, instance IDs, regions and regex; `numeric` for aligned figures; `otp` for one-time codes grouped in threes.
 
-## Space, radius, layout
+## Shape, space, elevation, state
 
-- A 4px grid: `space-1` 4 through `space-12` 48. Text keeps at least `space-3` from any card edge; cards pad `space-4`; page gutters are `space-8`.
-- Radii nest: `radius-sm` 6 for small controls, `radius-md` 10 for buttons and inputs, `radius-lg` 16 for cards, terminals and the command bar, `radius-pill` for pills and meters only.
-- Desktop layout: a 64px nav rail on `canvas`, a worker grid of 300px WorkerTiles with `space-4` gaps, and a detail pane on `surface` that holds the Terminal.
+- Corners: `corner-full` for buttons, chips, switches and sliders; `corner-large` for cards; `corner-large-increased` for the selected card; `corner-extra-large` for dialogs, the palette and onboarding; `corner-extra-large-increased` for the cover and hero cards. Buttons morph to `corner-small` while pressed.
+- Space on a 4px grid: `space-3` is the minimum text inset; `space-4` card padding; `space-6` dialog padding; `space-8` page gutters.
+- Elevation: cards are flat (`elevation-0`) on container roles; menus `elevation-2`; dialogs, the palette and the FAB `elevation-3`; dragged items `elevation-4`.
+- State layers: `state-hover` 0.08, `state-focus` and `state-pressed` 0.10, `state-dragged` 0.16, disabled content 0.38 on a 0.12 container.
+- Targets: at least `target-min` (44px); title bar `titlebar-height`; tabs `tab-height`; rail `rail-width`.
 
 ## Motion
 
-- 120ms ease for hover and press; 200ms for menus opening. Nothing bounces.
-- Only two things move on their own: the Provisioning spinner and the terminal cursor, both static under `prefers-reduced-motion`.
-- Values update in place on each poll; bars never re-animate from zero.
+- Material 3 Expressive springs: spatial changes (shape morph, panels) use the expressive fast spatial spring; colour and opacity use the standard effects curve `cubic-bezier(0.2, 0, 0, 1)` at 150 to 200ms.
+- Moving on their own: the Provisioning spinner, the live chart's leading point, and the countdown ring. All three hold still under `prefers-reduced-motion`, and every motion has a reduced path.
+- Values update in place; nothing re-animates from zero on refresh.
 
 ## Iconography
 
-- Phosphor Icons, Fill weight, pinned at `@phosphor-icons/web@2.1.1`, at 16px, colored `ink-muted` or `ink` (never status colors except inside a pill or a field error).
-- Core set: `ph-desktop-tower` (worker), `ph-terminal-window` (shell), `ph-rocket-launch` (launch), `ph-stop-circle` (drain), `ph-power` (terminate), `ph-arrows-clockwise` (refresh), `ph-magnifying-glass` (search), `ph-warning-circle` (errors).
-- No sparkles, no hand-drawn glyphs, no emoji as icons.
+- Material Symbols Rounded, filled at 20px and under, outlined at 24px for rail and empty states; weight 500 small, 400 large. One set, no hand-drawn glyphs, no emoji as icons.
+- Core: `deployed_code` (app), `desktop_windows` (worker), `terminal`, `rocket_launch`, `stop_circle` (drain), `power_settings_new`, `restart_alt`, `key` (sign-in), `regular_expression`, `format_paint` (edit appearance), `lock`, `history`, `download`.
 
 ## Logo
 
-- There is no logo yet. Set the name "Slop Machine Fleet" in Geist 600 at `title-2` or larger, in `ink`. Do not draw or invent a mark.
+- No logo exists yet. Set "Slop Machine Fleet" in Geist 500 beside `deployed_code` in `primary`. The user can rename the app; every surface then shows the chosen name. Do not invent a mark.
 
-## Components
+## Window and navigation
 
-- Button, StatusPill, Meter, Field, WorkerTile, Terminal and CommandBar, as plain CSS classes prefixed `sf-` in `components/bundle.css`. Each has a live preview and guidelines.
-- Consumers provide the markup shown in each preview and load `tokens.css` then `components/bundle.css`, plus the Phosphor Fill stylesheet.
+- Frameless window: the TitleBar draws the name, live fleet summary, palette and notification buttons, and the window controls. The operating system title bar is never shown.
+- Every page is a browser-style tab (TabStrip) with pinning, colour groups, overflow and tab search; the NavigationRail opens or focuses tabs.
+- `Ctrl+Shift+F` opens the CommandPalette; results include live settings and teleport to the exact element.
+
+## Components and patterns
+
+- Actions: Button, InfoIconButton, Chips, StatusChip, SegmentedButton.
+- Inputs: TextField, SelectionControls, SearchWithRegexBuilder.
+- Window: TitleBar, TabStrip, NavigationRail. Navigation: CommandPalette, ContextMenu. Feedback: Notifications.
+- Fleet: WorkerCard, Terminal, DeviceLoginPanel, CostReview, BulkActionBar. Data: LiveChart, FilterPanel, EmptyState. Onboarding: SetupWizard.
+- Personalization: LanguageMode, FunnyLevel, AppearanceEditor, ColorPicker, ScheduledSettings, SchoolMode, VoiceAndSound, FocusModes, DimSumSurprise, VocabularyDrop.
+- Safety: SuperConfirmation, ElementLock, Authenticator, SupportDesk. Records: History, ExportDialog, Changelog, DocsBrowser, ProvenanceFooter. Tools: ToolsHub.
+- Consumers load `tokens.css`, then `components/bundle.css`; classes are prefixed `sf-`. In the app, each maps to its Material 3 web component; the CSS here is the visual reference for tokens, sizes and states.

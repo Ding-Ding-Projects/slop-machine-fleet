@@ -1,19 +1,12 @@
-<!-- @dsCard group="Actions" height=136 subtitle="Primary, secondary, ghost, danger; small and icon sizes" -->
+<!-- @dsCard group="Actions" height=200 subtitle="Filled, brand, tonal, outlined, text, elevated, danger; three sizes; shape morphs on press" -->
 <!doctype html>
 <html>
-<head><meta charset="utf-8"><title>Button — preview</title><link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css"></head>
+<head><meta charset="utf-8"><title>Button preview</title></head>
 <body>
-<div class="sf-row">
-  <button class="sf-btn sf-btn--primary"><i class="ph-fill ph-rocket-launch"></i>Launch worker</button>
-  <button class="sf-btn sf-btn--secondary"><i class="ph-fill ph-terminal-window"></i>Open shell</button>
-  <button class="sf-btn sf-btn--ghost">View logs</button>
-  <button class="sf-btn sf-btn--danger"><i class="ph-fill ph-power"></i>Terminate</button>
-</div>
-<div class="sf-row" style="padding-top:0">
-  <button class="sf-btn sf-btn--primary sf-btn--sm">Assign task</button>
-  <button class="sf-btn sf-btn--secondary sf-btn--sm">Snapshot</button>
-  <button class="sf-btn sf-btn--secondary sf-btn--icon" aria-label="Refresh"><i class="ph-fill ph-arrows-clockwise"></i></button>
-  <button class="sf-btn sf-btn--primary sf-btn--sm" disabled>Quota reached</button>
+<div class="sf-pad sf-col">
+<div class="sf-row"><button class="sf-btn sf-btn--brand"><span class="sf-i " aria-hidden="true">rocket_launch</span>Launch worker</button><button class="sf-btn sf-btn--filled">Assign task</button><button class="sf-btn sf-btn--tonal"><span class="sf-i " aria-hidden="true">terminal</span>Open shell</button><button class="sf-btn sf-btn--outlined">Drain</button><button class="sf-btn sf-btn--text">View logs</button></div>
+<div class="sf-row"><button class="sf-btn sf-btn--elevated"><span class="sf-i " aria-hidden="true">download</span>Export</button><button class="sf-btn sf-btn--danger"><span class="sf-i " aria-hidden="true">power_settings_new</span>Terminate</button><button class="sf-btn sf-btn--filled" disabled>Launch (cap reached)</button></div>
+<div class="sf-row"><button class="sf-btn sf-btn--tonal sf-btn--sm">Retry</button><button class="sf-btn sf-btn--brand sf-btn--lg"><span class="sf-i " aria-hidden="true">rocket_launch</span>Launch 3 workers</button><button class="sf-icon-btn sf-icon-btn--tonal" aria-label="Refresh"><span class="sf-i " aria-hidden="true">refresh</span></button><button class="sf-icon-btn sf-icon-btn--outlined" aria-label="More"><span class="sf-i " aria-hidden="true">more_vert</span></button><button class="sf-fab"><span class="sf-i " aria-hidden="true">add</span>New worker</button></div>
 </div>
 </body>
 </html>

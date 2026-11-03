@@ -1,17 +1,14 @@
-<!-- @dsCard group="Fleet" height=300 subtitle="Live shell or log stream from a worker" -->
+<!-- @dsCard group="Fleet" height=300 subtitle="Live PowerShell or log stream from a worker" -->
 <!doctype html>
 <html>
-<head><meta charset="utf-8"><title>Terminal — preview</title><link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css"></head>
+<head><meta charset="utf-8"><title>Terminal preview</title></head>
 <body>
-<div style="padding:16px">
-<div class="sf-term">
-  <div class="sf-term__bar"><i class="ph-fill ph-terminal-window" style="color:var(--ink-muted)"></i><span class="sf-term__title">fleet-w-07 · PowerShell</span><span class="sf-pill sf-pill--running">Connected</span></div>
-  <div class="sf-term__body"><span class="sf-term__prompt">PS C:\work\repo&gt;</span> <span class="sf-term__cmd">npm test</span>
+<div class="sf-pad"><div class="sf-term">
+<div class="sf-term__bar"><span class="sf-i " aria-hidden="true">terminal</span><span class="sf-term__title">fleet-w-07 · PowerShell</span><span class="sf-status sf-status--running" style="height:24px"><span class="sf-i " aria-hidden="true">link</span>Connected</span><button class="sf-icon-btn sf-icon-btn--sm" aria-label="Open in external editor"><span class="sf-i " aria-hidden="true">open_in_new</span></button></div>
+<pre class="sf-term__body"><span class="sf-term__prompt">PS C:\work\repo&gt;</span> <span class="sf-term__cmd">npm test</span>
 <span class="sf-term__ok">✓</span> 214 passed
 <span class="sf-term__warn">!</span> 2 skipped (needs GPU)
-<span class="sf-faint">Ran in 38.2s</span>
-<span class="sf-term__prompt">PS C:\work\repo&gt;</span> <span class="sf-term__cursor"></span></div>
-</div>
-</div>
+Ran in 38.2 s
+<span class="sf-term__prompt">PS C:\work\repo&gt;</span> </pre></div></div>
 </body>
 </html>

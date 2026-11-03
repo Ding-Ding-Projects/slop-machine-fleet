@@ -1,32 +1,44 @@
 # Design handoff: Slop Machine Fleet design system
 
-Status: **design reference, version 1 (milestone).** Nothing here is implemented, verified or shipped behaviour.
+Status: **design reference, version 2.** Nothing here is implemented, verified or shipped behaviour.
 
 ## What is in this folder
 
 | Path | What |
 | --- | --- |
-| `design-system/README.md` | Brand book: principles, voice, color, type, space, motion, iconography |
-| `design-system/tokens.json` | Source tokens: two color themes (Hangar dark, Daylight light), type scale, spacing, radii, shadow |
-| `design-system/tokens.css` | CSS custom properties generated from `tokens.json` |
+| `design-system/README.md` | Brand book: principles, voice, colour, type, shape, motion, iconography, window and navigation |
+| `design-system/tokens.json` | Source tokens: Material 3 colour roles for dark and light, status data colours, the Material 3 type scale plus mono roles, spacing, corner scale, elevation, state layers, sizes |
+| `design-system/tokens.css` | CSS custom properties and font faces generated from `tokens.json` |
+| `design-system/fonts/` | Bundled Geist, Geist Mono and Material Symbols Rounded (variable woff2) with their licences |
 | `design-system/components/bundle.css` | Component classes, prefixed `sf-` |
-| `design-system/components/<Name>/` | `preview.html` (live preview) and `README.md` (guidelines) for Button, StatusPill, Meter, Field, WorkerTile, Terminal, CommandBar |
+| `design-system/components/<Name>/` | `preview.html` and `README.md` for 43 components and patterns |
 | `design-system/components/Cover/preview.html` | The system's cover |
 | `design-system/design-system.json` | Index for the hosted design-system canvas |
-| `frames/<Name>-<theme>.png` | Local renders of every preview in both themes at 2x |
+| `frames/<Name>-<theme>.png` | Local renders of every preview in dark and light at 1.5x |
+| `COVERAGE.md` | Which requirement each component covers, and what is still to design |
+| `scripts/generate-m3-scheme.mjs`, `scripts/m3-scheme.json` | How the colour roles were generated from seed `#C6F02A`, and the output |
+| `scripts/fetch-fonts.sh` | Downloads the complete font files from pinned npm packages |
+| `REHEARSAL.md` | Review notes |
 
-## How the frames were made
+## Inputs
 
-Each `preview.html` was rendered with headless Chrome after inlining `tokens.css` and `components/bundle.css`, once per theme (`data-theme="dark"` and `data-theme="light"`), at 2x device scale.
+- The product plan: desktop client and authenticated LAN web app sharing one service; one Windows Server 2025 EC2 machine per worker; guided device login, GitHub CLI login and pairing; coding-task dispatch; bulk lifecycle actions with per-worker outcomes; five-machine cap with cost review.
+- The required feature catalogue and UI contract, including Material 3 Expressive conformance, bundled fonts, tabs, regex builders, the command palette, appearance customization and the safety patterns.
+
+## Implementation notes
+
+- Each component's guidelines name the Material 3 primitive it maps to. Build with genuine Material 3 components and these tokens; the CSS is the visual reference.
+- Colour roles regenerate from the user's seed with Material Color Utilities (see `scripts/generate-m3-scheme.mjs`). Status colours are data and do not regenerate.
+- Cantonese text falls back to Noto Sans HK, then Microsoft JhengHei UI. The app must vendor a complete CJK face by script.
+- The Material Symbols font is the full variable file (about 4.4 MB); the app may subset it by script to the icons it uses.
 
 ## Review
 
-- Contrast: every text pair named in a token's usage note was checked in both themes (WCAG 2: 4.5:1 for text, 3:1 for control borders and the focus ring). Two failures were found and fixed (`line-strong` on `surface-raised`, `ink-faint` on light `surface-sunken`); 0 remain.
-- Fresh-eye fixes from the frames: worker tile metadata wrapped to two lines (shortened to one line), the Running pill glow read as a smudge on light grounds (removed), meter value column left a wide gap (narrowed).
-- Design guidance: the Stageshow skill, pinned commit `802057409787133703c56001080169e347305572`. Rules applied: restraint (few real strings, filler at the edges), type and spacing insets, icons from one set at one size, no AI tropes. Rules not applicable: animated demo choreography, cursor beats, device framing, since this is a component system rather than a marketing scene.
+- Contrast: every text, outline and status pair named in a usage note was checked in both themes (4.5:1 text, 3:1 outlines). One failure was fixed (light running status on `surface-container-high`); 0 remain.
+- Frames: all 86 component frames plus the cover were rendered and reviewed. Fixes: status chips stretched in the worker card grid, segmented buttons stretched in columns, a wrapping context menu item, a two-line sign-in heading.
+- Stageshow skill, pinned commit `802057409787133703c56001080169e347305572` (fresh install was not available in this environment, so the pinned copy was used). Applied: restraint, type and spacing insets, one icon set at one size, no AI tropes, frame review. Not applicable: animated demo choreography, cursor beats and device framing, since this is a component system.
 
-## Known gaps, next version
+## Still open
 
-- The product's UI contract requires Material Design 3 (Expressive) on every surface. Version 1 uses its own component styling; version 2 re-expresses the tokens as Material 3 color roles generated from the volt seed, the Material 3 type and shape scales, and Material Symbols icons.
-- Fonts and icons load from Google Fonts and unpkg in these previews. The shipped app must bundle complete font files locally.
-- Screens and patterns still to design: frameless title bar, tabbed navigation, navigation rail, setup wizard, device-login and pairing panels, cost review with the machine cap, bulk action results, settings with appearance editing, notifications, command palette on `Ctrl+Shift+F`.
+- Full screens for each built-in tool, the full regex builder, the grouped settings surface and the public documentation site (see `COVERAGE.md`).
+- Narrow-width and high-scale renders, screen reader checks, and motion review (stills only so far).
