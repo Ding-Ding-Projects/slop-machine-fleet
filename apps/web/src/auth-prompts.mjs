@@ -16,16 +16,17 @@ export function recognizedPrompt(value,provider,state){
 /** @param {unknown} value @param {string} provider @param {string|null} expectedSessionId */
 export function readAuthState(value,provider,expectedSessionId=null){
  if(!object(value)||!states.has(value.state)||!['github','codex','pairing'].includes(provider))throw Error('AUTH_RESPONSE_INVALID');
- const legacy=!Object.hasOwn(value,'sessionId')||!Object.hasOwn(value,'prompt');
+ const legacy=!Object.hasOwn(value,'sessionId')||!Object.hasOwn(value,'prompt')||!Object.hasOwn(value,'gitSetupState');
  if(!legacy&&!(value.sessionId===null||uuid(value.sessionId)))throw Error('AUTH_RESPONSE_INVALID');
- if(Object.keys(value).some(key=>!['state','sessionId','prompt','verificationUrl','userCode','expiresAt','errorCode'].includes(key)))throw Error('AUTH_RESPONSE_INVALID');
+ if(Object.keys(value).some(key=>!['state','sessionId','prompt','verificationUrl','userCode','expiresAt','errorCode','gitSetupState'].includes(key)))throw Error('AUTH_RESPONSE_INVALID');
+ if(value.gitSetupState!==undefined&&!['unknown','not-requested','declined','configured','error'].includes(value.gitSetupState))throw Error('AUTH_RESPONSE_INVALID');
  if(expectedSessionId&&!same(value.sessionId,expectedSessionId))throw Error('AUTH_SESSION_CHANGED');
  if(value.verificationUrl!=null&&!bounded(value.verificationUrl,2048)||value.userCode!=null&&!bounded(value.userCode,128)||value.errorCode!=null&&(!bounded(value.errorCode,100)||!/^[A-Z0-9_]+$/.test(value.errorCode)))throw Error('AUTH_RESPONSE_INVALID');
  if(value.expiresAt!=null&&(!bounded(value.expiresAt,80)||!Number.isFinite(Date.parse(value.expiresAt))))throw Error('AUTH_RESPONSE_INVALID');
  let verificationUrl;
  if(value.verificationUrl){try{const url=new URL(value.verificationUrl);if(url.protocol==='https:'&&!url.username&&!url.password)verificationUrl=url.href;}catch{/* Invalid links remain inactive. */}}
  const prompt=!legacy&&value.sessionId?recognizedPrompt(value.prompt,provider,value.state):null;
- return {state:value.state,sessionId:legacy?null:value.sessionId,prompt,legacy,unsupportedPrompt:!legacy&&(value.state==='input-required'&&!prompt||value.prompt!=null&&!prompt),
+ return {state:value.state,sessionId:legacy?null:value.sessionId,prompt,legacy,gitSetupState:value.gitSetupState??'unknown',unsupportedPrompt:!legacy&&(value.state==='input-required'&&!prompt||value.prompt!=null&&!prompt),
   ...(value.state==='code-issued'?{verificationUrl,userCode:value.userCode}:{}),expiresAt:value.expiresAt??null,errorCode:value.errorCode??null};
 }
 export function promptRequest(current,action,choice){
