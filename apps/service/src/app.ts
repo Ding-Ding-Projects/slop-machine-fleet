@@ -5,8 +5,8 @@ import {
   timingSafeEqual,
   createHash,
 } from "node:crypto";
-import { readFile, realpath } from "node:fs/promises";
-import { dirname, resolve, relative, isAbsolute, sep } from "node:path";
+import { readFile } from "node:fs/promises";
+import { registerFeatureRoutes } from "./features.js";
 import Fastify from "fastify";
 import cookie from "@fastify/cookie";
 import rateLimit from "@fastify/rate-limit";
@@ -129,6 +129,7 @@ export async function createService(o: ServiceOptions) {
       throw fail(403, "CSRF_REQUIRED", "A valid CSRF token is required.");
     (req as any).session = s;
   });
+  registerFeatureRoutes(app, o.featureManifestFile);
   const signIn = async (res: any) => {
     const raw = randomBytes(32).toString("base64url"),
       s = {
