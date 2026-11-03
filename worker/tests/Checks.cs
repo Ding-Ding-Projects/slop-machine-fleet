@@ -43,4 +43,14 @@ using(var terminal=new PseudoTerminal(Path.Combine(Environment.GetFolderPath(Env
     Check(await terminal.Wait(timeout.Token)==0,"native ConPTY returns actual child exit status");
 }
 Console.WriteLine($"PASS {checks} total worker checks");
+var enrollment=Path.Combine(folder,"enrollment");Directory.CreateDirectory(enrollment);var workerId=Guid.NewGuid();File.WriteAllText(Path.Combine(enrollment,"worker-id"),workerId.ToString());
+var executable=Path.Combine(AppContext.BaseDirectory,"Fleet.Worker.exe");
+var first=await Commands.Run(executable,["--enroll-request="+enrollment]);
+using var request=JsonDocument.Parse(first.Output);
+Check(first.Code==0&&request.RootElement.GetProperty("workerId").GetGuid()==workerId,"native enrollment returns matching public identity");
+Check(request.RootElement.GetProperty("csr").GetString()!.Contains("BEGIN CERTIFICATE REQUEST",StringComparison.Ordinal),"native enrollment returns a public CSR");
+var keyHash=SHA256.HashData(File.ReadAllBytes(Path.Combine(enrollment,"server.key")));
+var second=await Commands.Run(executable,["--enroll-request="+enrollment]);
+Check(second.Code==0&&keyHash.SequenceEqual(SHA256.HashData(File.ReadAllBytes(Path.Combine(enrollment,"server.key")))),"enrollment retry preserves the local private key");
+Console.WriteLine($"PASS {checks} total worker checks");
 // The unique test directory is retained for diagnostics; it contains synthetic metadata only.

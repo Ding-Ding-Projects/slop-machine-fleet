@@ -59,7 +59,7 @@ app.MapGet("/events", async (HttpContext context, Events events) => {
     context.Response.ContentType = "text/event-stream";
     long.TryParse(context.Request.Headers["Last-Event-ID"], out var after);
     while (!context.RequestAborted.IsCancellationRequested) {
-        foreach (var entry in events.Since(after)) { await context.Response.WriteAsync($"id: {entry.Sequence}\ndata: {System.Text.Json.JsonSerializer.Serialize(entry)}\n\n", context.RequestAborted); after = entry.Sequence; }
+        foreach (var entry in events.Since(after)) { await context.Response.WriteAsync($"id: {entry.Sequence}\ndata: {System.Text.Json.JsonSerializer.Serialize(entry,new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web))}\n\n", context.RequestAborted); after = entry.Sequence; }
         await context.Response.Body.FlushAsync(context.RequestAborted);
         await Task.Delay(500, context.RequestAborted);
     }
