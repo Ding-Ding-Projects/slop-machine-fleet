@@ -1,5 +1,6 @@
 param([Parameter(ValueFromRemainingArguments=$true)][string[]]$Options)
 $ErrorActionPreference = 'Stop'
+$env:PSModulePath = (Join-Path $PSHOME 'Modules') + ';' + (Join-Path $env:ProgramFiles 'WindowsPowerShell\Modules')
 Set-Location -LiteralPath (Split-Path $PSScriptRoot -Parent)
 function Run-Compose([string[]]$Arguments) { & docker compose @Arguments; if ($LASTEXITCODE -ne 0) { throw "Docker Compose exited $LASTEXITCODE." } }
 try {
@@ -20,9 +21,25 @@ try {
   $mode = if ($Options -contains '--logs') { 'logs' } elseif ($Options -contains '--detached') { 'detached' } else { if ((Read-Host 'Choose [D]etached or interactive [L]ogs') -match '^[lL]$') { 'logs' } else { 'detached' } }
   $local = Join-Path (Get-Location) '.local'
   New-Item -ItemType Directory -Force $local | Out-Null
-  $identity = [Security.Principal.WindowsIdentity]::GetCurrent().Name
-  & icacls.exe $local /inheritance:r /grant:r "${identity}:(OI)(CI)F" /Q | Out-Null
-  if ($LASTEXITCODE -ne 0) { throw 'Could not protect local configuration storage.' }
+  $identitySid = [Security.Principal.WindowsIdentity]::GetCurrent().User
+  $systemSid = New-Object Security.Principal.SecurityIdentifier('S-1-5-18')
+  function Protect-LocalPath([string]$Target) {
+    $item = Get-Item -LiteralPath $Target -Force
+    if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw 'Local configuration cannot contain symbolic links or junctions.' }
+    $acl = Get-Acl -LiteralPath $Target
+    $acl.SetAccessRuleProtection($true, $false)
+    foreach ($rule in @($acl.Access)) { [void]$acl.RemoveAccessRuleSpecific($rule) }
+    foreach ($sid in @($identitySid,$systemSid)) {
+      if ($item.PSIsContainer) { $rule = New-Object Security.AccessControl.FileSystemAccessRule($sid,'FullControl','ContainerInherit,ObjectInherit','None','Allow') }
+      else { $rule = New-Object Security.AccessControl.FileSystemAccessRule($sid,'FullControl','Allow') }
+      $acl.AddAccessRule($rule)
+    }
+    Set-Acl -LiteralPath $Target -AclObject $acl
+    $verified = Get-Acl -LiteralPath $Target
+    if (-not $verified.AreAccessRulesProtected -or @($verified.Access | Where-Object { $_.IdentityReference.Translate([Security.Principal.SecurityIdentifier]).Value -notin @($identitySid.Value,$systemSid.Value) -or $_.AccessControlType -ne 'Allow' }).Count -gt 0) { throw 'Local configuration permissions did not verify.' }
+  }
+  Protect-LocalPath $local
+  Get-ChildItem -LiteralPath $local -Recurse -Force | ForEach-Object { Protect-LocalPath $_.FullName }
   function New-ProtectedValue([string]$Name) {
     $file = Join-Path $local $Name
     if (-not (Test-Path $file)) {
@@ -36,6 +53,13 @@ try {
   New-ProtectedValue 'setup-code'
   $databaseUrlFile = Join-Path $local 'database-url'
   if (-not (Test-Path $databaseUrlFile)) { $password = [IO.File]::ReadAllText((Join-Path $local 'database-password')); [IO.File]::WriteAllText($databaseUrlFile, "postgresql://fleet:${password}@database:5432/fleet"); $password = $null }
+  New-Item -ItemType Directory -Force (Join-Path $local 'aws') | Out-Null
+  if (-not (Test-Path (Join-Path $local 'worker-release.json'))) { throw 'Download the source-bound worker-release.json from the accepted release into .local/worker-release.json before starting the controller.' }
+  $workerRelease = Get-Content (Join-Path $local 'worker-release.json') -Raw | ConvertFrom-Json
+  foreach ($property in @('version','assetUrl','assetSha256','bootstrapUrl','bootstrapSha256')) { if (-not $workerRelease.$property) { throw 'The worker release manifest is incomplete.' } }
+  foreach ($property in @('assetSha256','bootstrapSha256')) { if ($workerRelease.$property -notmatch '^[a-f0-9]{64}$') { throw 'The worker release manifest digest is invalid.' } }
+  foreach ($property in @('assetUrl','bootstrapUrl')) { $assetUri = [Uri]$workerRelease.$property; if ($assetUri.Scheme -ne 'https' -or $assetUri.UserInfo -or $assetUri.Query -or $assetUri.Fragment) { throw 'Worker release assets must use immutable HTTPS addresses without credentials or query values.' } }
+  Get-ChildItem -LiteralPath $local -Recurse -Force | ForEach-Object { Protect-LocalPath $_.FullName }
   Run-Compose @('pull')
   Run-Compose @('up','-d','--wait','--wait-timeout','180')
   $url = "https://${fleetHost}:$port/api/health"
