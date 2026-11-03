@@ -8,6 +8,7 @@ import {
 import { readFile } from "node:fs/promises";
 import { registerFeatureRoutes } from "./features.js";
 import Fastify from "fastify";
+import { initializeImageProvenance } from "./image-provenance.js";
 import { isApiRequest } from "./request-routing.js";
 import cookie from "@fastify/cookie";
 import rateLimit from "@fastify/rate-limit";
@@ -71,6 +72,7 @@ export async function createService(o: ServiceOptions) {
     store = new Store(o.db);
   await migrate(o.db);
   await initializeOwnerIdentity(store);
+  await initializeImageProvenance(store);
   await app.register(cookie);
   await app.register(rateLimit, { max: 120, timeWindow: "1 minute" });
   let serial = Promise.resolve();
@@ -364,7 +366,11 @@ export async function createService(o: ServiceOptions) {
           action: "launch",
           specificationHash: hash(b.spec),
           state: "running",
-          targets: ids.map((id) => ({ id, state: "launching" })),
+          targets: ids.map((id) => ({
+            id,
+            state: "launching",
+            imageProvenance: null,
+          })),
           createdAt: time(),
         };
       await store.put("operations", op.id, op);
@@ -374,6 +380,7 @@ export async function createService(o: ServiceOptions) {
           name: `Worker ${id.slice(0, 8)}`,
           region: b.spec.region,
           state: "launching",
+          imageProvenance: null,
           transport: "unenrolled",
           createdAt: time(),
         });
@@ -385,10 +392,12 @@ export async function createService(o: ServiceOptions) {
             [ids[i]],
           );
           const w = await worker(ids[i]);
-          w.instanceId = instances[0];
+          w.instanceId = instances[0].instanceId;
+          w.imageProvenance = instances[0].imageProvenance;
           w.state = o.provisioner ? "bootstrapping" : "enrollment-required";
           await store.put("workers", w.id, w);
           op.targets[i].state = w.state;
+          op.targets[i].imageProvenance = w.imageProvenance;
           await store.put("operations", op.id, op);
         }
         op.state = "incomplete";
