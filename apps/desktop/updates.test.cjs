@@ -12,14 +12,14 @@ const base = releaseBase(tag);
 const releaseValue = { draft:false, prerelease:false, tag_name:tag, html_url:`https://github.com/Ding-Ding-Projects/slop-machine-fleet/releases/tag/${tag}`, target_commitish:sha, assets:[{name:'RELEASES',size:Buffer.byteLength(feed),browser_download_url:`${base}/RELEASES`},{name:'source-manifest.json',size:500,browser_download_url:`${base}/source-manifest.json`},{name:'SlopMachineFleet-0.1.1-full.nupkg',size:100,browser_download_url:`${base}/SlopMachineFleet-0.1.1-full.nupkg`}] };
 const manifest = { updateChannel:'stable',sourceBranch:'main',source:sha,version:'0.1.1',unsigned:true,files:[{name:'RELEASES',bytes:Buffer.byteLength(feed),sha256:createHash('sha256').update(feed).digest('hex')},{name:'SlopMachineFleet-0.1.1-full.nupkg',bytes:100,sha256:'c'.repeat(64)}] };
 const candidate = validateManifest(manifest, validateRelease(releaseValue), feed);
-const safe = { authenticated:true, reachable:true, activeTasks:false, pendingWrites:false, dirty:false };
+const safe = { authenticated:true, reachable:true, activeTasks:false, pendingWrites:false, dirty:false, verifiedAt:10000, sourceGeneration:0 };
 const flush = () => new Promise(resolve => setImmediate(resolve));
 function fixture(overrides={}) {
   const updater = new EventEmitter(); updater.checks=0;updater.quits=0;
   updater.setFeedURL=value=>{updater.feed=value.url;};updater.checkForUpdates=()=>{updater.checks++;updater.emit('checking-for-update');};updater.quitAndInstall=()=>{updater.quits++;};
   let time=10000; const timers=[];
   const controller=new DesktopUpdates({updater,currentVersion:'0.1.0',supported:true,discover:async()=>candidate,now:()=>time,confirm:async()=>true,schedule:(fn,ms)=>{const timer={fn,ms};timers.push(timer);return timer;},unschedule:()=>{},...overrides});
-  return {updater,controller,timers,advance:amount=>{time+=amount;}};
+  return {updater,controller,timers,advance:amount=>{time+=amount;},now:()=>time};
 }
 async function ready(f) { await f.controller.check();f.updater.emit('update-available');f.updater.emit('update-downloaded',{},'untrusted release body','0.1.1',new Date(),base);await flush();assert.equal(f.controller.snapshot().status,'ready'); }
 
@@ -92,4 +92,33 @@ test('only explicit native confirmation with fresh unchanged safety invokes appl
 });
 test('first-run delay and native timeout are bounded without launching overlapping downloads',async()=>{
   const f=fixture();f.controller.start(true);assert.equal(f.timers[0].ms,20000);await f.controller.check();const watchdog=f.timers.find(timer=>timer.ms===300000);watchdog.fn();assert.equal(f.controller.snapshot().code,'native-timeout');await f.controller.check();assert.equal(f.updater.checks,1);f.updater.emit('update-downloaded',{},'','0.1.1',new Date(),base);await flush();assert.equal(f.controller.snapshot().status,'ready');f.controller.dispose();
+});
+test('fresh IPC heartbeats cannot renew an old authoritative safe snapshot',async()=>{
+  const f=fixture();await ready(f);f.controller.reportSafety(safe);assert.equal(f.controller.snapshot().installBlocked,false);
+  f.advance(4001);f.controller.reportSafety(safe);assert.equal(f.controller.snapshot().installBlocked,true);
+  f.advance(2000);f.controller.reportSafety(safe);assert.equal(f.controller.snapshot().installBlocked,true);
+  assert.equal((await f.controller.requestRestart()).ok,false);assert.equal(f.updater.quits,0);
+});
+test('unknown, future, malformed and regressed source metadata revokes prior safety',()=>{
+  for(const patch of [{verifiedAt:undefined},{verifiedAt:0},{verifiedAt:-1},{verifiedAt:10001},{verifiedAt:10000.5},{verifiedAt:Infinity},{verifiedAt:NaN},{sourceGeneration:undefined},{sourceGeneration:-1},{sourceGeneration:0.5},{sourceGeneration:Number.MAX_SAFE_INTEGER+1}]){
+    const f=fixture();f.controller.reportSafety(safe);assert.throws(()=>f.controller.reportSafety({...safe,...patch}));assert.equal(f.controller.snapshot().installBlocked,true);
+  }
+  const f=fixture();f.controller.reportSafety({...safe,sourceGeneration:2});assert.throws(()=>f.controller.reportSafety({...safe,sourceGeneration:1}));assert.equal(f.controller.snapshot().installBlocked,true);
+  f.controller.invalidateSafety();f.controller.reportSafety(safe);assert.equal(f.controller.snapshot().installBlocked,false);
+});
+test('confirmation rejects expired source evidence or changed API write revision',async()=>{
+  for(const change of ['expired','write']){
+    let accept;const f=fixture({confirm:()=>new Promise(resolve=>{accept=resolve;})});await ready(f);f.controller.reportSafety(safe);
+    const pending=f.controller.requestRestart();
+    if(change==='expired'){f.advance(4001);f.controller.reportSafety(safe);}else f.controller.reportSafety({...safe,sourceGeneration:1});
+    accept(true);assert.equal((await pending).code,'workspace-changed');assert.equal(f.updater.quits,0);
+  }
+});
+test('a genuinely fresh idle snapshot at the same write revision preserves confirmation',async()=>{
+  let accept;const f=fixture({confirm:()=>new Promise(resolve=>{accept=resolve;})});await ready(f);f.controller.reportSafety(safe);
+  const generation=f.controller.safetyGeneration,pending=f.controller.requestRestart();
+  f.advance(3500);f.controller.reportSafety({...safe,verifiedAt:f.now()});
+  assert.equal(f.controller.safetyGeneration,generation);assert.equal(f.controller.snapshot().installBlocked,false);
+  f.advance(3000);f.controller.reportSafety({...safe,verifiedAt:f.now()});
+  assert.equal(f.controller.safetyGeneration,generation);accept(true);assert.equal((await pending).ok,true);assert.equal(f.updater.quits,1);
 });

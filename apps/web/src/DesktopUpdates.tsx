@@ -8,6 +8,8 @@ export type DesktopSafety = {
   activeTasks?: boolean;
   pendingWrites?: boolean;
   dirty?: boolean;
+  verifiedAt?: number;
+  sourceGeneration?: number;
 };
 type UpdateState = {
   revision:number;
@@ -67,21 +69,25 @@ export function DesktopUpdates(safety:DesktopSafety) {
   const [actionCode,setActionCode]=useState('');
   const [requesting,setRequesting]=useState(false);
   const accept=(next:UpdateState)=>setState(previous=>!previous||next.revision>=previous.revision?next:previous);
-  const {authenticated,reachable,activeTasks,pendingWrites,dirty}=safety;
+  const {authenticated,reachable,activeTasks,pendingWrites,dirty,verifiedAt,sourceGeneration}=safety;
   useEffect(()=>{
     if(!bridge)return;
     let live=true;
     const unsubscribe=bridge.subscribe(value=>{if(live)accept(value);});
     void bridge.read().then(reply=>{if(!live)return;if(reply.ok)accept(reply.value);else setActionCode(reply.code);}).catch(()=>{if(live)setActionCode('update-action-unavailable');});
-    return()=>{live=false;unsubscribe();};
+    return()=>{
+      live=false;unsubscribe();
+      // Invalid source metadata deliberately revokes trust on unmount. Never stamp freshness here.
+      void bridge.reportSafety({authenticated:false,reachable:false,activeTasks:true,pendingWrites:true,dirty:true,verifiedAt:0,sourceGeneration:-1,language:'en'}).catch(()=>{});
+    };
   },[bridge]);
   useEffect(()=>{
     if(!bridge)return;
     let live=true;
-    const report=()=>{void bridge.reportSafety({authenticated:authenticated===true,reachable:reachable===true,activeTasks:activeTasks!==false,pendingWrites:pendingWrites!==false,dirty:dirty!==false,language:prefs.language}).then(reply=>{if(live&&reply.ok)accept(reply.value);}).catch(()=>{});};
+    const report=()=>{void bridge.reportSafety({authenticated:authenticated===true,reachable:reachable===true,activeTasks:activeTasks!==false,pendingWrites:pendingWrites!==false,dirty:dirty!==false,verifiedAt:verifiedAt??0,sourceGeneration:sourceGeneration??-1,language:prefs.language}).then(reply=>{if(live&&reply.ok)accept(reply.value);}).catch(()=>{});};
     report();const timer=window.setInterval(report,2000);
-    return()=>{live=false;window.clearInterval(timer);void bridge.reportSafety({authenticated:false,reachable:false,activeTasks:true,pendingWrites:true,dirty:true,language:prefs.language}).catch(()=>{});};
-  },[bridge,authenticated,reachable,activeTasks,pendingWrites,dirty,prefs.language]);
+    return()=>{live=false;window.clearInterval(timer);};
+  },[bridge,authenticated,reachable,activeTasks,pendingWrites,dirty,verifiedAt,sourceGeneration,prefs.language]);
   if(!bridge)return null;
   const describe=(code:string)=>{const pair=messages[code]||messages['update-action-unavailable'];return t(pair[0],pair[1]);};
   const action=async(kind:'check'|'restart'|'later'|'notes')=>{

@@ -10,6 +10,7 @@ class DesktopUpdates extends EventEmitter {
     this.state = { status: supported ? 'idle' : 'unavailable', code: supported ? 'ready-to-check' : 'installed-only', currentVersion, availableVersion: null, notesUrl: null, unsigned: true, checkedAt: null, retryAvailable: supported };
     this.busy = false; this.candidate = null; this.safety = null; this.safetyGeneration = 0; this.confirming = false; this.disposed = false;
     this.revision = 0;
+    this.sourceGenerationFloor = null;
     this.handlers = {
       'checking-for-update': () => { if (this.busy && this.candidate) this.publish({ status: 'checking', code: 'native-check' }); },
       'update-available': () => { if (this.busy && this.candidate) this.publish({ status: 'downloading', code: 'downloading' }); },
@@ -21,15 +22,26 @@ class DesktopUpdates extends EventEmitter {
   }
   snapshot() { return { ...this.state, revision: this.revision, installBlocked: !this.safe(), operationInProgress: this.busy }; }
   publish(patch) { if (this.disposed) return; this.state = { ...this.state, ...patch }; this.revision++; this.emit('state', this.snapshot()); }
-  safe() { const age = this.safety ? this.now() - this.safety.at : -1; return !!this.safety && this.safety.authenticated && this.safety.reachable && !this.safety.activeTasks && !this.safety.pendingWrites && !this.safety.dirty && age >= 0 && age <= 6000; }
+  safe() {
+    if (!this.safety) return false;
+    const now = this.now(), receivedAge = now - this.safety.at, sourceAge = now - this.safety.verifiedAt;
+    return this.safety.authenticated && this.safety.reachable && !this.safety.activeTasks && !this.safety.pendingWrites && !this.safety.dirty && receivedAge >= 0 && receivedAge <= 6000 && sourceAge >= 0 && sourceAge <= 4000;
+  }
   reportSafety(value) {
     const keys = ['authenticated', 'reachable', 'activeTasks', 'pendingWrites', 'dirty'];
-    if (!value || keys.some(key => typeof value[key] !== 'boolean')) throw new Error('A complete workspace safety state is required.');
-    if (!this.safety || keys.some(key => this.safety[key] !== value[key])) this.safetyGeneration++;
-    this.safety = Object.fromEntries(keys.map(key => [key, value[key]])); this.safety.at = this.now();
+    const now = this.now();
+    if (!value || keys.some(key => typeof value[key] !== 'boolean') || !Number.isSafeInteger(value.verifiedAt) || value.verifiedAt <= 0 || value.verifiedAt > now || !Number.isSafeInteger(value.sourceGeneration) || value.sourceGeneration < 0 || (this.sourceGenerationFloor !== null && value.sourceGeneration < this.sourceGenerationFloor)) {
+      // Malformed or unknown evidence immediately revokes the prior safe snapshot.
+      this.safety = null; this.safetyGeneration++; this.publish({});
+      throw new Error('A complete authoritative workspace snapshot with valid verification time and write revision is required.');
+    }
+    if (!this.safety || keys.some(key => this.safety[key] !== value[key]) || this.safety.sourceGeneration !== value.sourceGeneration) this.safetyGeneration++;
+    this.sourceGenerationFloor = value.sourceGeneration;
+    this.safety = Object.fromEntries(keys.map(key => [key, value[key]]));
+    this.safety.at = now; this.safety.verifiedAt = value.verifiedAt; this.safety.sourceGeneration = value.sourceGeneration;
     this.publish({});
   }
-  invalidateSafety() { this.safety = null; this.safetyGeneration++; this.publish({}); }
+  invalidateSafety() { this.safety = null; this.sourceGenerationFloor = null; this.safetyGeneration++; this.publish({}); }
   start(firstRun = false) {
     if (!this.supported || this.disposed || this.automatic) return;
     const tick = () => { if (this.disposed) return; void this.check(); this.automatic = this.schedule(tick, 4 * 60 * 60 * 1000); this.automatic?.unref?.(); };
