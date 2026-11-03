@@ -33,6 +33,8 @@ export function deriveIdentity(run, context, policy, baseVersions) {
 }
 export function validateIdentity(identity, policy) {
   if(policy.schemaVersion!==1||policy.componentMaximum!==COMPONENT_MAXIMUM)throw Error('Release version policy is invalid.');
+  const fields=['schemaVersion','mode','source','version','epoch','runId','runNumber','runAttempt','workflowId','workflowPath','repository','sourceBranch','updateChannel','baseVersions'];
+  if(Object.keys(identity).some(key=>!fields.includes(key))||Object.keys(identity).length!==fields.length)throw Error('Public release identity contains unknown or incomplete fields.');
   if (identity.schemaVersion !== 1 || identity.mode !== 'provider-overlay' || identity.repository !== policy.repository || identity.workflowId !== policy.workflowId || identity.workflowPath !== policy.workflowPath || identity.epoch !== policy.epoch || !/^[a-f0-9]{40}$/.test(identity.source ?? '') || !/^[1-9][0-9]*$/.test(identity.runId ?? '') || identity.version !== deriveVersion(String(identity.epoch),identity.runNumber,identity.runAttempt) || typeof identity.sourceBranch !== 'string' || !identity.sourceBranch || identity.updateChannel !== (identity.sourceBranch === 'main' ? 'stable' : 'preservation') || !identity.baseVersions || !Object.keys(identity.baseVersions).length) throw Error('Release derivation receipt is invalid.');
   for (const value of Object.values(identity.baseVersions)) numericVersion(value);
   return identity;
@@ -44,6 +46,7 @@ export function localOverlay(source,version,baseVersions){
 }
 function validateBuildIdentity(identity,policy){
   if(identity.mode==='local-overlay'){
+    if(Object.keys(identity).some(key=>!['schemaVersion','mode','publishable','source','version','baseVersions'].includes(key)))throw Error('Local overlay contains an operational field that cannot enter a public receipt.');
     if(identity.publishable!==false||identity.schemaVersion!==1||!identity.baseVersions||!Object.keys(identity.baseVersions).length)throw Error('Local overlay identity is invalid.');
     localOverlay(identity.source,identity.version,identity.baseVersions);return identity;
   }

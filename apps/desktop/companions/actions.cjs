@@ -1,7 +1,24 @@
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
-const { randomUUID } = require('node:crypto');
+const { randomUUID, createHash } = require('node:crypto');
+
+function configurationHelperPath(directory = __dirname, resources = process.resourcesPath) {
+  if (path.basename(directory).toLowerCase() !== 'app.asar') return path.join(directory,'protect-config.ps1');
+  if (typeof resources !== 'string' || !path.isAbsolute(resources)) throw new Error('Packaged configuration helper resources are unavailable.');
+  return path.join(resources,'app.asar.unpacked','protect-config.ps1');
+}
+async function validatedConfigurationHelper(directory = __dirname, resources = process.resourcesPath) {
+  const file = configurationHelperPath(directory,resources);
+  const mode = JSON.parse(await fs.readFile(path.join(directory,'mode.json'),'utf8'));
+  const expected = mode.nativeHelper;
+  if (!expected || expected.name !== 'protect-config.ps1' || !Number.isSafeInteger(expected.bytes) || expected.bytes < 1 || expected.bytes > 65536 || !/^[a-f0-9]{64}$/.test(expected.sha256)) throw new Error('Configuration helper inventory is invalid. Existing configuration was retained.');
+  const info = await fs.lstat(file);
+  if (!info.isFile() || info.isSymbolicLink() || info.size !== expected.bytes) throw new Error('Configuration helper is not the inventoried native file. Existing configuration was retained.');
+  const bytes = await fs.readFile(file);
+  if (createHash('sha256').update(bytes).digest('hex') !== expected.sha256) throw new Error('Configuration helper hash verification failed. Existing configuration was retained.');
+  return file;
+}
 
 const fields = ['FLEET_HOST', 'FLEET_HTTPS_PORT', 'FLEET_IMAGE'];
 async function validateSource(root) {
@@ -45,6 +62,7 @@ async function saveConfig(root, input) {
   } catch (e) { if (e.code !== 'ENOENT') throw e; }
   const previous = body;
   if (body.length > 65536) throw new Error('Existing configuration is too large to update safely.');
+  const helper = existed && process.platform === 'win32' ? await validatedConfigurationHelper() : null;
   for (const [key, value] of Object.entries(config)) {
     const expression = new RegExp(`^${key}=.*$`, 'gm');
     if (expression.test(body)) body = body.replace(expression, `${key}=${value}`);
@@ -58,7 +76,7 @@ async function saveConfig(root, input) {
     handle = await fs.open(temporary, 'wx', 0o600);
     if (existed && process.platform === 'win32') {
       await new Promise((resolve, reject) => {
-        const child = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-File', path.join(__dirname, 'protect-config.ps1'), file, temporary], { windowsHide: true, shell: false, stdio: 'ignore' });
+        const child = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-File', helper, file, temporary], { windowsHide: true, shell: false, stdio: 'ignore' });
         child.once('error', () => reject(new Error('Could not preserve configuration permissions. Existing configuration was retained.')));
         child.once('close', code => code === 0 ? resolve() : reject(new Error('Configuration permission verification failed. Existing configuration was retained.')));
       });
@@ -144,4 +162,4 @@ class Actions {
     });
   }
 }
-module.exports = { validateSource, validateConfig, readConfig, saveConfig, redact, Actions };
+module.exports = { validateSource, validateConfig, readConfig, saveConfig, redact, Actions, configurationHelperPath, validatedConfigurationHelper };

@@ -73,7 +73,8 @@ try {
   . (Join-Path $PSScriptRoot 'dotnet.ps1')
   $workerProject = Join-Path $root 'worker/Fleet.Worker.csproj'
   if (-not (Test-Path $workerProject)) { throw 'The required worker/Fleet.Worker.csproj target is missing.' }
-  & dotnet build $workerProject --configuration Release
+  $workerPrivacyOptions = @('-p:DebugType=None','-p:DebugSymbols=false',"-p:PathMap=$($root.Replace('\','/'))/worker=/_/fleet-worker")
+  & dotnet build $workerProject --configuration Release @workerPrivacyOptions
   if ($LASTEXITCODE -ne 0) { throw "Worker build exited $LASTEXITCODE." }
   if (Test-Path package-lock.json) { & npm.cmd ci --no-audit --no-fund } else { & npm.cmd install --no-audit --no-fund }
   if ($LASTEXITCODE -ne 0) { throw "Dependency acquisition exited $LASTEXITCODE." }
@@ -81,7 +82,7 @@ try {
   & npm.cmd run build
   if ($LASTEXITCODE -ne 0) { throw "Build exited $LASTEXITCODE." }
   if ($Installer) {
-    & dotnet publish $workerProject --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true --output (Join-Path $root 'release/worker')
+    & dotnet publish $workerProject --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true @workerPrivacyOptions --output (Join-Path $root 'release/worker')
     if ($LASTEXITCODE -ne 0 -or -not (Test-Path (Join-Path $root 'release/worker/Fleet.Worker.exe'))) { throw 'The self-contained Windows worker publish is incomplete.' }
     & node (Join-Path $PSScriptRoot 'build-companions.mjs')
     if ($LASTEXITCODE -ne 0) { throw "Portable companion packaging exited $LASTEXITCODE." }
