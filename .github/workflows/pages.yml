@@ -13,13 +13,75 @@ concurrency:
   group: documentation-pages
   cancel-in-progress: false
 jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    outputs:
+      source: ${{ steps.source.outputs.sha }}
+    steps:
+      - name: Resolve immutable main-channel documentation source
+        id: source
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_REF: ${{ github.ref }}
+          EVENT_SHA: ${{ github.sha }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $repository = 'Ding-Ding-Projects/slop-machine-fleet'
+          function Read-Api([string]$Path) {
+            $value = gh api "repos/$repository/$Path"
+            if ($LASTEXITCODE) { throw 'Authenticated documentation source readback failed.' }
+            return ($value | ConvertFrom-Json)
+          }
+          if ($env:EVENT_NAME -eq 'push') {
+            if ($env:EVENT_REF -ne 'refs/heads/main' -or $env:EVENT_SHA -notmatch '^[a-f0-9]{40}$') { throw 'Only an immutable main push may deploy documentation.' }
+            $source = $env:EVENT_SHA
+          } else {
+            if ($env:EVENT_NAME -notin @('workflow_dispatch','release')) { throw 'Unsupported documentation deployment event.' }
+            $main = Read-Api 'git/ref/heads/main'
+            $source = $main.object.sha
+            if ($main.object.type -ne 'commit' -or $source -notmatch '^[a-f0-9]{40}$') { throw 'Main source identity is invalid.' }
+            if ($env:EVENT_NAME -eq 'release') {
+              $tag = $env:RELEASE_TAG
+              if ($tag -notmatch '^[A-Za-z0-9._-]{1,100}$') { throw 'Published release identity is invalid.' }
+              $release = Read-Api "releases/tags/$tag"
+              if ($release.draft -or $release.prerelease -or $release.tag_name -ne $tag) { throw 'Only a normal published release may deploy documentation.' }
+              $text = gh release download $tag --repo $repository --pattern source-manifest.json --output -
+              if ($LASTEXITCODE) { throw 'Published channel manifest readback failed.' }
+              $manifest = $text | ConvertFrom-Json
+              if ($manifest.updateChannel -ne 'stable' -or $manifest.sourceBranch -ne 'main' -or $manifest.source -notmatch '^[a-f0-9]{40}$') { throw 'The published release is outside the accepted stable main channel.' }
+              $reference = Read-Api "git/ref/tags/$tag"
+              $object = $reference.object
+              for ($depth = 0; $object.type -eq 'tag' -and $depth -lt 3; $depth++) {
+                if ($object.sha -notmatch '^[a-f0-9]{40}$') { throw 'Annotated release tag identity is invalid.' }
+                $object = (Read-Api "git/tags/$($object.sha)").object
+              }
+              if ($object.type -ne 'commit' -or $object.sha -ne $manifest.source) { throw 'Published release tag and source manifest differ.' }
+              $comparison = Read-Api "compare/$($manifest.source)...$source"
+              if ($comparison.status -notin @('ahead','identical') -or $comparison.merge_base_commit.sha -ne $manifest.source) { throw 'Published release source is not an ancestor of the resolved main source.' }
+            }
+          }
+          $commit = Read-Api "commits/$source"
+          if ($commit.sha -ne $source) { throw 'Immutable source readback differs from the selected commit.' }
+          "sha=$source" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          Write-Host "Resolved immutable documentation source: $source."
   build:
+    needs: resolve
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ needs.resolve.outputs.source }}
           fetch-depth: 0
+      - name: Verify immutable checkout
+        shell: pwsh
+        env:
+          RESOLVED_SOURCE: ${{ needs.resolve.outputs.source }}
+        run: |
+          $actual = git rev-parse HEAD
+          if ($LASTEXITCODE -or $actual -ne $env:RESOLVED_SOURCE) { throw 'Documentation checkout differs from its resolved immutable source.' }
       - uses: actions/setup-node@v4
         with:
           node-version: '22.16.0'
@@ -45,7 +107,7 @@ jobs:
             if ($LASTEXITCODE) { throw 'Published source manifest download failed.' }
             $manifest = $manifestText | ConvertFrom-Json
             if ($manifest.source -notmatch '^[a-f0-9]{40}$' -or -not $manifest.files -or $manifest.files.Count -gt 64) { continue }
-            if ($manifest.updateChannel -and ($manifest.updateChannel -ne 'stable' -or $manifest.sourceBranch -ne 'main')) { continue }
+            if ($manifest.updateChannel -ne 'stable' -or $manifest.sourceBranch -ne 'main') { continue }
             git fetch origin "refs/tags/${tag}:refs/tags/${tag}"
             if ($LASTEXITCODE) { throw 'Release tag readback failed.' }
             $tagSource = git rev-parse "${tag}^{commit}"
