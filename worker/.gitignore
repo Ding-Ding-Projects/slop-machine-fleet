@@ -1,0 +1,7 @@
+bin/
+obj/
+schema/
+worker.json
+*.pem
+*.pfx
+*.key

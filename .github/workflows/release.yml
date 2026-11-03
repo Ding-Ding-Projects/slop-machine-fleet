@@ -1,0 +1,129 @@
+name: Build and release
+on:
+  push:
+    branches: ['**']
+  workflow_dispatch:
+permissions:
+  actions: read
+  contents: write
+  packages: write
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and publish source-bound service image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/ding-ding-projects/slop-machine-fleet:sha-${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+      - name: Verify published immutable image reference
+        run: docker buildx imagetools inspect ghcr.io/ding-ding-projects/slop-machine-fleet:sha-${{ github.sha }}
+  desktop:
+    runs-on: windows-latest
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Build unsigned Squirrel installer through supported entrypoint
+        shell: cmd
+        run: build-installer.bat /s
+      - name: Create source and payload manifest
+        shell: pwsh
+        env:
+          SOURCE_REF: ${{ github.ref }}
+          SOURCE_BRANCH: ${{ github.ref_name }}
+        run: |
+          $receipt = Get-Content apps/desktop/release/squirrel-payload.json -Raw | ConvertFrom-Json
+          if ($receipt.source -ne '${{ github.sha }}' -or $receipt.sourceDirectory -ne 'apps/desktop/release/squirrel-windows') { throw 'Squirrel payload source receipt does not match this build.' }
+          $files = @($receipt.files | ForEach-Object {
+            if ($_.name -notmatch '^(Setup\.exe|RELEASES|[^/\\\s]+-(full|delta)\.nupkg)$') { throw 'Unexpected Squirrel distribution entry.' }
+            $file = Get-Item -LiteralPath (Join-Path apps/desktop/release $_.name)
+            if ($file.Length -ne $_.bytes -or (Get-FileHash $file.FullName -Algorithm SHA256).Hash -ne $_.sha256) { throw 'Squirrel distribution payload verification failed.' }
+            $file
+          })
+          if (-not ($files | Where-Object Name -eq 'Setup.exe') -or -not ($files | Where-Object Name -eq 'RELEASES') -or -not ($files | Where-Object Name -like '*-full.nupkg')) { throw 'Required Squirrel distribution payload is incomplete.' }
+          Copy-Item release/worker/Fleet.Worker.exe apps/desktop/release/Fleet.Worker.exe
+          Copy-Item worker/scripts/Bootstrap-Worker.ps1 apps/desktop/release/Bootstrap-Worker.ps1
+          foreach ($mode in @('build','host','docs')) {
+            $portable = @(Get-ChildItem "apps/desktop/release/companions/$mode" -File -Filter "Fleet-$mode-*.exe")
+            if ($portable.Count -ne 1) { throw "Expected exactly one $mode portable companion." }
+            Copy-Item $portable[0].FullName apps/desktop/release/
+            $files += Get-Item (Join-Path apps/desktop/release $portable[0].Name)
+          }
+          $files += Get-Item apps/desktop/release/Fleet.Worker.exe,apps/desktop/release/Bootstrap-Worker.ps1
+          if (-not $files) { throw 'Missing desktop release payload.' }
+          $tag = 'build-${{ github.run_id }}-${{ github.run_attempt }}'
+          $version = (Get-Content apps/desktop/package.json -Raw | ConvertFrom-Json).version
+          $workerVersion = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $base = "https://github.com/${{ github.repository }}/releases/download/$tag"
+          $worker = @{ version=$workerVersion; assetUrl="$base/Fleet.Worker.exe"; assetSha256=(Get-FileHash apps/desktop/release/Fleet.Worker.exe -Algorithm SHA256).Hash.ToLowerInvariant(); bootstrapUrl="$base/Bootstrap-Worker.ps1"; bootstrapSha256=(Get-FileHash apps/desktop/release/Bootstrap-Worker.ps1 -Algorithm SHA256).Hash.ToLowerInvariant() }
+          $worker | ConvertTo-Json | Set-Content apps/desktop/release/worker-release.json
+          $updateChannel = if ($env:SOURCE_REF -eq 'refs/heads/main') { 'stable' } else { 'preservation' }
+          $manifest = @{ version=$version; updateChannel=$updateChannel; sourceBranch=$env:SOURCE_BRANCH; source = '${{ github.sha }}'; intendedImageReference = 'ghcr.io/ding-ding-projects/slop-machine-fleet:sha-${{ github.sha }}'; imagePublicationEvidence = 'See workflow-evidence.json. Desktop packaging is independent of image publication.'; unsigned = $true; files = @($files | ForEach-Object { @{ name=$_.Name; bytes=$_.Length; sha256=(Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant() } }) }
+          $manifest | ConvertTo-Json -Depth 5 | Set-Content apps/desktop/release/source-manifest.json
+      - name: Publish unique normal release and verify stored state
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.ORG_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = 'build-${{ github.run_id }}-${{ github.run_attempt }}'
+          $observedAt = [DateTimeOffset]::UtcNow
+          $run = gh api 'repos/${{ github.repository }}/actions/runs/${{ github.run_id }}' | ConvertFrom-Json
+          if ($LASTEXITCODE) { throw 'Workflow timing readback failed.' }
+          $pages = gh api --paginate --slurp 'repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs?per_page=100' | ConvertFrom-Json
+          if ($LASTEXITCODE) { throw 'Job timing readback failed.' }
+          $jobs = @($pages | ForEach-Object { $_.jobs })
+          $jobEvidence = @($jobs | ForEach-Object {
+            $duration = if ($_.started_at) { $end = if ($_.completed_at) { [DateTimeOffset]$_.completed_at } else { $observedAt }; [Math]::Round(($end - [DateTimeOffset]$_.started_at).TotalSeconds, 3) } else { $null }
+            @{ name=$_.name; status=$_.status; conclusion=$_.conclusion; startedAtUtc=$_.started_at; completedAtUtc=$_.completed_at; durationSeconds=$duration; durationFinal=($_.status -eq 'completed'); url=$_.html_url }
+          })
+          $image = @($jobs | Where-Object name -eq 'image' | Select-Object -First 1)
+          $imageState = if ($image.Count -eq 0) { 'unavailable' } elseif ($image[0].status -ne 'completed') { "pending ($($image[0].status))" } elseif ($image[0].conclusion -eq 'success') { 'verified: immutable reference published and inspected by the image job' } else { "incomplete ($($image[0].conclusion)); image availability is not claimed" }
+          $workflowElapsed = if ($run.run_started_at) { [Math]::Round(($observedAt - [DateTimeOffset]$run.run_started_at).TotalSeconds, 3) } else { $null }
+          $evidence = @{ source='${{ github.sha }}'; observedAtUtc=$observedAt.ToString('o'); workflow=@{ id=$run.id; attempt=$run.run_attempt; status=$run.status; conclusion=$run.conclusion; createdAtUtc=$run.created_at; startedAtUtc=$run.run_started_at; updatedAtUtc=$run.updated_at; completedAtUtc=$null; durationSeconds=$workflowElapsed; timingFinal=$false; url=$run.html_url }; jobs=$jobEvidence; imagePublication=$imageState; note='Running workflow/job durations are observed elapsed time, not final timing. This desktop job is still running while its release is published.' }
+          $evidence | ConvertTo-Json -Depth 8 | Set-Content apps/desktop/release/workflow-evidence.json
+          $notes = @(
+            'Source-bound unsigned Windows desktop client, worker bootstrap and portable companions.',
+            '',
+            "Image publication: $imageState.",
+            'The image uses the immutable source-SHA reference recorded in source-manifest.json. Desktop release publication does not imply image availability.',
+            '',
+            "Workflow: $($run.html_url)",
+            "Timing observed (UTC): $($observedAt.ToString('o')). See workflow-evidence.json for exact run/job timestamps and durations. Running durations remain provisional.",
+            'Runtime, installation and LAN acceptance remain separate verification duties.'
+          ) -join "`n"
+          $notes | Set-Content release-notes.txt
+          $manifest = Get-Content apps/desktop/release/source-manifest.json -Raw | ConvertFrom-Json
+          $assets = @($manifest.files | ForEach-Object {
+            if ($_.name -notmatch '^(Setup\.exe|RELEASES|[^/\\\s]+-(full|delta)\.nupkg|Fleet-(build|host|docs)-[0-9][^/\\\s]*\.exe|Fleet\.Worker\.exe|Bootstrap-Worker\.ps1)$') { throw 'Unexpected release payload entry.' }
+            $file = Get-Item -LiteralPath (Join-Path apps/desktop/release $_.name)
+            if ($file.Length -ne $_.bytes -or (Get-FileHash $file.FullName -Algorithm SHA256).Hash -ne $_.sha256) { throw 'Source-bound release payload verification failed.' }
+            $file.FullName
+          })
+          $assets += @('source-manifest.json','worker-release.json','workflow-evidence.json','squirrel-payload.json') | ForEach-Object { (Get-Item -LiteralPath (Join-Path apps/desktop/release $_)).FullName }
+          gh release create $tag @assets --target '${{ github.sha }}' --title "Slop Machine Fleet $tag" --notes-file release-notes.txt --repo '${{ github.repository }}'
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          $release = gh release view $tag --repo '${{ github.repository }}' --json isDraft,isPrerelease,assets,tagName | ConvertFrom-Json
+          if ($LASTEXITCODE -or $release.isDraft -or $release.isPrerelease -or $release.tagName -ne $tag) { throw 'Stored release verification failed.' }
+          foreach ($asset in $assets) { if (-not ($release.assets | Where-Object name -eq ([IO.Path]::GetFileName($asset)))) { throw 'A published release asset is missing.' } }

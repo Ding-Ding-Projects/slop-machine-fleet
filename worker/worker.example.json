@@ -1,0 +1,11 @@
+{
+  "workerId": "00000000-0000-0000-0000-000000000001",
+  "serverCertificate": "C:\\ProgramData\\SlopMachineFleet\\enrollment\\server.pem",
+  "serverKey": "C:\\ProgramData\\SlopMachineFleet\\enrollment\\server.key",
+  "controllerCa": "C:\\ProgramData\\SlopMachineFleet\\enrollment\\controller-ca.pem",
+  "controllerThumbprint": "REPLACE_WITH_ENROLLED_CONTROLLER_LEAF_THUMBPRINT",
+  "dataRoot": "C:\\ProgramData\\SlopMachineFleet\\data",
+  "codexPath": "C:\\Program Files\\SlopMachineFleet\\tools\\codex.exe",
+  "gitPath": "C:\\Program Files\\Git\\cmd\\git.exe",
+  "ghPath": "C:\\Program Files\\GitHub CLI\\gh.exe"
+}

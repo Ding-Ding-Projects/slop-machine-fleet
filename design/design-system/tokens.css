@@ -1,0 +1,171 @@
+/* Slop Machine Fleet — generated from tokens.json */
+@font-face { font-family: "Geist"; src: url("fonts/Geist-Variable.woff2") format("woff2"); font-weight: 100 900; font-style: normal; font-display: block; }
+@font-face { font-family: "Geist Mono"; src: url("fonts/GeistMono-Variable.woff2") format("woff2"); font-weight: 100 900; font-style: normal; font-display: block; }
+@font-face { font-family: "Material Symbols Rounded"; src: url("fonts/MaterialSymbolsRounded.woff2") format("woff2"); font-weight: 100 700; font-style: normal; font-display: block; }
+:root, [data-theme="dark"] {
+  --primary: #aed500;
+  --on-primary: #293500;
+  --primary-container: #3d4d00;
+  --on-primary-container: #c7f30d;
+  --secondary: #c5c9ad;
+  --on-secondary: #2e321e;
+  --secondary-container: #444933;
+  --on-secondary-container: #e1e5c8;
+  --tertiary: #64d9cf;
+  --on-tertiary: #003734;
+  --tertiary-container: #00504b;
+  --on-tertiary-container: #82f5eb;
+  --error: #ffb4ab;
+  --on-error: #690005;
+  --error-container: #93000a;
+  --on-error-container: #ffdad6;
+  --surface: #131311;
+  --surface-dim: #131311;
+  --surface-bright: #3a3936;
+  --surface-container-lowest: #0e0e0c;
+  --surface-container-low: #1c1c19;
+  --surface-container: #20201d;
+  --surface-container-high: #2a2a28;
+  --surface-container-highest: #353532;
+  --on-surface: #e5e2de;
+  --on-surface-variant: #c8c7bf;
+  --outline: #92918a;
+  --outline-variant: #474741;
+  --inverse-surface: #e5e2de;
+  --inverse-on-surface: #31302e;
+  --inverse-primary: #526600;
+  --scrim: #000000;
+  --shadow: #000000;
+  --primary-fixed: #c7f30d;
+  --primary-fixed-dim: #aed500;
+  --on-primary-fixed: #171e00;
+  --on-primary-fixed-variant: #3d4d00;
+  --tertiary-fixed: #82f5eb;
+  --on-tertiary-fixed: #00201e;
+  --status-running: #3ee6b5;
+  --status-running-soft: #0d2a22;
+  --status-provisioning: #7ab3ff;
+  --status-provisioning-soft: #0f1d33;
+  --status-draining: #ffb547;
+  --status-draining-soft: #2e210b;
+  --status-failed: #ff6b7f;
+  --status-failed-soft: #331118;
+  --status-idle: #b4b3ab;
+  --status-idle-soft: #24241f;
+  --elevation-0: none;
+  --elevation-1: 0 1px 2px rgba(0,0,0,0.3), 0 1px 3px 1px rgba(0,0,0,0.15);
+  --elevation-2: 0 1px 2px rgba(0,0,0,0.3), 0 2px 6px 2px rgba(0,0,0,0.15);
+  --elevation-3: 0 4px 8px 3px rgba(0,0,0,0.15), 0 1px 3px rgba(0,0,0,0.3);
+  --elevation-4: 0 6px 10px 4px rgba(0,0,0,0.15), 0 2px 3px rgba(0,0,0,0.3);
+  --elevation-5: 0 8px 12px 6px rgba(0,0,0,0.15), 0 4px 4px rgba(0,0,0,0.3);
+}
+[data-theme="light"] {
+  --primary: #526600;
+  --on-primary: #ffffff;
+  --primary-container: #c7f30d;
+  --on-primary-container: #3d4d00;
+  --secondary: #5c6149;
+  --on-secondary: #ffffff;
+  --secondary-container: #e1e5c8;
+  --on-secondary-container: #444933;
+  --tertiary: #006a64;
+  --on-tertiary: #ffffff;
+  --tertiary-container: #82f5eb;
+  --on-tertiary-container: #00504b;
+  --error: #ba1a1a;
+  --on-error: #ffffff;
+  --error-container: #ffdad6;
+  --on-error-container: #93000a;
+  --surface: #fcf9f5;
+  --surface-dim: #dcdad5;
+  --surface-bright: #fcf9f5;
+  --surface-container-lowest: #ffffff;
+  --surface-container-low: #f6f3ef;
+  --surface-container: #f0ede9;
+  --surface-container-high: #ebe8e4;
+  --surface-container-highest: #e5e2de;
+  --on-surface: #1c1c19;
+  --on-surface-variant: #474741;
+  --outline: #787771;
+  --outline-variant: #c8c7bf;
+  --inverse-surface: #31302e;
+  --inverse-on-surface: #f3f0ec;
+  --inverse-primary: #aed500;
+  --scrim: #000000;
+  --shadow: #000000;
+  --primary-fixed: #c7f30d;
+  --primary-fixed-dim: #aed500;
+  --on-primary-fixed: #171e00;
+  --on-primary-fixed-variant: #3d4d00;
+  --tertiary-fixed: #82f5eb;
+  --on-tertiary-fixed: #00201e;
+  --status-running: #00704f;
+  --status-running-soft: #dcf5ec;
+  --status-provisioning: #1d5bd0;
+  --status-provisioning-soft: #e1ebfc;
+  --status-draining: #8f5200;
+  --status-draining-soft: #fbecd3;
+  --status-failed: #bb2238;
+  --status-failed-soft: #fbe2e5;
+  --status-idle: #5d5c56;
+  --status-idle-soft: #ebe8e4;
+  --elevation-0: none;
+  --elevation-1: 0 1px 2px rgba(0,0,0,0.3), 0 1px 3px 1px rgba(0,0,0,0.15);
+  --elevation-2: 0 1px 2px rgba(0,0,0,0.3), 0 2px 6px 2px rgba(0,0,0,0.15);
+  --elevation-3: 0 4px 8px 3px rgba(0,0,0,0.15), 0 1px 3px rgba(0,0,0,0.3);
+  --elevation-4: 0 6px 10px 4px rgba(0,0,0,0.15), 0 2px 3px rgba(0,0,0,0.3);
+  --elevation-5: 0 8px 12px 6px rgba(0,0,0,0.15), 0 4px 4px rgba(0,0,0,0.3);
+}
+:root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --corner-none: 0px;
+  --corner-extra-small: 4px;
+  --corner-small: 8px;
+  --corner-medium: 12px;
+  --corner-large: 16px;
+  --corner-large-increased: 20px;
+  --corner-extra-large: 28px;
+  --corner-extra-large-increased: 32px;
+  --corner-full: 9999px;
+  --state-hover: 0.08;
+  --state-focus: 0.10;
+  --state-pressed: 0.10;
+  --state-dragged: 0.16;
+  --state-disabled-content: 0.38;
+  --state-disabled-container: 0.12;
+  --target-min: 44px;
+  --control-height: 40px;
+  --control-height-large: 56px;
+  --titlebar-height: 40px;
+  --tab-height: 40px;
+  --rail-width: 88px;
+  --font-brand: "Geist", "Noto Sans HK", "Microsoft JhengHei UI", system-ui, sans-serif;
+  --font-plain: "Geist", "Noto Sans HK", "Microsoft JhengHei UI", system-ui, sans-serif;
+  --font-mono: "Geist Mono", "Cascadia Mono", Consolas, monospace;
+  --font-icon: "Material Symbols Rounded";
+}
+.display-large { font-family: var(--font-brand); font-size: 57px; line-height: 64px; font-weight: 500; letter-spacing: -0.025em; }
+.display-medium { font-family: var(--font-brand); font-size: 45px; line-height: 52px; font-weight: 500; letter-spacing: -0.02em; }
+.display-small { font-family: var(--font-brand); font-size: 36px; line-height: 44px; font-weight: 500; letter-spacing: -0.015em; }
+.headline-large { font-family: var(--font-brand); font-size: 32px; line-height: 40px; font-weight: 500; letter-spacing: -0.01em; }
+.headline-medium { font-family: var(--font-brand); font-size: 28px; line-height: 36px; font-weight: 500; }
+.headline-small { font-family: var(--font-brand); font-size: 24px; line-height: 32px; font-weight: 500; }
+.title-large { font-family: var(--font-plain); font-size: 22px; line-height: 28px; font-weight: 500; }
+.title-medium { font-family: var(--font-plain); font-size: 16px; line-height: 24px; font-weight: 600; letter-spacing: 0.01em; }
+.title-small { font-family: var(--font-plain); font-size: 14px; line-height: 20px; font-weight: 600; letter-spacing: 0.01em; }
+.body-large { font-family: var(--font-plain); font-size: 16px; line-height: 24px; font-weight: 400; }
+.body-medium { font-family: var(--font-plain); font-size: 14px; line-height: 20px; font-weight: 400; }
+.body-small { font-family: var(--font-plain); font-size: 12px; line-height: 16px; font-weight: 400; }
+.label-large { font-family: var(--font-plain); font-size: 14px; line-height: 20px; font-weight: 500; letter-spacing: 0.01em; }
+.label-medium { font-family: var(--font-plain); font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: 0.03em; }
+.label-small { font-family: var(--font-plain); font-size: 11px; line-height: 16px; font-weight: 500; letter-spacing: 0.04em; }
+.code { font-family: var(--font-mono); font-size: 13px; line-height: 20px; font-weight: 400; }
+.numeric { font-family: var(--font-mono); font-size: 14px; line-height: 20px; font-weight: 500; }
+.otp { font-family: var(--font-mono); font-size: 32px; line-height: 40px; font-weight: 500; letter-spacing: 0.12em; }
