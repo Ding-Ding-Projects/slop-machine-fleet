@@ -1,5 +1,17 @@
 # Fleet continuation
 
+## Preservation boundary: deployment and reset are incomplete
+
+The combined signup/hosting source was pushed and read back at181106eaf9098bb55ac9736bcc50fbc3e5540cb5. Its exact root build passed. Integrated checks passed39 service cases (one optional PostgreSQL suite skipped),10 account cases and nine hosting scripts. The dedicated real-PostgreSQL run separately passed seven checks with no skip. Reviewed service, account UI and hosting production files remain byte-identical to their accepted lane sources.
+
+The live controller was last read back as0.24.1/source4ae49affbdec60359babd4bbd02311321493916f. It remains unclaimed and still uses the earlier setup flow. The new username/password build has NOT been applied to that deployment, and the authorized application-data reset has NOT occurred. Current-user certificate trust was explicitly approved and verified; the working HTTPS endpoint remains available.
+
+Provider run41684336961 was still running at the last readback: identity and image succeeded, desktop packaging remained in progress. Do not infer final release or installed/runtime proof. All source branches are preserved; the earlier inactive worker-authentication/Base64 work remains retained separately rather than activated without its outstanding acceptance.
+
+After execution allowance is available, verify the exact accepted combined release and image, recheck the existing deployment and any new real worker/task data, then perform the already-authorized one-off replacement/reset. Preserve HTTPS identity, hosting credentials and unrelated deployments; leave the new owner unclaimed. Verify the exact host.bat, fresh database/controller state, trusted health, source/version and signup availability. No paid cloud launch is authorized without the exact account/region/resource/cost review.
+
+An optional evidence-gallery publication is contained after nonpublic prose was found in its history. Its repository is private, hosting is unavailable and automatic deployment is disabled. Corrected current files pass the complete scan; historical remediation remains unresolved. No source backlink was added. This does not affect the controller or the repaired primary documentation site.
+
 ## Objective and latest requested behavior
 
 Deliver the shared desktop/container controller and isolated Windows Server 2025 coding workers, including guided Slop Machine authentication, interactive GitHub CLI authentication, pairing, task dispatch and bulk lifecycle management. The broader required-feature inventory remains incomplete.
