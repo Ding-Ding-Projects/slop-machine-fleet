@@ -5,10 +5,13 @@ on:
   release:
     types: [published]
   workflow_dispatch:
+    inputs:
+      reviewed_source:
+        description: Optional previously reviewed immutable main-source commit
+        required: false
+        type: string
 permissions:
   contents: read
-  pages: write
-  id-token: write
 concurrency:
   group: documentation-pages
   cancel-in-progress: false
@@ -27,6 +30,7 @@ jobs:
           EVENT_REF: ${{ github.ref }}
           EVENT_SHA: ${{ github.sha }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
+          REVIEWED_SOURCE: ${{ inputs.reviewed_source }}
         run: |
           $ErrorActionPreference = 'Stop'
           $repository = 'Ding-Ding-Projects/slop-machine-fleet'
@@ -43,6 +47,13 @@ jobs:
             $main = Read-Api 'git/ref/heads/main'
             $source = $main.object.sha
             if ($main.object.type -ne 'commit' -or $source -notmatch '^[a-f0-9]{40}$') { throw 'Main source identity is invalid.' }
+            if ($env:EVENT_NAME -eq 'workflow_dispatch' -and $env:REVIEWED_SOURCE) {
+              $reviewed = $env:REVIEWED_SOURCE
+              if ($reviewed -notmatch '^[a-f0-9]{40}$') { throw 'Reviewed documentation source must be a full immutable commit SHA.' }
+              $comparison = Read-Api "compare/${reviewed}...$source"
+              if ($comparison.status -notin @('ahead','identical') -or $comparison.merge_base_commit.sha -ne $reviewed) { throw 'Reviewed documentation source is not an ancestor of authenticated main.' }
+              $source = $reviewed
+            }
             if ($env:EVENT_NAME -eq 'release') {
               $tag = $env:RELEASE_TAG
               if ($tag -notmatch '^[A-Za-z0-9._-]{1,100}$') { throw 'Published release identity is invalid.' }
@@ -67,9 +78,31 @@ jobs:
           if ($commit.sha -ne $source) { throw 'Immutable source readback differs from the selected commit.' }
           "sha=$source" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
           Write-Host "Resolved immutable documentation source: $source."
+  refresh-main:
+    needs: resolve
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - name: Request a main-ref deployment with the reviewed immutable source
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REVIEWED_SOURCE: ${{ needs.resolve.outputs.source }}
+        run: |
+          if ($env:REVIEWED_SOURCE -notmatch '^[a-f0-9]{40}$') { throw 'Release refresh source is invalid.' }
+          gh workflow run pages.yml --repo Ding-Ding-Projects/slop-machine-fleet --ref main --field "reviewed_source=$env:REVIEWED_SOURCE"
+          if ($LASTEXITCODE) { throw 'Main-ref documentation refresh dispatch failed.' }
+          Write-Host "Requested main-ref refresh for reviewed source $env:REVIEWED_SOURCE. Deployment remains unverified."
   build:
     needs: resolve
+    if: github.event_name != 'release'
     runs-on: windows-latest
+    permissions:
+      contents: read
+      pages: read
     steps:
       - uses: actions/checkout@v4
         with:
@@ -179,6 +212,10 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
