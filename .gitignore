@@ -1,0 +1,12 @@
+node_modules/
+dist/
+release/
+.env
+.env.*
+!.env.example
+data/
+*.log
+bin/
+obj/
+.agent/
+_site/

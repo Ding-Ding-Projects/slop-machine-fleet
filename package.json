@@ -1,0 +1,14 @@
+{
+  "name": "slop-machine-fleet",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": ["apps/service", "apps/web", "apps/desktop", "packages/shared"],
+  "scripts": {
+    "build": "npm run build --workspace packages/shared && npm run build --workspace apps/service && npm run build --workspace apps/web && npm run build --workspace apps/desktop",
+    "test": "npm run test --workspaces --if-present",
+    "dev": "npm run dev --workspace apps/service",
+    "start": "npm run start --workspace apps/service"
+  },
+  "engines": { "node": ">=22.16.0" }
+}
