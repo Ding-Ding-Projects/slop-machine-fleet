@@ -28,3 +28,9 @@ The downloaded0.1.2 release passed all eight payload size/SHA256 checks, RELEASE
 Base64 streaming source is preserved on its owned branch at3d3eaed79b44022bb6b2e635b4a89596be42327a with all four findings independently repaired. Root workspace/dependency build integration is continuing in that isolated branch. It has not been activated on main. Actual browser OPFS, IndexedDB, clipboard/media/sound and lifecycle acceptance remains pending.
 
 Browser controls are unavailable in this verification environment. Continue authorized source, build, package and HTTP work; do not relay rejected browser actions through alternate tooling. Native HTTPS trust also awaits the explicit user choice. All remaining required-feature, cloud-account, live worker authentication/pairing/task and full layout duties remain incomplete.
+
+## Preserved Base64 branch and stopped staging
+
+The reviewed Base64 workspace is now preserved on ai/feature/20261103-local-tools at8fd472a947f5021ad23a66e1adcc7155f2a118a7, with exact remote-ref readback. Its complete17-revision outgoing history passed the trusted publication scan after one narrowly reviewed historical test-data allowance. The exact build entrypoint passed and41 tools tests passed. GUI acceptance remains pending; this branch is not activated on main.
+
+The assigned non-GUI updater download was rejected by automatic approval review before process creation, with reason blocked by policy. No updater ran and no package was staged through that route. Installed0.1.1 remains preserved; baseline RELEASES and package bytes were copied and verified before the rejected launch. Do not retry that operation through another route. Continue independent source and delivery work while the required interactive environment and certificate choice remain pending.
