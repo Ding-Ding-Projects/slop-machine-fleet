@@ -15,6 +15,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
@@ -34,8 +36,12 @@ jobs:
         run: docker buildx imagetools inspect ghcr.io/ding-ding-projects/slop-machine-fleet:sha-${{ github.sha }}
   desktop:
     runs-on: windows-latest
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22.16.0'
@@ -44,6 +50,9 @@ jobs:
         run: build-installer.bat /s
       - name: Create source and payload manifest
         shell: pwsh
+        env:
+          SOURCE_REF: ${{ github.ref }}
+          SOURCE_BRANCH: ${{ github.ref_name }}
         run: |
           $receipt = Get-Content apps/desktop/release/squirrel-payload.json -Raw | ConvertFrom-Json
           if ($receipt.source -ne '${{ github.sha }}' -or $receipt.sourceDirectory -ne 'apps/desktop/release/squirrel-windows') { throw 'Squirrel payload source receipt does not match this build.' }
@@ -65,11 +74,13 @@ jobs:
           $files += Get-Item apps/desktop/release/Fleet.Worker.exe,apps/desktop/release/Bootstrap-Worker.ps1
           if (-not $files) { throw 'Missing desktop release payload.' }
           $tag = 'build-${{ github.run_id }}-${{ github.run_attempt }}'
-          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $version = (Get-Content apps/desktop/package.json -Raw | ConvertFrom-Json).version
+          $workerVersion = (Get-Content package.json -Raw | ConvertFrom-Json).version
           $base = "https://github.com/${{ github.repository }}/releases/download/$tag"
-          $worker = @{ version=$version; assetUrl="$base/Fleet.Worker.exe"; assetSha256=(Get-FileHash apps/desktop/release/Fleet.Worker.exe -Algorithm SHA256).Hash.ToLowerInvariant(); bootstrapUrl="$base/Bootstrap-Worker.ps1"; bootstrapSha256=(Get-FileHash apps/desktop/release/Bootstrap-Worker.ps1 -Algorithm SHA256).Hash.ToLowerInvariant() }
+          $worker = @{ version=$workerVersion; assetUrl="$base/Fleet.Worker.exe"; assetSha256=(Get-FileHash apps/desktop/release/Fleet.Worker.exe -Algorithm SHA256).Hash.ToLowerInvariant(); bootstrapUrl="$base/Bootstrap-Worker.ps1"; bootstrapSha256=(Get-FileHash apps/desktop/release/Bootstrap-Worker.ps1 -Algorithm SHA256).Hash.ToLowerInvariant() }
           $worker | ConvertTo-Json | Set-Content apps/desktop/release/worker-release.json
-          $manifest = @{ source = '${{ github.sha }}'; intendedImageReference = 'ghcr.io/ding-ding-projects/slop-machine-fleet:sha-${{ github.sha }}'; imagePublicationEvidence = 'See workflow-evidence.json. Desktop packaging is independent of image publication.'; unsigned = $true; files = @($files | ForEach-Object { @{ name=$_.Name; bytes=$_.Length; sha256=(Get-FileHash $_.FullName -Algorithm SHA256).Hash } }) }
+          $updateChannel = if ($env:SOURCE_REF -eq 'refs/heads/main') { 'stable' } else { 'preservation' }
+          $manifest = @{ version=$version; updateChannel=$updateChannel; sourceBranch=$env:SOURCE_BRANCH; source = '${{ github.sha }}'; intendedImageReference = 'ghcr.io/ding-ding-projects/slop-machine-fleet:sha-${{ github.sha }}'; imagePublicationEvidence = 'See workflow-evidence.json. Desktop packaging is independent of image publication.'; unsigned = $true; files = @($files | ForEach-Object { @{ name=$_.Name; bytes=$_.Length; sha256=(Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant() } }) }
           $manifest | ConvertTo-Json -Depth 5 | Set-Content apps/desktop/release/source-manifest.json
       - name: Publish unique normal release and verify stored state
         shell: pwsh
