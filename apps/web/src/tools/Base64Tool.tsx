@@ -9,6 +9,7 @@ import { StreamingBase64 } from "./StreamingBase64";
 import { ToolSafety } from "./ToolSafetyContext";
 import { Base64History, HistoryWriter } from "./Base64History";
 import { useToolCue } from "./useToolCue";
+import { Base64Notices } from "./Base64Notices";
 const encodings = ["utf-8", "utf-16le", "utf-16be", "latin1"];
 export function Base64Tool() {
   const cue = useToolCue();
@@ -347,6 +348,7 @@ export function Base64Tool() {
         }}
         onBusy={setHistoryBusy}
       />
+      <Base64Notices />
     </section>
   );
 }
