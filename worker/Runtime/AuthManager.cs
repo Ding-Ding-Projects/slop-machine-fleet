@@ -34,9 +34,9 @@ public sealed class AuthManager(WorkerSettings settings) : IDisposable {
                 using var document=JsonDocument.Parse(pair.Output);
                 var root=document.RootElement;
                 // An issued code does not prove a remote connection.
-                DateTimeOffset? expires=DateTimeOffset.TryParse(Read(root,"expires_at"),out var parsed)?parsed:null;
-                Set(session,new("code-issued", Read(root,"verification_url")??Read(root,"url"),Read(root,"user_code")??Read(root,"code"),expires));
-                await Task.Delay(TimeSpan.FromMinutes(10),session.Stop.Token);
+                var paired=ParsePairing(root); Set(session,paired);
+                var duration=paired.ExpiresAt!.Value-DateTimeOffset.UtcNow;
+                if(duration>TimeSpan.Zero) await Task.Delay(duration>TimeSpan.FromMinutes(15)?TimeSpan.FromMinutes(15):duration,session.Stop.Token);
                 Set(session,new("expired")); return;
             }
             var executable=provider=="github"?settings.GhPath:settings.CodexPath;
@@ -56,6 +56,12 @@ public sealed class AuthManager(WorkerSettings settings) : IDisposable {
         finally { session.Terminal=null; }
     }
     static string? Read(JsonElement value,string key)=>value.TryGetProperty(key,out var property)&&property.ValueKind==JsonValueKind.String?property.GetString():null;
+    public static AuthState ParsePairing(JsonElement root) {
+        var code=Read(root,"manualPairingCode");
+        if(string.IsNullOrWhiteSpace(code)||code.Length>128||!root.TryGetProperty("expiresAt",out var expiry)||!expiry.TryGetInt64(out var seconds)) throw new InvalidOperationException("Unsupported pairing response.");
+        var at=DateTimeOffset.FromUnixTimeSeconds(seconds);
+        return at<=DateTimeOffset.UtcNow?new("expired"):new("code-issued",UserCode:code,ExpiresAt:at);
+    }
     static async Task Read(PseudoTerminal terminal,Session session) {
         var buffer=new char[1024]; var recent="";
         while(true) {

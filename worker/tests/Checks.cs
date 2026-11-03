@@ -43,6 +43,11 @@ using(var terminal=new PseudoTerminal(Path.Combine(Environment.GetFolderPath(Env
     Check(await terminal.Wait(timeout.Token)==0,"native ConPTY returns actual child exit status");
 }
 Console.WriteLine($"PASS {checks} total worker checks");
+using(var pairing=JsonDocument.Parse(JsonSerializer.Serialize(new {manualPairingCode="TEST-CODE",expiresAt=DateTimeOffset.UtcNow.AddMinutes(5).ToUnixTimeSeconds()}))) {
+    var state=AuthManager.ParsePairing(pairing.RootElement); Check(state.State=="code-issued"&&state.UserCode=="TEST-CODE"&&state.ExpiresAt.HasValue,"official pairing fields and Unix expiry parsed");
+}
+using(var expiredPairing=JsonDocument.Parse("{\"manualPairingCode\":\"TEST-CODE\",\"expiresAt\":1}")) Check(AuthManager.ParsePairing(expiredPairing.RootElement).State=="expired","provider-expired pairing code is not offered");
+Console.WriteLine($"PASS {checks} total worker checks");
 var enrollment=Path.Combine(folder,"enrollment");Directory.CreateDirectory(enrollment);var workerId=Guid.NewGuid();File.WriteAllText(Path.Combine(enrollment,"worker-id"),workerId.ToString());
 var executable=Path.Combine(AppContext.BaseDirectory,"Fleet.Worker.exe");
 var first=await Commands.Run(executable,["--enroll-request="+enrollment]);
