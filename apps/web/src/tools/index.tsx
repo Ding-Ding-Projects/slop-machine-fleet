@@ -4,8 +4,8 @@ import { Base64Tool } from "./Base64Tool";
 import { Converter } from "./Converter";
 import "./tools.css";
 import { createSafetyRegistry } from "./safety.mjs";
-import { SafetyContext, ToolSafety, ToolLifecycle } from "./Safety";
-export type { ToolSafety, ToolLifecycle } from "./Safety";
+import { SafetyContext, ToolSafety, ToolLifecycle } from "./ToolSafetyContext";
+export type { ToolSafety, ToolLifecycle } from "./ToolSafetyContext";
 export function Tools({
   onSafety,
   onLifecycle,
