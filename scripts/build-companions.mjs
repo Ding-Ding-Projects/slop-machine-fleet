@@ -48,6 +48,8 @@ for (const mode of ['build', 'host', 'docs']) {
   const stage = path.join(desktop, 'dist/companions', mode);
   await fs.mkdir(stage, { recursive: true });
   await fs.cp(path.join(desktop, 'companions'), stage, { recursive: true });
+  await fs.mkdir(path.join(stage, 'build'), { recursive: true });
+  for (const name of ['icon.ico', 'LICENSE.material-symbols', 'apply-icon.cjs']) await fs.copyFile(path.join(desktop, 'build', name), path.join(stage, 'build', name));
   await fs.writeFile(path.join(stage, 'mode.json'), JSON.stringify({ mode, version: pkg.version }));
   await fs.writeFile(path.join(stage, 'articles.json'), JSON.stringify(articles));
   await fs.writeFile(path.join(stage, 'assets.json'), JSON.stringify(assets));
@@ -55,7 +57,7 @@ for (const mode of ['build', 'host', 'docs']) {
   await fs.writeFile(path.join(stage, 'package.json'), JSON.stringify({ name: `fleet-${mode}-companion`, version: pkg.version, description: `Slop Machine Fleet ${title}`, author: 'Ding Ding Projects', main: 'main.cjs', private: true }, null, 2));
   if (args.includes('--prepare-only')) continue;
   if (process.platform !== 'win32') throw new Error('Portable companion production requires Windows.');
-  const config = { appId: `org.dingdingprojects.slopmachinefleet.${mode}`, productName: `Fleet ${title}`, asar: true, files: ['**/*'], electronVersion: pkg.devDependencies.electron, directories: { output: path.join(desktop, 'release/companions', mode) }, win: { target: ['portable'], signAndEditExecutable: false, forceCodeSigning: false }, portable: { artifactName: `Fleet-${mode}-${pkg.version}.exe` } };
+  const config = { appId: `org.dingdingprojects.slopmachinefleet.${mode}`, productName: `Fleet ${title}`, asar: true, afterPack: 'build/apply-icon.cjs', files: ['**/*'], electronVersion: pkg.devDependencies.electron, directories: { output: path.join(desktop, 'release/companions', mode) }, win: { target: ['portable'], icon: 'build/icon.ico', signAndEditExecutable: false, forceCodeSigning: false }, portable: { artifactName: `Fleet-${mode}-${pkg.version}.exe` } };
   await fs.writeFile(path.join(stage, 'builder.json'), JSON.stringify(config));
   const cli = require.resolve('electron-builder/cli.js');
   await new Promise((resolve, reject) => {

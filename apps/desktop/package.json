@@ -11,9 +11,10 @@
     "appId": "org.dingdingprojects.slopmachinefleet",
     "productName": "Slop Machine Fleet",
     "directories": { "output": "release" },
-    "files": ["dist/**", "package.json"],
+    "files": ["dist/**", "package.json", "build/icon.ico", "build/LICENSE.material-symbols"],
     "asar": true,
-    "win": { "target": ["squirrel"], "signAndEditExecutable": false, "forceCodeSigning": false },
-    "squirrelWindows": { "name": "SlopMachineFleet", "remoteReleases": false, "artifactName": "Setup.exe" }
+    "afterPack": "build/apply-icon.cjs",
+    "win": { "target": ["squirrel"], "icon": "build/icon.ico", "signAndEditExecutable": false, "forceCodeSigning": false },
+    "squirrelWindows": { "name": "SlopMachineFleet", "iconUrl": "https://raw.githubusercontent.com/Ding-Ding-Projects/slop-machine-fleet/main/apps/desktop/build/icon.ico", "remoteReleases": false, "artifactName": "Setup.exe" }
   }
 }
