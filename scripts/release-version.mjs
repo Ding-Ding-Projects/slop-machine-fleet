@@ -16,6 +16,7 @@ export function compareVersions(left, right) {
   for (let index = 0; index < 3; index++) if (a[index] !== b[index]) return a[index] > b[index] ? 1 : -1;
   return 0;
 }
+export function verifyCompiledIdentity(compiled,identity){if(compiled?.version!==identity.version||compiled?.source!==identity.source)throw Error('Compiled image renderer version/source differs from the shared identity.');}
 function integer(value, name, minimum = 1) {
   if (typeof value !== 'string' || !/^(0|[1-9][0-9]*)$/.test(value) || !Number.isSafeInteger(Number(value)) || Number(value) < minimum || Number(value) > COMPONENT_MAXIMUM) throw Error(`${name} is outside its exact bounded integer range.`);
   return Number(value);
@@ -136,11 +137,16 @@ async function main() {
     if(!process.env.FLEET_RELEASE_IDENTITY64)throw Error('The published controller build requires its shared release derivation receipt.');
     const identity=JSON.parse(Buffer.from(process.env.FLEET_RELEASE_IDENTITY64,'base64').toString('utf8'));
     await applyOverlay(root,identity,policy,{worker:false});
-  } else if (mode === 'verify-inputs') {
+  } else if (mode === 'verify-inputs'||mode==='verify-image') {
     const file=path.join(root,'build-identity.json');
     const identity=await fs.readFile(file,'utf8').then(JSON.parse).catch(error=>{if(error.code==='ENOENT')return null;throw error;});
     if(identity){validateBuildIdentity(identity,policy);for(const value of Object.values(await packageInventory(root)))if(value!==identity.version)throw Error('Build producer version differs from the release overlay.');console.log(`${identity.mode} version: ${identity.version}; source ${identity.source}; publishable ${identity.mode==='provider-overlay'}.`);}
     else {const versions=await packageInventory(root);numericVersion(versions['package.json']);await fs.mkdir(path.join(root,'.agent'),{recursive:true});await fs.writeFile(path.join(root,'.agent/local-build-identity.json'),JSON.stringify({schemaVersion:1,mode:'local',publishable:false,version:versions['package.json'],baseVersions:versions,source:git(['rev-parse','HEAD']),dirty:!!git(['status','--porcelain','--untracked-files=no'])},null,2));console.log(`Local known version: ${versions['package.json']}; not a provider publication.`);}
-  } else throw Error('Supported modes: derive, stage, stage-local, apply-image, verify-inputs.');
+    if(mode==='verify-image'){
+      if(!identity||identity.mode!=='provider-overlay')throw Error('Published image requires its provider overlay receipt.');
+      const compiled=JSON.parse(await fs.readFile(path.join(root,'apps/web/dist/build-version.json'),'utf8'));
+      verifyCompiledIdentity(compiled,identity);
+    }
+  } else throw Error('Supported modes: derive, stage, stage-local, apply-image, verify-inputs, verify-image.');
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url))await main();
