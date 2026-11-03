@@ -10,5 +10,11 @@
     "dev": "npm run dev --workspace apps/service",
     "start": "npm run start --workspace apps/service"
   },
-  "engines": { "node": ">=22.16.0" }
+  "engines": { "node": ">=22.16.0" },
+  "allowScripts": {
+    "electron@39.2.7": true,
+    "electron-winstaller@5.4.0": true,
+    "esbuild@0.28.2": true,
+    "esbuild@0.25.12": true
+  }
 }
