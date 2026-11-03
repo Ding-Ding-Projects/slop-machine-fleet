@@ -4,6 +4,7 @@ import crypto from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { marked } from "marked";
+import { readContainedFile, replaceGenerated } from "./files.mjs";
 const here = path.dirname(fileURLToPath(import.meta.url)),
   root = path.resolve(here, "../../.."),
   app = path.resolve(here, "..");
@@ -56,8 +57,8 @@ async function walk(dir) {
   return result;
 }
 export async function prepare() {
-  const generated = path.join(app, "public/generated");
-  await fs.mkdir(generated, { recursive: true });
+  await fs.mkdir(path.join(app, "public"), { recursive: true });
+  const generated = await fs.mkdtemp(path.join(app, ".generated-stage-"));
   const files = [
     ...(await fs.readdir(root))
       .filter(
@@ -77,19 +78,19 @@ export async function prepare() {
     const entry = path.join(root, dir, "README.md");
     if (
       await fs
-        .stat(entry)
-        .then((s) => s.isFile())
-        .catch(() => false)
+        .lstat(entry)
+        .then(() => true)
+        .catch((error) => {
+          if (error.code === "ENOENT") return false;
+          throw error;
+        })
     )
       files.push(entry);
   }
   const articles = [],
     assets = {};
   for (const file of files) {
-    const stat = await fs.stat(file);
-    if (stat.size > 4 * 1024 * 1024)
-      throw Error("Documentation article exceeds 4 MiB");
-    const bytes = await fs.readFile(file),
+    const bytes = await readContainedFile(root, file, 4 * 1024 * 1024),
       source = path.relative(root, file).replaceAll("\\", "/"),
       body = bytes.toString("utf8");
     const title =
@@ -132,7 +133,7 @@ export async function prepare() {
         continue;
       const real = await fs.realpath(candidate).catch(() => null);
       if (!real || !real.startsWith(root + path.sep)) continue;
-      const image = await fs.readFile(real);
+      const image = await readContainedFile(root, candidate, 16 * 1024 * 1024);
       if (image.length > 16 * 1024 * 1024)
         throw Error("Documentation image exceeds 16 MiB");
       const name = digest(image) + path.extname(real).toLowerCase();
@@ -142,7 +143,7 @@ export async function prepare() {
     }
   }
   // The original design remains a pinned source reference, not a new tracked copy.
-  const reference = "3aa1ca8";
+  const reference = "3aa1ca892fd18a59775322fd610f232f0a321dea";
   let tokens = execFileSync(
     "git",
     ["show", reference + ":design/design-system/tokens.css"],
@@ -197,6 +198,7 @@ export async function prepare() {
     assets,
     release,
   };
+  await replaceGenerated(app, generated);
   await fs.writeFile(
     path.join(app, "src/content.generated.json"),
     JSON.stringify(content),

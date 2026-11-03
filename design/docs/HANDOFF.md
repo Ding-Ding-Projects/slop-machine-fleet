@@ -27,3 +27,7 @@ The prepare script inventories every root docs Markdown article and root README,
 ## Gaps
 
 Full regex parity, complete universal settings, all required feature equivalents, native onboarding, packaged documentation companion, translated full articles and real built/deployed matrix evidence remain incomplete. No generated interface image is runtime proof.
+
+## Reviewed preparation repairs
+
+The complete design identity is `3aa1ca892fd18a59775322fd610f232f0a321dea`. Source containment applies uniformly to root, deployment, client, worker and docs articles. Generated assets are staged fresh; previous generated output is retained in an ignored directory outside public output before replacement. Independent fixtures exercise negative stale-output and external-junction cases plus positive exact-byte readback. Actual publication remains parent-owned.
