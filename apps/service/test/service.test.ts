@@ -20,7 +20,10 @@ async function fixture(pricing = true) {
     db,
     origin: "https://fleet.test",
     setupCodeFile: file,
+    provisioner: { reconcile: async (w) => w, reset: async () => {} },
     cloud: {
+      dataVolume: async () => "vol-ab12",
+      identity: async () => "123456789012",
       discovery: async () => ({}),
       estimate: async () => ({
         available: pricing,
@@ -275,5 +278,47 @@ test("FIFO dispatch keeps one active task and rejects credential-bearing reposit
     assert.equal(f.dispatches(), 1);
   } finally {
     await f.close();
+  }
+});
+test("an established event stream closes after logout or session expiry", async () => {
+  for (const expire of [false, true]) {
+    const f = await fixture();
+    try {
+      const address = await f.app.listen({ host: "127.0.0.1", port: 0 });
+      const response = await fetch(address + "/api/events", {
+        headers: { cookie: f.headers.cookie },
+      });
+      assert.equal(response.status, 200);
+      const reader = response.body!.getReader();
+      assert.equal((await reader.read()).done, false);
+      if (expire) {
+        const raw = f.headers.cookie.slice(f.headers.cookie.indexOf("=") + 1);
+        const { createHash } = await import("node:crypto");
+        const key = createHash("sha256")
+          .update(JSON.stringify(raw))
+          .digest("hex");
+        const session = await f.store.get("sessions", key);
+        session.expiresAt = Date.now() - 1;
+        await f.store.put("sessions", key, session);
+      } else {
+        await f.app.inject({
+          method: "POST",
+          url: "/api/auth/logout",
+          headers: f.headers,
+        });
+      }
+      const closed = await Promise.race([
+        reader.read(),
+        new Promise<never>((_, reject) =>
+          setTimeout(
+            () => reject(new Error("Stream did not close after revocation")),
+            4000,
+          ),
+        ),
+      ]);
+      assert.equal(closed.done, true);
+    } finally {
+      await f.close();
+    }
   }
 });

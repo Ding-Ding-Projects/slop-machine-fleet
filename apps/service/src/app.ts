@@ -6,6 +6,7 @@ import {
   createHash,
 } from "node:crypto";
 import { readFile } from "node:fs/promises";
+import { dirname, resolve, relative, isAbsolute, sep } from "node:path";
 import Fastify from "fastify";
 import cookie from "@fastify/cookie";
 import rateLimit from "@fastify/rate-limit";
@@ -13,6 +14,7 @@ import { z } from "zod";
 import type { Worker, Task } from "@fleet/shared";
 import { Store, migrate, type Database } from "./db.js";
 import type { CloudProvider } from "./cloud.js";
+import type { Provisioner } from "./provisioning.js";
 import type { WorkerTransport } from "./transport.js";
 const uuid = z.string().uuid(),
   time = () => new Date().toISOString(),
@@ -58,6 +60,8 @@ export interface ServiceOptions {
   origin: string;
   setupCodeFile?: string;
   secureCookies?: boolean;
+  provisioner?: Provisioner;
+  featureManifestFile?: string;
 }
 export async function createService(o: ServiceOptions) {
   const app = Fastify({ logger: false, bodyLimit: 65536, trustProxy: false }),
@@ -78,24 +82,22 @@ export async function createService(o: ServiceOptions) {
     Object.assign(new Error(message), { statusCode, code });
   app.setErrorHandler((e: any, _req, res) => {
     const status = e instanceof z.ZodError ? 400 : (e.statusCode ?? 500);
-    res
-      .code(status)
-      .send({
-        error: {
-          code:
-            e instanceof z.ZodError
-              ? "INVALID_INPUT"
-              : status >= 500
-                ? "SERVICE_UNAVAILABLE"
-                : (e.code ?? "REQUEST_FAILED"),
-          message:
-            e instanceof z.ZodError
-              ? "Request fields are invalid."
-              : status >= 500
-                ? "Operation unavailable. Check provider access and worker certificate enrollment."
-                : e.message,
-        },
-      });
+    res.code(status).send({
+      error: {
+        code:
+          e instanceof z.ZodError
+            ? "INVALID_INPUT"
+            : status >= 500
+              ? "SERVICE_UNAVAILABLE"
+              : (e.code ?? "REQUEST_FAILED"),
+        message:
+          e instanceof z.ZodError
+            ? "Request fields are invalid."
+            : status >= 500
+              ? "Operation unavailable. Check provider access and worker certificate enrollment."
+              : e.message,
+      },
+    });
   });
   app.addHook("onRequest", async (req, res) => {
     res
@@ -249,6 +251,7 @@ export async function createService(o: ServiceOptions) {
         id: randomUUID(),
         spec,
         specificationHash: hash(spec),
+        providerAccount: await o.cloud.identity(spec.region),
         expiresAt: new Date(Date.now() + 300000).toISOString(),
         estimate: await o.cloud.estimate(spec),
       };
@@ -293,12 +296,24 @@ export async function createService(o: ServiceOptions) {
           );
         return old;
       }
+      if (!o.provisioner)
+        throw fail(
+          503,
+          "BOOTSTRAP_UNCONFIGURED",
+          "Mount a verified worker release manifest and writable protected controller PKI volume before launching.",
+        );
       const r = await store.get("reviews", b.reviewId);
       if (!r || r.expiresAt < time() || r.specificationHash !== hash(b.spec))
         throw fail(
           409,
           "REVIEW_REQUIRED",
           "A current exact specification review is required.",
+        );
+      if (r.providerAccount !== (await o.cloud.identity(b.spec.region)))
+        throw fail(
+          409,
+          "PROVIDER_CHANGED",
+          "Provider identity changed after review. Create a new review.",
         );
       if (
         !r.estimate.available ||
@@ -353,9 +368,9 @@ export async function createService(o: ServiceOptions) {
           );
           const w = await worker(ids[i]);
           w.instanceId = instances[0];
-          w.state = "enrollment-required";
+          w.state = o.provisioner ? "bootstrapping" : "enrollment-required";
           await store.put("workers", w.id, w);
-          op.targets[i].state = "enrollment-required";
+          op.targets[i].state = w.state;
           await store.put("operations", op.id, op);
         }
         op.state = "incomplete";
@@ -381,7 +396,30 @@ export async function createService(o: ServiceOptions) {
       ["stop", "restart", "terminate"].includes(a)
     )
       throw fail(409, "ACTIVE_TASK", "Drain or cancel the active task first.");
-    if (a === "drain") {
+    if (["repair", "update"].includes(a)) {
+      if (!o.provisioner)
+        throw fail(
+          503,
+          "BOOTSTRAP_UNCONFIGURED",
+          "Mount a verified worker release manifest and protected PKI volume.",
+        );
+      if (
+        (await store.all<Task>("tasks")).some(
+          (t) =>
+            t.workerId === w.id && ["running", "dispatching"].includes(t.state),
+        )
+      )
+        throw fail(
+          409,
+          "ACTIVE_TASK",
+          "Wait for the active task to finish before updating.",
+        );
+      if (await o.transport.ready(w))
+        await o.transport.request(w, "POST", "/drain");
+      await o.provisioner.reset(w, a);
+      w.state = "bootstrapping";
+      w.transport = "unenrolled";
+    } else if (a === "drain") {
       await o.transport.request(w, "POST", "/drain");
       w.state = "draining";
     } else {
@@ -642,6 +680,13 @@ export async function createService(o: ServiceOptions) {
       if (busy) return;
       busy = true;
       try {
+        const current = req.cookies.fleet_session
+          ? await store.get("sessions", hash(req.cookies.fleet_session))
+          : undefined;
+        if (!current || current.expiresAt < Date.now()) {
+          res.raw.end();
+          return;
+        }
         const rows = (
           await o.db.query(
             "SELECT sequence,value FROM fleet_events WHERE sequence>$1 ORDER BY sequence LIMIT 100",
@@ -686,7 +731,31 @@ export async function createService(o: ServiceOptions) {
             /* A transport interruption is not a terminal task result. */
           }
         }
-      for (const w of await store.all<Worker>("workers")) await dispatch(w.id);
+      for (const w of await store.all<Worker>("workers")) {
+        if (
+          o.provisioner &&
+          ["bootstrapping", "enrollment-required"].includes(w.state)
+        ) {
+          try {
+            const updated = await o.provisioner.reconcile(w);
+            await store.put("workers", w.id, updated);
+          } catch {
+            /* Retry only bounded durable bootstrap phases. */
+          }
+        }
+        await dispatch(w.id);
+      }
+      for (const operation of await store.all<any>("operations")) {
+        if (operation.action !== "launch" || operation.state === "completed")
+          continue;
+        for (const target of operation.targets) {
+          const current = await store.get<Worker>("workers", target.id);
+          if (current) target.state = current.state;
+        }
+        if (operation.targets.every((target: any) => target.state === "ready"))
+          operation.state = "completed";
+        await store.put("operations", operation.id, operation);
+      }
     }).catch(() => {});
   }, 5000);
   timer.unref();
