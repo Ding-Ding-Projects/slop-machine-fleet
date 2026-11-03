@@ -8,6 +8,10 @@ import {
 import { readFile } from "node:fs/promises";
 import { registerFeatureRoutes } from "./features.js";
 import Fastify from "fastify";
+import {
+  BulkOperations,
+  type ActionAttemptContext,
+} from "./bulk-operations.js";
 import { initializeImageProvenance } from "./image-provenance.js";
 import { isApiRequest } from "./request-routing.js";
 import cookie from "@fastify/cookie";
@@ -414,36 +418,44 @@ export async function createService(o: ServiceOptions) {
       return op;
     }),
   );
-  async function action(w: Worker, a: any) {
+  async function preflightAction(
+    w: Worker,
+    a: any,
+    context?: ActionAttemptContext,
+  ) {
+    await bulk.assertWorkerAvailable(w.id, context?.operationId);
     if (
       (await store.all<Task>("tasks")).some(
         (t) =>
           t.workerId === w.id && ["running", "dispatching"].includes(t.state),
       ) &&
-      ["stop", "restart", "terminate"].includes(a)
+      ["stop", "restart", "terminate", "repair", "update"].includes(a)
     )
       throw fail(409, "ACTIVE_TASK", "Drain or cancel the active task first.");
+    if (["repair", "update"].includes(a) && !o.provisioner)
+      throw fail(
+        503,
+        "BOOTSTRAP_UNCONFIGURED",
+        "Mount a verified worker release manifest and protected PKI volume.",
+      );
+    if (
+      ["start", "stop", "restart", "terminate", "repair", "update"].includes(
+        a,
+      ) &&
+      !w.instanceId
+    )
+      throw fail(
+        409,
+        "INSTANCE_UNAVAILABLE",
+        "Worker instance identity is unavailable.",
+      );
+  }
+  async function action(w: Worker, a: any, context?: ActionAttemptContext) {
+    await preflightAction(w, a, context);
     if (["repair", "update"].includes(a)) {
-      if (!o.provisioner)
-        throw fail(
-          503,
-          "BOOTSTRAP_UNCONFIGURED",
-          "Mount a verified worker release manifest and protected PKI volume.",
-        );
-      if (
-        (await store.all<Task>("tasks")).some(
-          (t) =>
-            t.workerId === w.id && ["running", "dispatching"].includes(t.state),
-        )
-      )
-        throw fail(
-          409,
-          "ACTIVE_TASK",
-          "Wait for the active task to finish before updating.",
-        );
       if (await o.transport.ready(w))
         await o.transport.request(w, "POST", "/drain");
-      await o.provisioner.reset(w, a);
+      await o.provisioner!.reset(w, a, context);
       w.state = "bootstrapping";
       w.transport = "unenrolled";
     } else if (a === "drain") {
@@ -456,6 +468,14 @@ export async function createService(o: ServiceOptions) {
     await store.put("workers", w.id, w);
     return w;
   }
+  const bulk = new BulkOperations({
+    store,
+    worker,
+    preflight: preflightAction,
+    dispatch: action,
+    observe: (w) => o.cloud.observe(w),
+    health: (w) => o.transport.request(w, "GET", "/health"),
+  });
   app.post<{ Params: { id: string } }>(
     "/api/workers/:id/actions",
     async (req) =>
@@ -468,48 +488,36 @@ export async function createService(o: ServiceOptions) {
   );
   app.post("/api/bulk", async (req) =>
     lock(async () => {
-      const b = z
+      const body = z
+        .object({
+          workerIds: z.array(uuid).min(1).max(5),
+          action: actionSchema,
+          idempotencyKey: uuid,
+        })
+        .strict()
+        .parse(req.body);
+      return bulk.create(body, hash(body), (req as any).session.ownerId);
+    }),
+  );
+  app.post<{ Params: { id: string } }>(
+    "/api/operations/:id/resume",
+    async (req) =>
+      lock(async () => {
+        uuid.parse(req.params.id);
+        const body = z
           .object({
             workerIds: z.array(uuid).min(1).max(5),
-            action: actionSchema,
-            idempotencyKey: uuid,
+            requestHash: z.string().regex(/^[a-f0-9]{64}$/),
           })
           .strict()
-          .parse(req.body),
-        old = await store.get("operations", b.idempotencyKey);
-      if (old) {
-        if (old.requestHash !== hash(b))
-          throw fail(409, "IDEMPOTENCY_CONFLICT", "Key already used.");
-        return old;
-      }
-      const op: any = {
-        id: b.idempotencyKey,
-        requestHash: hash(b),
-        action: b.action,
-        state: "running",
-        targets: [...new Set(b.workerIds)].map((id) => ({
-          id,
-          state: "pending",
-        })),
-        createdAt: time(),
-      };
-      await store.put("operations", op.id, op);
-      for (const t of op.targets) {
-        try {
-          await action(await worker(t.id), b.action);
-          t.state = "requested";
-        } catch {
-          t.state = "failed";
-          t.message = "Inspect worker state before retrying.";
-        }
-        await store.put("operations", op.id, op);
-      }
-      op.state = op.targets.some((t: any) => t.state === "failed")
-        ? "incomplete"
-        : "completed";
-      await store.put("operations", op.id, op);
-      return op;
-    }),
+          .parse(req.body);
+        return bulk.resume(
+          req.params.id,
+          body.workerIds,
+          body.requestHash,
+          (req as any).session.ownerId,
+        );
+      }),
   );
   app.get("/api/operations", async () => ({
     operations: await store.all("operations"),
@@ -563,6 +571,11 @@ export async function createService(o: ServiceOptions) {
     const t = tasks.find((t) => t.state === "queued");
     if (!t) return;
     const w = await worker(id);
+    try {
+      await bulk.assertWorkerAvailable(w.id);
+    } catch {
+      return;
+    }
     if (w.state !== "ready" || !(await o.transport.ready(w))) return;
     t.state = "dispatching";
     await store.put("tasks", t.id, t);
@@ -805,8 +818,10 @@ export async function createService(o: ServiceOptions) {
     req.raw.on("close", () => clearInterval(timer));
   });
   // Run exactly one controller process per database. Uncertain in-flight tasks remain active after a restart and are reconciled with the worker.
+  await lock(() => bulk.reconcileAll(true));
   const timer = setInterval(() => {
     void lock(async () => {
+      await bulk.reconcileAll();
       for (const t of await store.all<Task>("tasks"))
         if (["running", "dispatching"].includes(t.state)) {
           try {
