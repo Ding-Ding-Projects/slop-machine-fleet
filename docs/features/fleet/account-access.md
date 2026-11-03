@@ -6,7 +6,7 @@ When the controller reports `signupAvailable: true`, the account screen offers u
 
 The service owns the atomic first-owner claim. If another request wins, the UI clears password fields and reads the current account mode before presenting sign-in. A successful response must contain actual authenticated session, CSRF, scope and account fields; a response alone is not guessed into an owner identity.
 
-Usernames are NFKC-normalized and trimmed, contain 1–64 Unicode letters/numbers with optional dots, underscores and hyphens, and include at least one letter or number. Matching is case-insensitive on the service, while the returned display case is preserved. New passwords contain 14–256 characters and are never trimmed or normalized. The UI supports password-manager autocomplete and keeps password inputs transient; no password enters preferences, history, notifications, logs, URLs or exports.
+Usernames are NFKC-normalized and trimmed, contain 1–64 Unicode letters/numbers with optional dots, underscores and hyphens, and start with a letter or number. Supported combining marks may follow that first character. Matching is case-insensitive on the service, while the returned display case is preserved. New passwords contain 14–256 characters and are never trimmed or normalized. The UI supports password-manager autocomplete and keeps password inputs transient; no password enters preferences, history, notifications, logs, URLs or exports.
 
 ## Returning owners
 
