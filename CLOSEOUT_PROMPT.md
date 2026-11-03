@@ -2,7 +2,7 @@
 
 ## Current bounded objective
 
-Verify the provider desktop/release outputs for integrated source `4ae49affbdec60359babd4bbd02311321493916f`, preserving the source-bound version, actual package metadata and generated-output privacy boundaries. The parent owns main integration, publication decisions and the independent image/Compose verification. Do not duplicate image pulls or launch an installed updater, configuration helper, browser, account flow or trust change.
+The assigned provider desktop/release readback for integrated source `4ae49affbdec60359babd4bbd02311321493916f` completed. Preserve the source-bound version, actual package metadata and generated-output privacy boundaries below. The parent owns main integration and the independent image/Compose verification. Do not duplicate image pulls or launch an installed updater, configuration helper, browser, account flow or trust change.
 
 ## Source units
 
@@ -39,20 +39,25 @@ Owner-retained evidence receipt identifiers, without machine paths:
 
 Twenty-two focused Node checks and the Windows PowerShell unsigned-status fixture passed. Source/overlay tests include a real offline npm workspace restore, stale/equal version rejection, unknown identity-field rejection and failure before configuration replacement when script integrity is invalid.
 
-## Provider snapshot at 2026-11-03 16:26:08 UTC
+## Terminal provider result and uploaded release readback
 
-The remote main reference read back as `4ae49affbdec60359babd4bbd02311321493916f`.
+The remote main reference read back as `4ae49affbdec60359babd4bbd02311321493916f` during observation. The completed run, release tag, manifest and actual uploaded package are bound to that immutable source.
 
-- [Release workflow 41673470590](https://github.com/Ding-Ding-Projects/slop-machine-fleet/actions/runs/41673470590): identity and image jobs succeeded; desktop installer production remained in progress. Authenticated workflow ID `405397166`, run number `24`, attempt `1`, source `4ae49affbdec60359babd4bbd02311321493916f`. The committed policy maps those inputs to expected version `0.24.1`; actual normal-release manifest and package readback remained pending.
+- [Release workflow 41673470590](https://github.com/Ding-Ding-Projects/slop-machine-fleet/actions/runs/41673470590): terminal success across identity, image and desktop. Authenticated workflow ID `405397166`, run number `24`, attempt `1`, source `4ae49affbdec60359babd4bbd02311321493916f`. Actual published version is `0.24.1`, matching the shared provider-overlay identity.
+- [Normal release build-41673470590-1](https://github.com/Ding-Ding-Projects/slop-machine-fleet/releases/tag/build-41673470590-1): published at `2026-11-03T16:42:56Z`, `isDraft: false`, `isPrerelease: false`, target/tag commit exactly matches the source above. It contains 15 uploaded assets. All eight declared product file sizes and server-computed SHA-256 digests match the source manifest; eight metadata/feed downloads were separately hashed and matched to their stored server digests.
+- Actual uploaded `SlopMachineFleet-0.24.1-full.nupkg`: 133608107 bytes, SHA-256 `d82416d009b29186193d9ab9588aeb2235186cb2f93e96a479405cdda7a5ff5d`. Its downloaded bytes, NuGet version `0.24.1` and actual 13-entry productive application-archive hierarchy were inspected without execution. Required runtime files are present; builder configuration and intermediate companion trees are absent; bounded known machine/staging markers were absent.
+- Uploaded `Setup.exe`: 134345728 bytes, SHA-256 `5fdeb1ae84a6234319f506032a197167fb488aebff94f4ec1d90e8c90882bd89`. Its stored digest and size match the source manifest.
+- Published produced-version metadata records common `0.24.1` identities and five actual pipeline-enforced `NotSigned` results without signer certificates. This lane read those provider receipts; it did not rerun native signature inspection on all downloaded provider EXEs. Independent local file-status proof remains bound to `f2a2f6f`, as described above.
+- The actual stable publication check read back previous accepted version `0.1.2` and accepted strictly newer `0.24.1`. Preservation releases remain outside the accepted-update channel. No equal-version bypass was added.
 - [Publication privacy 41673470682](https://github.com/Ding-Ding-Projects/slop-machine-fleet/actions/runs/41673470682): terminal success at that exact source.
-- [Documentation 41673470426](https://github.com/Ding-Ding-Projects/slop-machine-fleet/actions/runs/41673470426): in progress, not claimed deployed by this lane.
+- [Documentation 41673470426](https://github.com/Ding-Ding-Projects/slop-machine-fleet/actions/runs/41673470426): terminal success at that exact source. Hosted HTTP/UI acceptance and later release-refresh results remain with the parent.
 
-The desktop/release observation began at approximately 16:24 UTC and is bounded to one hour with increasing observation intervals of at most 60 seconds. Read terminal state and actual uploaded manifests/packages before reporting publication success. The parent independently verifies image digest and the task-owned Compose stack.
+The desktop/release observation began at approximately 16:24 UTC and reached terminal result and actual uploaded-package readback within the one-hour bound. The parent independently verifies image digest and the task-owned Compose stack. Owner-retained provider receipt identifiers are `metadata-readback.json` (SHA-256 `2c2eb33df4f25264a73486cd1be673e37d7cfc10554ca07c41b1f6015e38dd1a`) and `productive-asar-readback.json`; no machine paths are published here.
 
 ## Required remaining evidence and preserved boundaries
 
-1. Verify provider desktop terminal result, actual normal release classification, unique tag/source association, exact derived version and attached file sizes/hashes.
-2. Read actual provider identity, produced-version/signature/privacy receipts and package/feed metadata; do not infer them from local fixture results.
+1. Provider desktop terminal success, normal release classification, tag/source association, actual derived version and uploaded size/hash readback are complete for the exact release above. Do not generalize that evidence to later source or runtime behavior.
+2. Preserve the actual local and provider evidence separately. The provider identity, produced-version/signature receipts, stable floor, actual full package and feed metadata were read back; local fixtures are not the basis of the publication claim.
 3. Keep the accepted stable-version guard strict. Preservation releases remain normal releases but are ineligible for accepted updates and documentation deployment.
 4. Keep hosted documentation's reviewed source and checked-in version separate from the independently selected accepted-download version. Packaged documentation companions consume the common release overlay; the separate hosted workflow does not.
 5. Direct local container builds without a provider derivation receipt are unsupported by this route. No local container/runtime acceptance is claimed from source checks.
