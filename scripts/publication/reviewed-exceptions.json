@@ -15,7 +15,7 @@
     },
     {
       "path": "scripts/publication/run-publication-language-ci.mjs",
-      "line": 40,
+      "line": 41,
       "sha256": "1fc09e46aed24596f7587ba7db21fd87251dc77406683197af0095eb679fa7ee",
       "reason": "technical-identifier"
     }

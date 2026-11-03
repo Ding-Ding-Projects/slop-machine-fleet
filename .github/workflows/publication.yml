@@ -30,6 +30,24 @@ jobs:
           path: candidate
           fetch-depth: 0
           persist-credentials: false
+      - name: Resolve published baseline for a new branch
+        if: github.event_name == 'push' && github.event.before == '0000000000000000000000000000000000000000'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_REPOSITORY: ${{ github.repository }}
+        run: |
+          $defaultBranch = gh api "repos/$env:TARGET_REPOSITORY" --jq '.default_branch'
+          if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrEmpty($defaultBranch)) { throw 'Published default branch unavailable.' }
+          $encoded = [Uri]::EscapeDataString($defaultBranch)
+          $published = gh api "repos/$env:TARGET_REPOSITORY/commits/$encoded" --jq '.sha'
+          if ($LASTEXITCODE -ne 0 -or $published -cnotmatch '^[a-f0-9]{40}$') { throw 'Published baseline unavailable.' }
+          git -C candidate fetch --no-tags origin $published
+          if ($LASTEXITCODE -ne 0) { throw 'Published baseline object unavailable.' }
+          $readback = git -C candidate rev-parse "$published^{commit}"
+          if ($LASTEXITCODE -ne 0 -or $readback -cne $published) { throw 'Published baseline mismatch.' }
+          "PUBLICATION_EVENT_BASE=$published" >> $env:GITHUB_ENV
+          "Verified baseline from authenticated repository default-branch API: $published"
       - name: Prepare Node runtime
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
@@ -60,8 +78,13 @@ jobs:
         run: |
           $scanner = Join-Path $env:GITHUB_WORKSPACE 'trusted/scripts/publication/run-publication-language-ci.mjs'
           $candidate = Join-Path $env:GITHUB_WORKSPACE 'candidate'
-          $arguments = @('--regexp-interpret-all', $scanner, '--root', $candidate, '--tip', $env:EVENT_TIP, '--exceptions-file', (Join-Path $env:GITHUB_WORKSPACE 'trusted/scripts/publication/reviewed-exceptions.json'), '--font-python', (Join-Path $env:RUNNER_TEMP 'publication-font-python/Scripts/python.exe'), '--font-decoder-root', (Join-Path $env:RUNNER_TEMP 'publication-eot-decoder'))
-          if ($env:EVENT_NAME -eq 'push') { $arguments += @('--base', $env:EVENT_BASE) }
+          $arguments = @('--regexp-interpret-all', $scanner, '--root', $candidate, '--tip', $env:EVENT_TIP, '--history-allowances-file', (Join-Path $env:GITHUB_WORKSPACE 'trusted/scripts/publication/reviewed-history-allowances.json'), '--font-python', (Join-Path $env:RUNNER_TEMP 'publication-font-python/Scripts/python.exe'), '--font-decoder-root', (Join-Path $env:RUNNER_TEMP 'publication-eot-decoder'))
+          if ($env:EVENT_NAME -eq 'push') {
+            $base = $env:EVENT_BASE
+            if ($base -eq ('0' * 40)) { $base = $env:PUBLICATION_EVENT_BASE }
+            if ($base -cnotmatch '^[a-f0-9]{40}$' -or $base -eq ('0' * 40)) { throw 'Verified publication baseline unavailable.' }
+            $arguments += @('--base', $base)
+          }
           elseif ($env:EVENT_NAME -eq 'workflow_dispatch') { $arguments += @('--mode', 'current-tree-only') }
           else { throw 'Unsupported event.' }
           if ([string]::IsNullOrEmpty($env:PUBLICATION_LANGUAGE_DATA)) { throw 'Protected publication policy unavailable.' }

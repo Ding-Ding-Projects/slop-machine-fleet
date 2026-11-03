@@ -10,6 +10,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readExceptionCarrier, selectRevisionExceptions } from './publication-exceptions.mjs';
+import { selectHistoricalAllowances } from './publication-history-allowances.mjs';
 import { LIMITS, readPolicy, scanRepository } from './public-language-scan.mjs';
 
 export const CI_LIMITS = Object.freeze({ commits: 50000, records: 1000000, output: 16 * 1024 * 1024 });
@@ -74,7 +75,7 @@ async function main() {
   if (args.length % 2) fail('arguments-invalid');
   for (let index = 0; index < args.length; index += 2) {
     const key = args[index]; const value = args[index + 1];
-    if (!['--root', '--tip', '--base', '--mode', '--exceptions-file', '--font-decoder-root', '--font-python'].includes(key) || options[key] !== undefined || !value) fail('arguments-invalid');
+    if (!['--root', '--tip', '--base', '--mode', '--exceptions-file', '--font-decoder-root', '--font-python', '--history-allowances-file'].includes(key) || options[key] !== undefined || !value) fail('arguments-invalid');
     options[key] = value;
   }
   if (!options['--root']) fail('candidate-root-unavailable');
@@ -92,7 +93,7 @@ async function main() {
   const findings = []; const observations = [];
   try {
   for (const revision of revisions) {
-    writeFileSync(selectedFile, JSON.stringify(selectRevisionExceptions(carrier, revision)), { mode: 0o600 });
+    writeFileSync(selectedFile, JSON.stringify(options['--history-allowances-file'] ? selectHistoricalAllowances(options['--history-allowances-file'], root, revision, git) : selectRevisionExceptions(carrier, revision)), { mode: 0o600 });
     const result = scanRepository({ root, revision, policy, exceptionsFile: selectedFile, fontDecoderRoot: options['--font-decoder-root'], fontPython: options['--font-python'] });
     if (findings.length + observations.length + result.findings.length + result.observations.length > CI_LIMITS.records) fail('event-report-oversized');
     for (const finding of result.findings) findings.push(finding);
