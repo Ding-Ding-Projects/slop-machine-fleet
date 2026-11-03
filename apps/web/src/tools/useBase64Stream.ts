@@ -1,0 +1,184 @@
+import { useEffect, useRef, useState, useCallback } from "react";
+import { removeTemporary } from "../../../../packages/shared/local-base64/storage.mjs";
+export type StreamResult = {
+  id: string;
+  file: File;
+  result: {
+    mode: string;
+    inputSize: number;
+    outputSize: number;
+    inputSha256: string;
+    outputSha256: string;
+    verified: boolean;
+    options: Record<string, unknown>;
+  };
+};
+export function useBase64Stream() {
+  const worker = useRef<Worker | null>(null),
+    generation = useRef(0),
+    owned = useRef(new Set<string>()),
+    activeId = useRef<string | null>(null),
+    alive = useRef(true),
+    timer = useRef<ReturnType<typeof setTimeout> | null>(null),
+    pending = useRef<((error: Error) => void) | null>(null);
+  const [busy, setBusy] = useState(false),
+    [paused, setPaused] = useState(false),
+    [progress, setProgress] = useState({
+      phase: "transform",
+      inputSize: 0,
+      outputSize: 0,
+      verifiedBytes: 0,
+      total: 0,
+    }),
+    [cleanupError, setCleanupError] = useState(false);
+  const retire = useCallback(async (id: string) => {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        await removeTemporary(id);
+        owned.current.delete(id);
+        return;
+      } catch {
+        if (attempt < 2)
+          await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+    }
+    if (alive.current) setCleanupError(true);
+  }, []);
+  const stop = useCallback(() => {
+    generation.current++;
+    worker.current?.terminate();
+    worker.current = null;
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = null;
+    pending.current?.(Error("cancelled"));
+    pending.current = null;
+    if (activeId.current) {
+      void retire(activeId.current);
+      activeId.current = null;
+    }
+  }, [retire]);
+  const dispose = useCallback(() => {
+    stop();
+    for (const id of owned.current) void retire(id);
+  }, [stop, retire]);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+      dispose();
+    };
+  }, [dispose]);
+  const cancel = useCallback(() => {
+    worker.current?.postMessage({ type: "cancel" });
+    setPaused(false);
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      stop();
+      if (alive.current) setBusy(false);
+    }, 1500);
+  }, [stop]);
+  const run = useCallback(
+    (
+      file: File,
+      mode: "encode" | "decode",
+      options: Record<string, unknown>,
+      consent: boolean,
+    ) => {
+      stop();
+      const current = generation.current;
+      setBusy(true);
+      setPaused(false);
+      setProgress({
+        phase: "transform",
+        inputSize: 0,
+        outputSize: 0,
+        verifiedBytes: 0,
+        total: file.size,
+      });
+      return new Promise<StreamResult>((resolve, reject) => {
+        pending.current = reject;
+        let active: Worker;
+        try {
+          active = new Worker(
+            new URL("./base64-stream-worker.js", import.meta.url),
+            { type: "module" },
+          );
+        } catch {
+          pending.current = null;
+          setBusy(false);
+          reject(Error("storage-unavailable"));
+          return;
+        }
+        worker.current = active;
+        const finish = () => {
+          active.terminate();
+          worker.current = null;
+          pending.current = null;
+          if (timer.current) clearTimeout(timer.current);
+          timer.current = null;
+          setBusy(false);
+          setPaused(false);
+        };
+        active.onmessage = ({ data }) => {
+          if (current !== generation.current) return;
+          if (data.type === "temporary") {
+            owned.current.add(data.id);
+            activeId.current = data.id;
+            return;
+          }
+          if (data.type === "progress") {
+            setProgress(data);
+            return;
+          }
+          if (data.type === "paused") {
+            setPaused(true);
+            return;
+          }
+          if (data.type === "resumed") {
+            setPaused(false);
+            return;
+          }
+          if (data.type === "complete") {
+            activeId.current = null;
+            finish();
+            resolve(data);
+            return;
+          }
+          if (data.type === "error") {
+            const id = activeId.current;
+            activeId.current = null;
+            finish();
+            if (id) void retire(id);
+            reject(
+              Error(
+                data.code +
+                  (Number.isInteger(data.offset) ? ":" + data.offset : ""),
+              ),
+            );
+          }
+        };
+        active.onerror = () => {
+          const id = activeId.current;
+          activeId.current = null;
+          finish();
+          if (id) void retire(id);
+          reject(Error("processing"));
+        };
+        active.postMessage({ type: "start", file, mode, options, consent });
+      });
+    },
+    [stop, retire],
+  );
+  return {
+    run,
+    cancel,
+    dispose,
+    busy,
+    paused,
+    progress,
+    cleanupError,
+    pause: () => worker.current?.postMessage({ type: "pause" }),
+    resume: () => worker.current?.postMessage({ type: "resume" }),
+    release: retire,
+  };
+}

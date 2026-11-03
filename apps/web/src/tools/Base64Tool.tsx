@@ -5,8 +5,16 @@ import { Result, useProcessor } from "./useProcessor";
 import { Output, useErrors } from "./Output";
 import { useToolSafety } from "./ToolSafetyContext";
 import { deriveToolSafety } from "./safety.mjs";
+import { StreamingBase64 } from "./StreamingBase64";
+import { ToolSafety } from "./ToolSafetyContext";
 const encodings = ["utf-8", "utf-16le", "utf-16be", "latin1"];
 export function Base64Tool() {
+  const [streamSafety, setStreamSafety] = useState<ToolSafety>({
+    known: false,
+    dirty: false,
+    pendingWrites: false,
+  });
+  const disposeStream = useRef<(() => void) | null>(null);
   const { t } = useUI(),
     message = useErrors();
   const [text, setText] = useState(""),
@@ -25,22 +33,26 @@ export function Base64Tool() {
     mounted = useRef(true);
   useToolSafety(
     "base64",
-    deriveToolSafety({
-      hasDraft: text.length > 0,
-      hasFiles: !!file,
-      hasOutput: !!result,
-      optionsChanged:
-        encoding !== "utf-8" ||
-        url ||
-        !padding ||
-        !strict ||
-        wrap !== 0 ||
-        dataURL,
-      busy: processor.busy,
-    }),
+    {
+      ...deriveToolSafety({
+        hasDraft: text.length > 0,
+        hasFiles: !!file,
+        hasOutput: !!result || streamSafety.dirty,
+        optionsChanged:
+          encoding !== "utf-8" ||
+          url ||
+          !padding ||
+          !strict ||
+          wrap !== 0 ||
+          dataURL,
+        busy: processor.busy || streamSafety.pendingWrites,
+      }),
+      known: streamSafety.known,
+    },
     () => {
       revision.current++;
       processor.cancel();
+      disposeStream.current?.();
     },
   );
   useEffect(() => {
@@ -244,10 +256,17 @@ export function Base64Tool() {
       {result && <Output result={result} name={resultName} />}
       <p className="tool-muted">
         {t(
-          "Large-file streaming, pause/resume, ZIP export and durable undo are not available. Inputs and outputs are limited to 8 MiB.",
-          "尚未提供大型檔案串流、暫停／繼續、ZIP 匯出及持久復原。輸入及輸出均限於 8 MiB。",
+          "The text editor is limited to 8 MiB. Use the streaming file workspace below for larger inputs. ZIP export and durable undo remain in progress.",
+          "文字編輯器限於 8 MiB，大型輸入請使用下方串流檔案工作區。ZIP 匯出及持久復原仍在開發中。",
         )}
       </p>
+      <StreamingBase64
+        options={{ url, padding, strict, wrap }}
+        onSafety={setStreamSafety}
+        onDispose={(callback) => {
+          disposeStream.current = callback;
+        }}
+      />
     </section>
   );
 }
