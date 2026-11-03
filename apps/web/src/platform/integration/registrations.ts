@@ -1,0 +1,10 @@
+import type {SettingRegistration,ElementRegistration} from '../types';
+export const settingSections=['appearance','language','accessibility','data'] as const;
+const controls=[
+ ['theme','Theme','主題','appearance'],['spacing','Spacing','間距','appearance'],['reduce-motion','Reduce motion','減少動態','appearance'],
+ ['language','Language','語言','language'],['english-tone','English tone','英文語氣','language'],['cantonese-tone','Cantonese tone','廣東話語氣','language'],['emojis','Message emoji','訊息表情符號','language'],['wording-upload','Upload personal wording','上載個人用語','language'],['wording-clear','Clear personal wording','清除個人用語','language'],
+ ['focus','Focus mode','專注模式','accessibility'],['low-stimulation','Low stimulation','低刺激','accessibility'],['time-awareness','Time awareness','時間提示','accessibility'],['next-action','Next action reminder','下一步提示','accessibility'],['sounds','Sound effects','音效','accessibility'],['volume','Sound volume','音效音量','accessibility'],['narration','Narrate notifications','讀出通知','accessibility'],['reset','Reset preferences','重設偏好','data']
+] as const;
+export const settingsRegistry:SettingRegistration[]=controls.map(([id,en,yue,section])=>({id:`setting-${id}`,label:{en,yue},description:{en:`Open the ${section} section and focus this actual control.`,yue:'開啟所屬設定頁並聚焦實際控制。'},destinationId:'settings',elementId:`setting-${id}`,prepare:()=>{window.dispatchEvent(new CustomEvent('fleet:settings-section',{detail:section}));}}));
+export const elementRegistry:ElementRegistration[]=[...controls.map(([id,en,yue])=>({id:`setting-${id}`,label:{en,yue}})),...settingSections.map(id=>({id:`settings-section-${id}`,label:{en:`Settings: ${id}`,yue:`設定：${id}`}})),...['fleet','tasks','operations','tools','features','settings','help','platform-control'].map(id=>({id:`surface-${id}`,label:{en:`${id} workspace surface`,yue:`${id} 工作區介面`}}))];
+export const sectionRegistry:SettingRegistration[]=settingSections.map(section=>({id:`settings-section-${section}`,label:{en:`Settings: ${section}`,yue:`設定：${section}`},description:{en:'Focus the actual settings section tab.',yue:'聚焦實際設定分頁。'},destinationId:'settings',elementId:`settings-section-${section}`}));
