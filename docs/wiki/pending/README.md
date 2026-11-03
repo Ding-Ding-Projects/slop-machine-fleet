@@ -12,7 +12,10 @@ Prepared against source `e90619890437dad1394e8cd39a5edcd03ed0faba`. The copied a
 | `task-output.md` | `docs/features/workers/task-output.md` |
 | `Hosting.md` | `deploy/README.md` |
 | `API.md` | `docs/API.md` |
+| `Owner-signup.md` | `docs/features/fleet/owner-signup.md` |
 | `Desktop-updates.md` | `docs/features/desktop/updates.md` |
 | `Tools.md` | `docs/features/tools/README.md` |
 
 `Home.md` provides task-oriented orientation and `_Sidebar.md` provides internal navigation. Before later wiki publication, compare the owning articles, preserve existing wiki content, refresh these copies, publish through the supported Git route and read back every stored page and link.
+
+The owner signup prepared page and API authentication section reflect the username/password first-owner contract. They remain source-staged and do not claim wiki publication or a live owner signup.
