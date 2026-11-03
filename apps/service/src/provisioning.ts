@@ -51,6 +51,8 @@ export class SsmProvisioner implements Provisioner {
     private enrollments: Record<string, Enrollment>,
     private transport: WorkerTransport,
     private release: z.infer<typeof releaseSchema>,
+    private client: (region: string) => Pick<SSMClient, "send"> = (region) =>
+      new SSMClient({ region }),
   ) {}
   async reset(worker: Worker, mode: "repair" | "update" = "repair") {
     if (!worker.instanceId) throw new Error("Instance identity is unavailable");
@@ -65,7 +67,7 @@ export class SsmProvisioner implements Provisioner {
     });
   }
   async send(w: Worker, command: string) {
-    const result = await new SSMClient({ region: w.region }).send(
+    const result = await this.client(w.region).send(
       new SendCommandCommand({
         InstanceIds: [w.instanceId!],
         DocumentName: "AWS-RunPowerShellScript",
@@ -111,7 +113,11 @@ export class SsmProvisioner implements Provisioner {
     if (state.phase === "health") {
       try {
         const health = await this.transport.request(worker, "GET", "/health");
-        if (health.workerId !== worker.id || health.ready !== true)
+        if (
+          health.workerId !== worker.id ||
+          health.ready !== true ||
+          health.version !== this.release.version
+        )
           throw new Error("Worker health identity is not ready");
         worker.transport = "ready";
         worker.state = "ready";
@@ -121,7 +127,7 @@ export class SsmProvisioner implements Provisioner {
       return worker;
     }
     if (!state.commandId) {
-      const managed = await new SSMClient({ region: worker.region }).send(
+      const managed = await this.client(worker.region).send(
         new DescribeInstanceInformationCommand({
           Filters: [{ Key: "InstanceIds", Values: [worker.instanceId] }],
         }),
@@ -161,7 +167,7 @@ export class SsmProvisioner implements Provisioner {
       return worker;
     }
     try {
-      const result = await new SSMClient({ region: worker.region }).send(
+      const result = await this.client(worker.region).send(
         new GetCommandInvocationCommand({
           CommandId: state.commandId,
           InstanceId: worker.instanceId,
