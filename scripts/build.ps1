@@ -26,15 +26,16 @@ try {
   }
   $env:CSC_IDENTITY_AUTO_DISCOVERY = 'false'
   Set-Location -LiteralPath $root
+  . (Join-Path $PSScriptRoot 'dotnet.ps1') -DefineCacheFunctionsOnly
   if ($Options | Where-Object { $_ -notin @('/s','--silent','/run','--run') }) { throw 'Supported arguments: /s, --silent, /run, --run.' }
   Write-Host 'Build uses user-scoped portable tools. Administrator rights are not required.'
   $nodeVersion = '22.16.0'
   $node = Get-Command node -ErrorAction SilentlyContinue
   $validNode = $false
-  if ($node) { $major = & node -p 'parseInt(process.versions.node)'; $validNode = $LASTEXITCODE -eq 0 -and [int]$major -ge 22 }
+  if ($node -and (Test-FleetBuildToolPath $node.Source)) { $major = & node -p 'parseInt(process.versions.node)'; $validNode = $LASTEXITCODE -eq 0 -and [int]$major -ge 22 }
   if (-not $validNode) {
     if ($env:PROCESSOR_ARCHITECTURE -ne 'AMD64') { throw 'Automatic Node bootstrap currently supports Windows x64 only.' }
-    $tools = Join-Path $env:LOCALAPPDATA 'SlopMachineFleet\tools'
+    $tools = Get-FleetBuildToolsRoot
     New-Item -ItemType Directory -Force -Path $tools | Out-Null
     $archiveName = "node-v$nodeVersion-win-x64.zip"
     $nodeHome = Join-Path $tools "node-v$nodeVersion-win-x64"
