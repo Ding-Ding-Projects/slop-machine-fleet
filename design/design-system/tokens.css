@@ -1,0 +1,84 @@
+/* Slop Machine Fleet — generated from tokens.json */
+:root, [data-theme="dark"] {
+  --canvas: #08090c;
+  --surface: #0f1115;
+  --surface-raised: #171a21;
+  --surface-sunken: #050608;
+  --line: #232731;
+  --line-strong: #646b7c;
+  --ink: #f2f4f7;
+  --ink-muted: #a3aab7;
+  --ink-faint: #7f8797;
+  --volt: #d4ff3a;
+  --volt-hover: #e2ff73;
+  --on-volt: #0b0d10;
+  --volt-text: #d4ff3a;
+  --volt-soft: #1d2408;
+  --focus: var(--volt-text);
+  --running: #3ee6b5;
+  --running-soft: #0d2a22;
+  --provisioning: #7ab3ff;
+  --provisioning-soft: #0f1d33;
+  --draining: #ffb547;
+  --draining-soft: #2e210b;
+  --failed: #ff6b7f;
+  --failed-soft: #331118;
+  --idle: #a3aab7;
+  --idle-soft: #1b1e25;
+  --scrim: rgba(3,4,6,0.72);
+  --shadow-pop: 0 0 0 1px #232731, 0 16px 48px -12px rgba(0,0,0,0.7);
+}
+[data-theme="light"] {
+  --canvas: #f5f6f2;
+  --surface: #ffffff;
+  --surface-raised: #eff0eb;
+  --surface-sunken: #e9eae4;
+  --line: #dcded6;
+  --line-strong: #7e837a;
+  --ink: #0b0d10;
+  --ink-muted: #4e545c;
+  --ink-faint: #62676e;
+  --volt: #c6f02a;
+  --volt-hover: #b4dc1c;
+  --on-volt: #0b0d10;
+  --volt-text: #476400;
+  --volt-soft: #eef8c6;
+  --focus: var(--volt-text);
+  --running: #00785a;
+  --running-soft: #dcf5ec;
+  --provisioning: #1d5bd0;
+  --provisioning-soft: #e1ebfc;
+  --draining: #8f5200;
+  --draining-soft: #fbecd3;
+  --failed: #bb2238;
+  --failed-soft: #fbe2e5;
+  --idle: #5d636b;
+  --idle-soft: #eceee8;
+  --scrim: rgba(11,13,16,0.36);
+  --shadow-pop: 0 0 0 1px #dcded6, 0 16px 40px -16px rgba(11,13,16,0.22);
+}
+:root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+  --font-sans: "Geist", ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "Cascadia Code", Consolas, monospace;
+}
+.display { font-family: var(--font-sans); font-size: 56px; line-height: 56px; font-weight: 600; letter-spacing: -0.035em; }
+.title-1 { font-family: var(--font-sans); font-size: 28px; line-height: 34px; font-weight: 600; letter-spacing: -0.02em; }
+.title-2 { font-family: var(--font-sans); font-size: 20px; line-height: 26px; font-weight: 600; letter-spacing: -0.01em; }
+.heading { font-family: var(--font-sans); font-size: 15px; line-height: 20px; font-weight: 600; }
+.body { font-family: var(--font-sans); font-size: 14px; line-height: 20px; font-weight: 400; }
+.body-sm { font-family: var(--font-sans); font-size: 13px; line-height: 18px; font-weight: 400; }
+.label { font-family: var(--font-sans); font-size: 12px; line-height: 16px; font-weight: 500; }
+.code { font-family: var(--font-mono); font-size: 13px; line-height: 20px; font-weight: 400; }
+.numeric { font-family: var(--font-mono); font-size: 13px; line-height: 18px; font-weight: 500; }
+.eyebrow { font-family: var(--font-mono); font-size: 11px; line-height: 14px; font-weight: 500; letter-spacing: 0.08em; }

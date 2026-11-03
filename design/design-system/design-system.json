@@ -1,0 +1,25 @@
+{
+  "v": 3,
+  "layout": "files",
+  "createdOnFiles": {
+    "v": 1,
+    "at": "2026-11-03T06:44:19Z"
+  },
+  "title": "Slop Machine Fleet",
+  "namespace": "SlopFleet",
+  "libraries": [],
+  "sections": {},
+  "groups": [],
+  "assetGroups": {},
+  "blobs": {},
+  "docs": {
+    "readme": "project/README.md",
+    "sections": []
+  },
+  "lastChange": {
+    "by": "Claude",
+    "at": "2026-11-03T06:44:19Z",
+    "via": "Claude (chat)",
+    "note": "First version: tokens in two themes, type, spacing, radii, seven components and the cover."
+  }
+}
