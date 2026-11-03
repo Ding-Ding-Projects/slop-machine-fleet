@@ -30,7 +30,7 @@ const dictionary = {
 let initial, mode, language = 'en', theme = 'system', step = 0, root = '', config = { FLEET_HOST: '', FLEET_HTTPS_PORT: '8443', FLEET_IMAGE: '' }, trusted = false, checked = false, busy = false, hostVerified = false, output = '', result = '', failed = false, query = '', selectedArticle = '';
 function t(key) { const pair = dictionary[key] ?? [key, key]; return language === 'zh' ? pair[1] : language === 'both' ? `${pair[0]} / ${pair[1]}` : pair[0]; }
 function element(tag, text, className) { const node = document.createElement(tag); if (text) node.textContent = text; if (className) node.className = className; return node; }
-function button(key, callback, primary = false, disabled = false) { const node = element('button', t(key), primary ? 'primary' : ''); node.type = 'button'; node.disabled = disabled; node.addEventListener('click', callback); return node; }
+function button(key, callback, primary = false, disabled = false) { const node = element('button', t(key), primary ? 'primary' : ''); node.dataset.focusKey = key; node.type = 'button'; node.disabled = disabled; node.addEventListener('click', callback); return node; }
 function notice(text) { $('#notice').textContent = text; }
 async function call(promise) { const response = await promise; if (!response.ok) { notice(response.error); throw new Error(response.error); } return response.value; }
 function safely(callback) { return (...args) => Promise.resolve(callback(...args)).catch(error => notice(error.message)); }
@@ -42,7 +42,7 @@ function sourcePanel() {
     const selected = await call(api.select()); if (!selected) return;
     root = selected.root; config = selected.config; trusted = false; checked = false; hostVerified = false; step = 0; notice(t('chosen')); render();
   }), false, busy));
-  const label = element('label', '', 'trust'); const input = element('input'); input.type = 'checkbox'; input.checked = trusted; input.disabled = busy || !root; input.addEventListener('change', () => { trusted = input.checked; render(); }); label.append(input, document.createTextNode(t('trust'))); section.append(label); return section;
+  const label = element('label', '', 'trust'); const input = element('input'); input.dataset.focusKey = 'trust'; input.type = 'checkbox'; input.checked = trusted; input.disabled = busy || !root; input.addEventListener('change', () => { trusted = input.checked; render(); }); label.append(input, document.createTextNode(t('trust'))); section.append(label); return section;
 }
 function operationPanel() {
   const section = element('section', '', 'panel'); section.append(element('h2', t('output')));
@@ -108,11 +108,19 @@ function refreshList(target = $('#articles')) {
   if (!results.length) target.append(element('p', t('noResults')));
 }
 function render() {
+  const previousFocus = document.activeElement;
+  const focusKey = previousFocus?.dataset?.focusKey;
+  const movedStep = focusKey === 'next' || focusKey === 'back';
   document.documentElement.lang = language === 'zh' ? 'zh-HK' : 'en'; document.documentElement.dataset.theme = theme;
   $('#language').value = language; $('#theme').value = theme; $('#language-label').textContent = t('language'); $('#theme-label').textContent = t('theme');
   $('#subtitle').textContent = t(`${mode}Title`); $('#footer').textContent = `${t('version')} ${initial.version} · ${t('limits')}`;
   const container = $('#content'); container.replaceChildren();
   if (mode === 'build') renderBuild(container); else if (mode === 'host') renderHost(container); else renderDocs(container);
+  if (previousFocus && !previousFocus.isConnected) {
+    const retained = !movedStep && focusKey ? [...container.querySelectorAll('[data-focus-key]')].find(node => node.dataset.focusKey === focusKey && !node.disabled) : null;
+    const target = retained || (busy ? $('#operation-status') : container.querySelector('.panel h2, h1'));
+    if (target) { if (!retained) target.tabIndex = -1; target.focus({ preventScroll: false }); }
+  }
 }
 api.progress(event => {
   if (event.kind === 'log') { output = (output + event.text).slice(-80000); const log = $('#output'); if (log) { log.textContent = output; log.scrollTop = log.scrollHeight; } return; }
