@@ -17,7 +17,8 @@ export function PlatformProvider({authenticated,scopeKey,destinations,settings=[
  const [dirtyCount,setDirtyCount]=useState(0);
  const [discardPending,setDiscardPending]=useState(false),discardResolve=useRef<((value:boolean)=>void)|null>(null),dirtyDrafts=useRef(new Set<string>());
  const [state,setState]=useState<any>(initialState),[loadedScope,setLoadedScope]=useState(''),[error,setError]=useState(''),[catalogOpen,setCatalogOpen]=useState(false),[paletteOpen,setPaletteOpen]=useState(false),[applied,setApplied]=useState<Record<string,string>>({});
- const root=useRef<HTMLDivElement>(null),stateRef=useRef<any>(state),epoch=useRef(0),identity=useRef(''),allowed=useRef(false);
+ const root=useRef<HTMLDivElement>(null),stateRef=useRef<any>(state),epoch=useRef(0),identity=useRef(''),allowed=useRef(false),mounted=useRef(false);
+ useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;epoch.current++;};},[]);
  const activeScope=authenticated&&validScope(scopeKey)?scopeKey:'';
  if(identity.current!==activeScope){identity.current=activeScope;epoch.current++;allowed.current=false;}
  const ready=!!activeScope&&loadedScope===activeScope;
@@ -26,7 +27,7 @@ export function PlatformProvider({authenticated,scopeKey,destinations,settings=[
  for(const setting of settings)if(!destinationMap.has(setting.destinationId)||!elementMap.has(setting.elementId))throw Error('Settings must name a registered destination and element.');
  const key=`fleet.platform.v1.${scopeKey}`;
  useEffect(()=>{discardResolve.current?.(false);discardResolve.current=null;setDiscardPending(false);dirtyDrafts.current.clear();setDirtyCount(0);setCatalogOpen(false);setPaletteOpen(false);setApplied({});if(!activeScope){stateRef.current=initialState();setState(initialState());setLoadedScope('');return;}try{const source=localStorage.getItem(key);const next=source?parseStored(source):initialState();stateRef.current=next;setState(next);setError('');setLoadedScope(activeScope);}catch{stateRef.current=initialState();setState(initialState());setError('Stored platform records could not be read safely. Export recovery is unavailable; explicitly reset platform records to continue.');setLoadedScope('');}},[activeScope,key]);
- const check=()=>{if(!allowed.current||identity.current!==scopeKey)throw Error('Authenticated scoped platform state is unavailable.');};
+ const check=()=>{if(!mounted.current||!allowed.current||identity.current!==scopeKey)throw Error('Authenticated scoped platform state is unavailable.');};
  const commit=(next:any)=>{check();const source=JSON.stringify(next);parseStored(source);localStorage.setItem(key,source);stateRef.current=next;setState(next);setError('');};
  const perform=(action:()=>void)=>{try{action();}catch(cause){setError((cause as Error).message);}};
  const confirmDiscard=()=>{try{check();if(discardResolve.current)return Promise.resolve(false);setDiscardPending(true);return new Promise<boolean>(resolve=>{discardResolve.current=resolve;});}catch{return Promise.resolve(false);}};
@@ -50,7 +51,7 @@ export function PlatformProvider({authenticated,scopeKey,destinations,settings=[
  const resetAppearance=(id?:string)=>perform(()=>{if(id&&!elementMap.has(id))throw Error('Appearance target is not registered.');const appearance={...stateRef.current.appearance};if(id)delete appearance[id];const next={...stateRef.current,appearance:id?appearance:{}};commit(recordMutation(stateRef.current,'appearance-reset',next,new Date().toISOString(),id||''));});
  const restore=(sequence:number)=>perform(()=>commit(restoreHistory(stateRef.current,sequence,new Date().toISOString(),elements.map(item=>item.id))));
  const download=(format:string)=>perform(()=>{check();const result=serializeExport(stateRef.current,format);const url=URL.createObjectURL(new Blob([result.text],{type:`${result.mime};charset=utf-8`}));const link=document.createElement('a');link.href=url;link.download=`platform-records.${format}`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);});
- const resetRecords=async()=>{try{if(!authenticated||!validScope(scopeKey)||identity.current!==scopeKey)throw Error('Authenticated scope is unavailable.');const version=epoch.current,before=stateRef.current;for(const tab of before.tabs)if(!await canLeave(tab))return;if(version!==epoch.current||identity.current!==scopeKey)return;if(!reviewStillCurrent(before,stateRef.current,scopeKey,identity.current,version,epoch.current))throw Error('Records changed during recovery review. Review the reset again.');const next=initialState();localStorage.setItem(key,JSON.stringify(next));stateRef.current=next;setState(next);setLoadedScope(scopeKey);setError('');}catch(cause){setError((cause as Error).message);}};
+ const resetRecords=async()=>{try{if(!mounted.current||!authenticated||!validScope(scopeKey)||identity.current!==scopeKey)throw Error('Authenticated scope is unavailable.');const version=epoch.current,before=stateRef.current;for(const tab of before.tabs)if(!await canLeave(tab))return;if(version!==epoch.current||identity.current!==scopeKey)return;if(!reviewStillCurrent(before,stateRef.current,scopeKey,identity.current,version,epoch.current))throw Error('Records changed during recovery review. Review the reset again.');const next=initialState();localStorage.setItem(key,JSON.stringify(next));stateRef.current=next;setState(next);setLoadedScope(scopeKey);setError('');}catch(cause){setError((cause as Error).message);}};
  const registeredIds=elements.map(item=>item.id).join('|');
  useEffect(()=>{
   if(!ready||!root.current)return;
