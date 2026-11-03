@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "path": "scripts/publication/public-language-scan.mjs",
+      "line": 568,
+      "sha256": "6426814ed57ab129208bbeb0274b232f6501b473febe1be53ca5898a4a4fb89d",
+      "reason": "technical-identifier"
+    },
+    {
+      "path": "scripts/publication/public-language-scan.mjs",
+      "line": 614,
+      "sha256": "b066b9597c78949e760cefb759de7352de9bc51af1b5c34ab96d2bbeb5da3d4c",
+      "reason": "technical-identifier"
+    },
+    {
+      "path": "scripts/publication/run-publication-language-ci.mjs",
+      "line": 40,
+      "sha256": "1fc09e46aed24596f7587ba7db21fd87251dc77406683197af0095eb679fa7ee",
+      "reason": "technical-identifier"
+    },
+    {
+      "path": "scripts/publication/public-language-scan.mjs",
+      "line": 570,
+      "sha256": "6426814ed57ab129208bbeb0274b232f6501b473febe1be53ca5898a4a4fb89d",
+      "reason": "technical-identifier"
+    },
+    {
+      "path": "scripts/publication/public-language-scan.mjs",
+      "line": 616,
+      "sha256": "b066b9597c78949e760cefb759de7352de9bc51af1b5c34ab96d2bbeb5da3d4c",
+      "reason": "technical-identifier"
+    },
+    {
+      "path": "scripts/publication/run-publication-language-ci.mjs",
+      "line": 41,
+      "sha256": "1fc09e46aed24596f7587ba7db21fd87251dc77406683197af0095eb679fa7ee",
+      "reason": "technical-identifier"
+    },
+    {
+      "path": "scripts/test-caddy-ip-tls.mjs",
+      "line": 82,
+      "sha256": "a82ea8adcc4d67f77642ebe9806f190a8c1db43ebf6d8651a944effc6b8b79c2",
+      "reason": "technical-identifier"
+    },
+    {
+      "path": "scripts/test-caddy-ip-tls.mjs",
+      "line": 88,
+      "sha256": "4d17d92623a49c092c389ec283b978a7d095ffa0277890987e9660ff5e921411",
+      "reason": "technical-identifier"
+    },
+    {
+      "path": "apps/web/tests/wording.test.mjs",
+      "line": 7,
+      "sha256": "82b6be2463f44efc25e639603d9e62be25d04305a2d5b5198ad838388a441f2f",
+      "reason": "technical-identifier"
+    }
+  ]
+}

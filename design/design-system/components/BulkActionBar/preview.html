@@ -1,0 +1,14 @@
+<!-- @dsCard group="Fleet" height=360 subtitle="Exact targets before, per-worker outcomes after; partial is never success" -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>BulkActionBar preview</title></head>
+<body>
+<div class="sf-pad sf-col">
+<div class="sf-spread sf-card" style="background:var(--secondary-container);color:var(--on-secondary-container);padding:8px 8px 8px 16px;border-radius:var(--corner-full)"><span class="title-small">3 workers selected</span><div class="sf-row"><button class="sf-btn sf-btn--sm sf-btn--text" style="color:var(--on-secondary-container)"><span class="sf-i " aria-hidden="true">stop_circle</span>Drain</button><button class="sf-btn sf-btn--sm sf-btn--text" style="color:var(--on-secondary-container)"><span class="sf-i " aria-hidden="true">restart_alt</span>Restart</button><button class="sf-btn sf-btn--sm sf-btn--text" style="color:var(--on-secondary-container)"><span class="sf-i " aria-hidden="true">sell</span>Tag</button><button class="sf-icon-btn sf-icon-btn--sm" aria-label="Clear selection" style="color:var(--on-secondary-container)"><span class="sf-i " aria-hidden="true">close</span></button></div></div>
+<div class="sf-card sf-card--outlined" style="padding:0"><div class="sf-spread" style="padding:12px 16px"><span class="title-medium">Restart: 2 of 3 done</span><span class="sf-status sf-status--draining"><span class="sf-i " aria-hidden="true">warning</span>Partly done</span></div>
+<div class="sf-li sf-li--dense"><span class="sf-mono sf-grow">fleet-w-05</span><span class="sf-status sf-status--running"><span class="sf-i " aria-hidden="true">check_circle</span>Restarted</span></div>
+<div class="sf-li sf-li--dense"><span class="sf-mono sf-grow">fleet-w-07</span><span class="sf-status sf-status--running"><span class="sf-i " aria-hidden="true">check_circle</span>Restarted after drain</span></div>
+<div class="sf-li sf-li--dense"><span class="sf-mono sf-grow">fleet-w-09</span><span class="sf-status sf-status--failed"><span class="sf-i " aria-hidden="true">error</span>Agent did not respond</span><button class="sf-btn sf-btn--tonal sf-btn--sm">Retry this one</button></div></div>
+</div>
+</body>
+</html>
