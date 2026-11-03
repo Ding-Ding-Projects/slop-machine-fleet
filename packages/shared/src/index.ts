@@ -155,3 +155,41 @@ export interface AuthenticatedSession {
   csrfToken: string;
   scopeKey: string;
 }
+
+export interface WorkerAuthPrompt {
+  promptId: string;
+  kind: "github-credential-helper" | "github-open-browser";
+  title: string;
+  choices: Array<{ value: "yes" | "no"; label: string }>;
+  defaultChoice: "yes" | null;
+  allowedActions: Array<"choose" | "enter">;
+}
+export interface WorkerAuthState {
+  state:
+    | "unknown"
+    | "pending"
+    | "input-required"
+    | "code-issued"
+    | "verified"
+    | "error"
+    | "expired"
+    | "cancelled";
+  sessionId: string | null;
+  gitSetupState:
+    | "unknown"
+    | "not-requested"
+    | "declined"
+    | "configured"
+    | "error";
+  prompt: WorkerAuthPrompt | null;
+  verificationUrl?: string | null;
+  userCode?: string | null;
+  expiresAt?: string | null;
+  errorCode?: string | null;
+}
+export interface WorkerAuthInput {
+  sessionId: string;
+  promptId: string;
+  action: "choose" | "enter";
+  choice?: "yes" | "no";
+}

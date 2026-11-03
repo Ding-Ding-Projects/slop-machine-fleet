@@ -13,6 +13,7 @@ import {
   type ActionAttemptContext,
 } from "./bulk-operations.js";
 import { initializeImageProvenance } from "./image-provenance.js";
+import { registerAuthRelay } from "./auth-relay.js";
 import { isApiRequest } from "./request-routing.js";
 import cookie from "@fastify/cookie";
 import rateLimit from "@fastify/rate-limit";
@@ -528,35 +529,7 @@ export async function createService(o: ServiceOptions) {
     if (!v) throw fail(404, "NOT_FOUND", "Operation was not found.");
     return v;
   });
-  for (const method of ["GET", "POST", "DELETE"] as const)
-    app.route<{ Params: { id: string; provider: string } }>({
-      method,
-      url:
-        "/api/workers/:id/auth/:provider" + (method === "POST" ? "/start" : ""),
-      handler: async (req) => {
-        z.enum(["codex", "github", "pairing"]).parse(req.params.provider);
-        return o.transport.request(
-          await worker(req.params.id),
-          method,
-          `/auth/${req.params.provider}${method === "POST" ? "/start" : ""}`,
-        );
-      },
-    });
-  app.post<{ Params: { id: string; provider: string } }>(
-    "/api/workers/:id/auth/:provider/input",
-    async (req) => {
-      z.enum(["codex", "github", "pairing"]).parse(req.params.provider);
-      return o.transport.request(
-        await worker(req.params.id),
-        "POST",
-        `/auth/${req.params.provider}/input`,
-        z
-          .object({ input: z.string().min(1).max(8192) })
-          .strict()
-          .parse(req.body),
-      );
-    },
-  );
+  registerAuthRelay(app, worker, o.transport);
   const task = async (id: string) => {
     uuid.parse(id);
     const t = await store.get<Task>("tasks", id);

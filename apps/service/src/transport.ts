@@ -2,6 +2,24 @@ import https from "node:https";
 import { readFile } from "node:fs/promises";
 import { spawn, type ChildProcess } from "node:child_process";
 import net from "node:net";
+export class WorkerRequestConflict extends Error {
+  readonly statusCode = 409;
+  readonly code = "WORKER_REQUEST_CONFLICT";
+  constructor() {
+    super(
+      "Worker rejected a stale or conflicting request. Refresh the current worker state.",
+    );
+  }
+}
+export function workerResponseValue(status: number, body: string): unknown {
+  if (status === 409) throw new WorkerRequestConflict();
+  if (status >= 400) throw new Error("Worker request failed");
+  try {
+    return JSON.parse(body || "{}");
+  } catch {
+    throw new Error("Invalid worker response");
+  }
+}
 export interface WorkerTransport {
   request(
     worker: any,
@@ -120,12 +138,9 @@ export class SsmTransport implements WorkerTransport {
             });
             res.on("end", () => {
               try {
-                const parsed = JSON.parse(data || "{}");
-                if ((res.statusCode ?? 500) >= 400)
-                  reject(new Error("Worker request failed"));
-                else resolve(parsed);
-              } catch {
-                reject(new Error("Invalid worker response"));
+                resolve(workerResponseValue(res.statusCode ?? 500, data));
+              } catch (error) {
+                reject(error);
               }
             });
           },

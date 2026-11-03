@@ -24,6 +24,18 @@
     {
       "key": "operationId",
       "value": ""
+    },
+    {
+      "key": "authProvider",
+      "value": "github"
+    },
+    {
+      "key": "workerAuthSessionId",
+      "value": ""
+    },
+    {
+      "key": "workerAuthPromptId",
+      "value": ""
     }
   ],
   "item": [
@@ -500,6 +512,201 @@
                 "features"
               ]
             }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Structured worker authentication",
+      "description": "Transient identity-bound authentication. Helper No may leave sign-in verified with gitSetupState declined; helper setup is separate. No live login is asserted by these examples.",
+      "item": [
+        {
+          "name": "Current worker authentication",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{baseUrl}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workers/{{workerId}}/auth/{{authProvider}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workers",
+                "{{workerId}}",
+                "auth",
+                "{{authProvider}}"
+              ]
+            },
+            "description": "Use only the current worker response identities in local unsynchronized variables. Do not save response bodies or export populated environments. Legacy worker capability is update-required; no raw input fallback."
+          }
+        },
+        {
+          "name": "Start worker authentication",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{baseUrl}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workers/{{workerId}}/auth/{{authProvider}}/start",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workers",
+                "{{workerId}}",
+                "auth",
+                "{{authProvider}}",
+                "start"
+              ]
+            },
+            "description": "Use only the current worker response identities in local unsynchronized variables. Do not save response bodies or export populated environments. Legacy worker capability is update-required; no raw input fallback."
+          }
+        },
+        {
+          "name": "Choose credential-helper No",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{baseUrl}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workers/{{workerId}}/auth/{{authProvider}}/input",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workers",
+                "{{workerId}}",
+                "auth",
+                "{{authProvider}}",
+                "input"
+              ]
+            },
+            "description": "Use only the current worker response identities in local unsynchronized variables. Do not save response bodies or export populated environments. Legacy worker capability is update-required; no raw input fallback.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sessionId\": \"{{workerAuthSessionId}}\",\n  \"promptId\": \"{{workerAuthPromptId}}\",\n  \"action\": \"choose\",\n  \"choice\": \"no\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Explicit default or browser Enter",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{baseUrl}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workers/{{workerId}}/auth/{{authProvider}}/input",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workers",
+                "{{workerId}}",
+                "auth",
+                "{{authProvider}}",
+                "input"
+              ]
+            },
+            "description": "Use only the current worker response identities in local unsynchronized variables. Do not save response bodies or export populated environments. Legacy worker capability is update-required; no raw input fallback.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sessionId\": \"{{workerAuthSessionId}}\",\n  \"promptId\": \"{{workerAuthPromptId}}\",\n  \"action\": \"enter\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Cancel exact worker authentication session",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{baseUrl}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workers/{{workerId}}/auth/{{authProvider}}?sessionId={{workerAuthSessionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workers",
+                "{{workerId}}",
+                "auth",
+                "{{authProvider}}"
+              ],
+              "query": [
+                {
+                  "key": "sessionId",
+                  "value": "{{workerAuthSessionId}}"
+                }
+              ]
+            },
+            "description": "Use only the current worker response identities in local unsynchronized variables. Do not save response bodies or export populated environments. Legacy worker capability is update-required; no raw input fallback."
           }
         }
       ]

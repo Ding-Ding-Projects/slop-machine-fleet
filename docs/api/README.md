@@ -15,3 +15,7 @@ The collection contains empty local variable placeholders and no real account co
 Creation requires an exact expiring cost review and an idempotency key. Bulk operations identify explicit worker IDs and return a durable per-target result. Tasks retain one active or uncertain dispatch per worker. Termination preserves workspace volumes by default.
 
 The collection is a request aid, not proof of live provider operation. Live cloud acceptance remains separate from local HTTP tests.
+
+## Structured worker authentication templates
+
+The worker authentication group uses only `sessionId`, `promptId`, bounded `choose` choices and explicit `enter` actions. Fill the empty identity variables from the current worker status in a local unsynchronized environment. Cancellation includes the exact session query. Do not save authentication responses as collection examples, keep console logging disabled for these flows, and never export populated environments. Missing structured capabilities are update-required; stale identities are conflicts, not a reason for raw input. Successful GitHub sign-in and optional helper configuration are separate states, so No may preserve verified sign-in with setup declined. The templates are not live-login evidence.
