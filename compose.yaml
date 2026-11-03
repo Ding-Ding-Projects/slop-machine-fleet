@@ -23,8 +23,15 @@ services:
       PUBLIC_ORIGIN: https://${FLEET_HOST:?Set FLEET_HOST}:${FLEET_HTTPS_PORT:-8443}
       DATABASE_URL_FILE: /run/secrets/database_url
       SETUP_CODE_FILE: /run/secrets/setup_code
+      WORKER_RELEASE_FILE: /run/secrets/worker_release
+      CONTROLLER_PKI_DIR: /var/lib/fleet/pki
+      AWS_PROFILE: ${FLEET_AWS_PROFILE:-default}
+      AWS_SDK_LOAD_CONFIG: '1'
       WEB_ROOT: /app/apps/web/dist
-    secrets: [database_url, setup_code]
+    secrets: [database_url, setup_code, worker_release]
+    volumes:
+      - controller_pki:/var/lib/fleet/pki
+      - ./.local/aws:/home/node/.aws:ro
     depends_on:
       database: { condition: service_healthy }
     restart: unless-stopped
@@ -48,7 +55,9 @@ secrets:
   database_password: { file: ./.local/database-password }
   database_url: { file: ./.local/database-url }
   setup_code: { file: ./.local/setup-code }
+  worker_release: { file: ./.local/worker-release.json }
 volumes:
   database:
   certificates:
   gateway_config:
+  controller_pki:

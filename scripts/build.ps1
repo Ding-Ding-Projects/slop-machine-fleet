@@ -1,5 +1,6 @@
 param([switch]$Installer, [Parameter(ValueFromRemainingArguments=$true)][string[]]$Options)
 $ErrorActionPreference = 'Stop'
+$env:PSModulePath = (Join-Path $PSHOME 'Modules') + ';' + (Join-Path $env:ProgramFiles 'WindowsPowerShell\Modules')
 $silent = $env:SILENT -eq '1' -or $Options -contains '/s' -or $Options -contains '--silent'
 $runAfter = $env:RUN_AFTER_BUILD -eq '1' -or $Options -contains '/run' -or $Options -contains '--run'
 $root = Split-Path $PSScriptRoot -Parent
@@ -10,7 +11,7 @@ try {
   $nodeVersion = '22.16.0'
   $node = Get-Command node -ErrorAction SilentlyContinue
   $validNode = $false
-  if ($node) { $major = & node -p 'Number(process.versions.node.split(".")[0])'; $validNode = $LASTEXITCODE -eq 0 -and [int]$major -ge 22 }
+  if ($node) { $major = & node -p 'parseInt(process.versions.node)'; $validNode = $LASTEXITCODE -eq 0 -and [int]$major -ge 22 }
   if (-not $validNode) {
     if ($env:PROCESSOR_ARCHITECTURE -ne 'AMD64') { throw 'Automatic Node bootstrap currently supports Windows x64 only.' }
     $tools = Join-Path $env:LOCALAPPDATA 'SlopMachineFleet\tools'
@@ -45,6 +46,8 @@ try {
   if ($Installer) {
     & dotnet publish $workerProject --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true --output (Join-Path $root 'release/worker')
     if ($LASTEXITCODE -ne 0 -or -not (Test-Path (Join-Path $root 'release/worker/Fleet.Worker.exe'))) { throw 'The self-contained Windows worker publish is incomplete.' }
+    & node (Join-Path $PSScriptRoot 'build-companions.mjs')
+    if ($LASTEXITCODE -ne 0) { throw "Portable companion packaging exited $LASTEXITCODE." }
     Write-Host 'Producing an unsigned Squirrel.Windows installer.'
     & npm.cmd run package --workspace apps/desktop
     if ($LASTEXITCODE -ne 0) { throw "Installer packaging exited $LASTEXITCODE." }

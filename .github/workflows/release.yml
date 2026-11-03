@@ -45,8 +45,19 @@ jobs:
         run: |
           $files = Get-ChildItem apps/desktop/release -File | Where-Object { $_.Extension -in '.exe','.nupkg' -or $_.Name -eq 'RELEASES' }
           Copy-Item release/worker/Fleet.Worker.exe apps/desktop/release/Fleet.Worker.exe
-          $files = @($files) + @(Get-Item apps/desktop/release/Fleet.Worker.exe)
+          Copy-Item worker/scripts/Bootstrap-Worker.ps1 apps/desktop/release/Bootstrap-Worker.ps1
+          foreach ($mode in @('build','host','docs')) {
+            $portable = @(Get-ChildItem "apps/desktop/release/companions/$mode" -File -Filter "Fleet-$mode-*.exe")
+            if ($portable.Count -ne 1) { throw "Expected exactly one $mode portable companion." }
+            Copy-Item $portable[0].FullName apps/desktop/release/
+          }
+          $files = @(Get-ChildItem apps/desktop/release -File | Where-Object { $_.Extension -in '.exe','.nupkg','.ps1' -or $_.Name -eq 'RELEASES' })
           if (-not $files) { throw 'Missing desktop release payload.' }
+          $tag = 'build-${{ github.run_id }}-${{ github.run_attempt }}'
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $base = "https://github.com/${{ github.repository }}/releases/download/$tag"
+          $worker = @{ version=$version; assetUrl="$base/Fleet.Worker.exe"; assetSha256=(Get-FileHash apps/desktop/release/Fleet.Worker.exe -Algorithm SHA256).Hash.ToLowerInvariant(); bootstrapUrl="$base/Bootstrap-Worker.ps1"; bootstrapSha256=(Get-FileHash apps/desktop/release/Bootstrap-Worker.ps1 -Algorithm SHA256).Hash.ToLowerInvariant() }
+          $worker | ConvertTo-Json | Set-Content apps/desktop/release/worker-release.json
           $manifest = @{ source = '${{ github.sha }}'; image = 'ghcr.io/ding-ding-projects/slop-machine-fleet:sha-${{ github.sha }}'; unsigned = $true; files = @($files | ForEach-Object { @{ name=$_.Name; bytes=$_.Length; sha256=(Get-FileHash $_.FullName -Algorithm SHA256).Hash } }) }
           $manifest | ConvertTo-Json -Depth 5 | Set-Content apps/desktop/release/source-manifest.json
       - name: Publish unique normal release and verify stored state
@@ -55,8 +66,9 @@ jobs:
           GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.ORG_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
           $tag = 'build-${{ github.run_id }}-${{ github.run_attempt }}'
-          $assets = @(Get-ChildItem apps/desktop/release -File | Where-Object { $_.Extension -in '.exe','.nupkg','.json' -or $_.Name -eq 'RELEASES' } | ForEach-Object FullName)
+          $assets = @(Get-ChildItem apps/desktop/release -File | Where-Object { $_.Extension -in '.exe','.nupkg','.json','.ps1' -or $_.Name -eq 'RELEASES' } | ForEach-Object FullName)
           gh release create $tag @assets --target '${{ github.sha }}' --title "Slop Machine Fleet $tag" --notes 'Source-bound unsigned Windows desktop client and shared service image. See the attached manifest. Runtime and installation acceptance are tracked separately.' --repo '${{ github.repository }}'
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           $release = gh release view $tag --repo '${{ github.repository }}' --json isDraft,isPrerelease,assets,tagName | ConvertFrom-Json
-          if ($LASTEXITCODE -or $release.isDraft -or $release.isPrerelease -or $release.tagName -ne $tag -or $release.assets.Count -lt 4) { throw 'Stored release verification failed.' }
+          if ($LASTEXITCODE -or $release.isDraft -or $release.isPrerelease -or $release.tagName -ne $tag) { throw 'Stored release verification failed.' }
+          foreach ($asset in $assets) { if (-not ($release.assets | Where-Object name -eq ([IO.Path]::GetFileName($asset)))) { throw 'A published release asset is missing.' } }
