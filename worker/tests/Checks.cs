@@ -86,6 +86,10 @@ var bytePressure=new TaskOutput(Guid.NewGuid());
 for(var i=0;i<100;i++) {using var chunk=JsonDocument.Parse(JsonSerializer.Serialize(new {itemId="bytes",delta=new string('\u754c',2040)+"\n"}));bytePressure.Record("item/agentMessage/delta",chunk.RootElement);}
 var byteSnapshot=bytePressure.Snapshot(0,200);
 Check(byteSnapshot.Gap&&JsonSerializer.SerializeToUtf8Bytes(byteSnapshot.Events,new JsonSerializerOptions(JsonSerializerDefaults.Web)).Length<=256*1024,"serialized replay byte budget includes JSON escaping");
+var suppressionPressure=new TaskOutput(Guid.NewGuid());
+for(var i=0;i<1025;i++) {using var command=JsonDocument.Parse(JsonSerializer.Serialize(new {item=new {id="protected-"+i,type="commandExecution",command="type PERSONAL_VOCABULARY.json"}}));suppressionPressure.Record("item/started",command.RootElement);}
+Notify(suppressionPressure,"item/commandExecution/outputDelta","{\"itemId\":\"protected-1024\",\"delta\":\"must remain hidden after tracking limit\\n\"}");
+Check(!suppressionPressure.Snapshot(0,200).Events.Any(x=>x.Content.Contains("must remain hidden")),"protected item tracking overflow fails closed");
 Console.WriteLine($"PASS {checks} total worker checks");
 using(var pairing=JsonDocument.Parse(JsonSerializer.Serialize(new {manualPairingCode="TEST-CODE",expiresAt=DateTimeOffset.UtcNow.AddMinutes(5).ToUnixTimeSeconds()}))) {
     var state=AuthManager.ParsePairing(pairing.RootElement); Check(state.State=="code-issued"&&state.UserCode=="TEST-CODE"&&state.ExpiresAt.HasValue,"official pairing fields and Unix expiry parsed");

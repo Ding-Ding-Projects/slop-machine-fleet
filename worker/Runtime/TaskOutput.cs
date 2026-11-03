@@ -15,6 +15,7 @@ public sealed class TaskOutput(Guid taskId,long initialSequence=0,bool recovered
     readonly HashSet<string> longLines=new();
     readonly HashSet<string> streamedItems=new();
     readonly object sync=new();
+    bool suppressAll;
     static readonly JsonSerializerOptions Serialization=new(JsonSerializerDefaults.Web);
     readonly long startingSequence=initialSequence;
     long sequence=initialSequence; int bytes;
@@ -93,11 +94,11 @@ public sealed class TaskOutput(Guid taskId,long initialSequence=0,bool recovered
             SafeAdd("file-change",(kind??"changed")+": "+path,itemId);
         }
     }
-    void Suppress(string? itemId) {if(itemId is not null&&suppressedItems.Count<1024) suppressedItems.Add(itemId);}
+    void Suppress(string? itemId) {if(itemId is null) return;if(suppressedItems.Count<1024) suppressedItems.Add(itemId);else if(!suppressedItems.Contains(itemId)) suppressAll=true;}
     void Delta(string kind,string? itemId,string? delta,string? stream=null) {
         if(delta is null||itemId is null||itemId.Length>256) return;
         if(streamedItems.Count<1024) streamedItems.Add(itemId);
-        if(suppressedItems.Contains(itemId)) {Add(kind,"Protected task output withheld.",itemId,stream,redacted:true);return;}
+        if(suppressAll||suppressedItems.Contains(itemId)) {Add(kind,"Protected task output withheld.",itemId,stream,redacted:true);return;}
         var key=kind+"\0"+itemId;
         if(!lines.TryGetValue(key,out var pending)) {if(lines.Count>=64) {Add(kind,"Concurrent output buffer limit reached.",itemId,stream,truncated:true);return;} lines[key]=pending=new();}
         // Wait for complete lines so a credential split across protocol deltas is
@@ -121,7 +122,7 @@ public sealed class TaskOutput(Guid taskId,long initialSequence=0,bool recovered
     void SafeAdd(string kind,string content,string? itemId=null,string? stream=null) {
         content=Regex.Replace(content,@"\x1B(?:\[[0-?]*[ -/]*[@-~]|\][^\x07]*(?:\x07|\x1B\\))","");
         content=new string(content.Where(c=>!char.IsControl(c)||c is '\n' or '\t' or '\r').ToArray());
-        if(itemId is not null&&suppressedItems.Contains(itemId)||Sensitive.IsMatch(content)||ProtectedContext.IsMatch(content)) {Suppress(itemId);Add(kind,"Sensitive task output withheld.",itemId,stream,redacted:true);return;}
+        if(suppressAll||itemId is not null&&suppressedItems.Contains(itemId)||Sensitive.IsMatch(content)||ProtectedContext.IsMatch(content)) {Suppress(itemId);Add(kind,"Sensitive task output withheld.",itemId,stream,redacted:true);return;}
         if(content.Length==0) return;
         for(var offset=0;offset<content.Length;offset+=MaximumContent) Add(kind,content.Substring(offset,Math.Min(MaximumContent,content.Length-offset)),itemId,stream);
     }
