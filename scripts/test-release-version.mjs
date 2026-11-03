@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import {execFileSync} from 'node:child_process';
 import {deriveVersion,deriveIdentity,validateIdentity,compareVersions,applyOverlay} from './release-version.mjs';
 const policy={schemaVersion:1,epoch:0,componentMaximum:65534,repository:'Ding-Ding-Projects/slop-machine-fleet',workflowId:'405397166',workflowPath:'.github/workflows/release.yml'};
 const source='a'.repeat(40);
@@ -32,17 +33,36 @@ test('explicit overlay updates packages, locks and worker metadata while retaini
   const root=await fs.mkdtemp(path.join(os.tmpdir(),'fleet-version-overlay-'));
   try{
     await fs.mkdir(path.join(root,'apps/desktop'),{recursive:true});await fs.mkdir(path.join(root,'worker'));
-    await fs.writeFile(path.join(root,'package.json'),JSON.stringify({version:'0.1.2',workspaces:['apps/desktop']}));
-    await fs.writeFile(path.join(root,'apps/desktop/package.json'),JSON.stringify({version:'0.1.2'}));
-    await fs.writeFile(path.join(root,'package-lock.json'),JSON.stringify({version:'0.1.2',packages:{'':{version:'0.1.2'},'apps/desktop':{version:'0.1.2'}}}));
+    await fs.writeFile(path.join(root,'package.json'),JSON.stringify({name:'fixture-root',version:'0.1.2',workspaces:['apps/desktop']}));
+    await fs.writeFile(path.join(root,'apps/desktop/package.json'),JSON.stringify({name:'@fleet/desktop',version:'0.1.2',dependencies:{external:'1.2.3'}}));
+    await fs.writeFile(path.join(root,'package-lock.json'),JSON.stringify({lockfileVersion:3,version:'0.1.2',packages:{'':{version:'0.1.2'},'apps/desktop':{version:'0.1.2'}}}));
     await fs.writeFile(path.join(root,'worker/Fleet.Worker.csproj'),'<Project><PropertyGroup><Version>0.1.2</Version></PropertyGroup></Project>');
     const base={'package.json':'0.1.2','apps/desktop/package.json':'0.1.2'};
     const identity=deriveIdentity(run,context,policy,base);await applyOverlay(root,identity,policy);
     const lock=JSON.parse(await fs.readFile(path.join(root,'package-lock.json'),'utf8'));
     assert.equal(lock.version,'0.16.1');assert.equal(lock.packages['apps/desktop'].version,'0.16.1');
     assert.equal(JSON.parse(await fs.readFile(path.join(root,'apps/desktop/package.json'),'utf8')).version,'0.16.1');
+    assert.equal(JSON.parse(await fs.readFile(path.join(root,'apps/desktop/package.json'),'utf8')).dependencies.external,'1.2.3');
     const worker=await fs.readFile(path.join(root,'worker/Fleet.Worker.csproj'),'utf8');assert.match(worker,/<AssemblyVersion>0\.16\.1\.0/);assert.match(worker,/<IncludeSourceRevisionInInformationalVersion>false/);
     assert.deepEqual(JSON.parse(await fs.readFile(path.join(root,'build-identity.json'),'utf8')).baseVersions,base);
     await assert.rejects(()=>applyOverlay(root,identity,policy));
+  }finally{await fs.rm(root,{recursive:true});}
+});
+test('overlay internal exact references permit a real offline npm lock and restore',async()=>{
+  const root=await fs.mkdtemp(path.join(os.tmpdir(),'fleet-version-restore-'));
+  try{
+    await fs.mkdir(path.join(root,'apps/service'),{recursive:true});await fs.mkdir(path.join(root,'packages/shared'),{recursive:true});await fs.mkdir(path.join(root,'worker'));
+    await fs.writeFile(path.join(root,'package.json'),JSON.stringify({name:'fixture-root',version:'0.1.2',workspaces:['apps/service','packages/shared']}));
+    await fs.writeFile(path.join(root,'apps/service/package.json'),JSON.stringify({name:'@fleet/service',version:'0.1.2',dependencies:{'@fleet/shared':'0.1.0'}}));
+    await fs.writeFile(path.join(root,'packages/shared/package.json'),JSON.stringify({name:'@fleet/shared',version:'0.1.0'}));
+    await fs.writeFile(path.join(root,'worker/Fleet.Worker.csproj'),'<Project><PropertyGroup><Version>0.1.2</Version></PropertyGroup></Project>');
+    const npm=command=>execFileSync(process.platform==='win32'?process.env.ComSpec:'sh',process.platform==='win32'?['/d','/c',`npm.cmd ${command}`]:['-c',`npm ${command}`],{cwd:root,encoding:'utf8',windowsHide:true,timeout:30000});
+    npm('install --package-lock-only --ignore-scripts --offline --no-audit --no-fund');
+    await applyOverlay(root,deriveIdentity(run,context,policy,{'package.json':'0.1.2','apps/service/package.json':'0.1.2','packages/shared/package.json':'0.1.0'}),policy);
+    const service=JSON.parse(await fs.readFile(path.join(root,'apps/service/package.json'),'utf8'));
+    const lock=JSON.parse(await fs.readFile(path.join(root,'package-lock.json'),'utf8'));
+    assert.equal(service.dependencies['@fleet/shared'],'0.16.1');assert.equal(lock.packages['apps/service'].dependencies['@fleet/shared'],'0.16.1');
+    npm('ci --ignore-scripts --offline --no-audit --no-fund');
+    assert.equal(JSON.parse(await fs.readFile(path.join(root,'node_modules/@fleet/shared/package.json'),'utf8')).version,'0.16.1');
   }finally{await fs.rm(root,{recursive:true});}
 });

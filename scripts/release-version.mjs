@@ -51,9 +51,14 @@ export async function applyOverlay(root, identity, policy, { worker = true } = {
   const inventory = await packageInventory(root);
   if (JSON.stringify(inventory) !== JSON.stringify(identity.baseVersions)) throw Error('Overlay base package versions differ from the source receipt.');
   const manifests = Object.keys(inventory);
+  const catalog = new Map();
+  const values = new Map();
+  for(const name of manifests){const value=JSON.parse(await fs.readFile(path.join(root,name),'utf8'));if(typeof value.name!=='string'||catalog.has(value.name))throw Error('Internal package names must be present and unique.');catalog.set(value.name,name);values.set(name,value);}
+  const updateReferences = value => {for(const section of ['dependencies','devDependencies','optionalDependencies','peerDependencies'])if(value[section])for(const name of Object.keys(value[section]))if(catalog.has(name))value[section][name]=identity.version;};
   for (const name of manifests) {
-    const file = path.join(root,name), value = JSON.parse(await fs.readFile(file,'utf8'));
+    const file = path.join(root,name), value = values.get(name);
     value.version = identity.version;
+    updateReferences(value);
     await fs.writeFile(file,JSON.stringify(value,null,2)+'\n');
   }
   const locks = ['package-lock.json',...manifests.filter(name=>name!=='package.json').map(name=>name.replace('package.json','package-lock.json'))];
@@ -62,11 +67,17 @@ export async function applyOverlay(root, identity, policy, { worker = true } = {
     const text = await fs.readFile(file,'utf8').catch(error=>{if(error.code==='ENOENT')return null;throw error;});
     if (text === null) continue;
     const lock = JSON.parse(text), relative = path.dirname(name).replaceAll('\\','/');
+    if(lock.lockfileVersion!==3)throw Error('Release overlays require the declared npm lockfile version 3.');
     lock.version = identity.version;
     if (lock.packages?.['']) lock.packages[''].version = identity.version;
     if (relative === '.') for (const manifest of manifests) {
       const key = path.posix.dirname(manifest);
       if (key !== '.' && lock.packages?.[key]) lock.packages[key].version = identity.version;
+    }
+    for(const [key,value] of Object.entries(lock.packages??{})){
+      updateReferences(value);
+      const packageName=value.name??(key.startsWith('node_modules/')?key.slice('node_modules/'.length):undefined);
+      if(!value.link&&catalog.has(packageName))value.version=identity.version;
     }
     await fs.writeFile(file,JSON.stringify(lock,null,2)+'\n');
   }
