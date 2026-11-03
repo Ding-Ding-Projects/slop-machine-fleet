@@ -1,38 +1,50 @@
 # Fleet delivery handoff
 
-Implementation is incomplete. The shared service, native worker, browser interface, desktop wrapper, portable companions and release methods exist in source. The complete required-feature inventory retains 115 identities with unfinished applicability and delivery states.
+Implementation remains incomplete. The source contains the shared fleet service, native Windows worker, browser and desktop workflows, portable companions, documentation and release methods. The115-entry required-feature inventory records unfinished capabilities honestly.
 
-## Source and build evidence
+## Preserved source and build state
 
-Published main was independently read back at `b01b27b8d70e35d574586ed72e79c01f6cc44f07`. The documentation workflow and separate build-cache repair are integrated locally after that milestone. The documentation resolver pins an authenticated immutable source and accepts downloads only from an explicit stable/main normal release. The reviewed privacy method passed its real hosted check in run `41622147401`; branch-protection enforcement and complete local font-decoder parity remain separate unfinished duties.
+Main `95872c98c13ab7564760e24fbcbdd553d0d3ce3d` was pushed and independently read back. Its exact root build passed with148 complete documentation articles and local fonts. Both exact root entrypoints previously passed at source `939d26821e331919b43f0fa980a203d82ab7f1d6`. The local source939 installer is134644224 bytes, SHA-256 `94052e4657dcf03647e629b36f94bee3d1916a854f09a2260b63dfa00f4bff8d`, observed NotSigned.
 
-Both exact root entrypoints passed at source `939d26821e331919b43f0fa980a203d82ab7f1d6`. Local Setup SHA-256 is `94052e4657dcf03647e629b36f94bee3d1916a854f09a2260b63dfa00f4bff8d`, 134644224 bytes, Authenticode NotSigned. Signer-process audit is unavailable. Later script/documentation changes require a fresh exact build.
+The next candidate is version0.1.2, prepared for the genuine installed0.1.1-to-later automatic-updater test. Its build, release and runtime acceptance remain separate work. Later local commits add the real TLS regression, the optional-wiki exit-state repair and exact source-line receipts for two literal POSIX certificate-reading commands. The complete outgoing history must pass the trusted privacy scanner before transmission.
 
-The service image for that source was published, inspected and pulled at `sha256:0ce833cc40b2a19e7a645ff8e9642b7811bd2b0a2cdaad091a7d0099f7472042`. Publication is not Compose or LAN proof.
+## Accepted release and installed upgrade
 
-## Runtime evidence
+Normal release `build-41621036172-1` declares0.1.1, stable/main and source939d268. Its exact tag/source association, all8 payload sizes/SHA-256 values, Squirrel feed SHA-1 entries, full package CRC/path safety, package identity/version and x64 main executable were verified. All5 executables were observed NotSigned. Signer-process audit remains unavailable.
 
-The real PostgreSQL-backed browser pass displayed 115 feature entries, complete articles, four anonymous literal/encoded protected requests returning401, explicit tab creation, dirty-navigation veto and cancellation preservation, acknowledged discard, Settings task focus, neutral wording persistence/reset, loaded fonts and measured narrow layouts. It records11 captures and20 successful complete prospective observation intervals. The renderer stayed bound to939d268 with SHA-256 `0fec6c85a715c43dac67e3e8ef5313b48fe1c63fbaf9f01b508d6ebfa36d0286`; ending sourceHEAD had advanced to b01b27b. Those captures therefore remain private diagnostic evidence, not promoted current screenshots. The full physical-scale matrix and fresh-process persistence are unfinished.
+The selected physical Windows host was upgraded from0.1.0 to0.1.1 through normal Squirrel Setup. Installed package, executable and app.asar matched the verified release. Direct installed launch and background keyboard focus were observed. All owned app process trees and hidden desktops were subsequently closed; the installed product remains preserved and disconnected.
 
-Historical release `build-41596418923-1` was downloaded and verified, then installed on the selected physical Windows host as a disconnected prior baseline. The installed full package, executable and app.asar matched package bytes. Setup's exit code was not retained, so actual installed bytes and the inspected native connection screen provide separate evidence. The old package has known defects repaired in newer source and is not recommended as the current candidate.
+Installation replaced the legacy build cache inside the Squirrel root. Both original files were restored byte-for-byte from verified pre-update backups. Future scripts use a separately validated user cache, whose files stayed unchanged through the real upgrade. The containment/legacy-runtime exclusion regression passed under Windows PowerShell and PowerShell7. Setup exit status and native automatic-updater states remain unverified. Normal installer-upgrade proof does not establish available/downloading/ready-to-restart behavior.
 
-Installation replaced an existing build-tools cache within the Squirrel installation root. Both affected cache files were restored from official bytes and independently matched their original hashes; recovery copies remain private. Future build scripts use a separate user-scoped cache outside that root, with containment and legacy-runtime exclusion checks passing under Windows PowerShell and PowerShell7. Actual later installer/update preservation is unfinished.
+## Running controller and HTTPS
 
-## Hosting and documentation
+The source939 service image was published, inspected and pulled at digest `sha256:0ce833cc40b2a19e7a645ff8e9642b7811bd2b0a2cdaad091a7d0099f7472042`. The real tracked Compose stack pulled and started successfully after DACL-only local-file preparation. Owner/group and protected access checks passed, without an administrator launch or host-security change.
 
-The exact detached hosting entrypoint reached Docker/Compose checks but stopped during protected local-file preparation with SeSecurityPrivilege, before pull/start. A DACL-only repair is under review. No privilege or host-security setting was changed. No trusted LAN endpoint is claimed.
+The IP/no-SNI gateway defect was reproduced from a separate LAN client. Configured default_sni repaired certificate selection. Certificate-verified no-SNI TLS and the application health endpoint passed; wrong-IP identity verification remained rejected. The isolated Docker regression independently proved production positive, removed-setting negative and restored positive behavior, plus wrong-IP controls and exact owned teardown.
 
-Complete wiki pages and navigation are preserved under `docs/wiki/pending/`. The supported wiki repository returns Repository not found; initialization and publication remain pending. The public documentation hosting configuration exists, but actual workflow deployment, complete live routes/downloads/assets and exact About-homepage readback remain unverified.
+Current-user browser/desktop certificate trust awaits the user's explicit route choice. The hosting entrypoint correctly remains incomplete when its native HTTPS check cannot establish trust. Both hosting modes and productive native HTTPS acceptance still need completion. The controller now uses the verified immutable0.1.1 worker-release configuration, with the previous manifest preserved. No paid worker was created.
 
-## Next work
+## Browser runtime and evidence limits
 
-1. Finish the scoped hosting permission repair and rerun the exact entrypoint without weakening file protection.
-2. Run the exact root build for the integrated candidate and retain its source binding.
-3. Preserve and verify the next normal stable/main release and published image. Complete actual Compose startup and trusted LAN checks.
-4. Verify native installation/update, preserving the supported installation and all existing cache/data bytes. Do not use a VM or disposable operating-system user.
-5. Freeze source during fresh UI evidence, promote only receipts that satisfy all provenance/privacy checks, and update current documentation images.
-6. Verify the public documentation deployment, full wiki/article inventory and repository homepage.
-7. Configure the intended cloud account and obtain exact account/region/resource/cost approval before any paid launch. Real worker provisioning, device login, interactive GitHub login, remote pairing and a live coding turn remain unverified.
-8. Continue every applicable required-feature implementation and acceptance. Full regex parity, required tool suites, all Settings consumers, companion duties, accessibility and display-scale coverage remain unfinished.
+The real PostgreSQL-backed browser pass verified115 feature entries, complete articles, four anonymous literal/encoded API requests returning401, explicit tab creation, draft-navigation veto and cancellation preservation, acknowledged discard, targeted Settings focus, neutral wording persistence/reset, loaded fonts and representative narrow layouts.
 
-No destructive cleanup or full completion is authorized by this handoff. Preserve all task branches and working trees until completion, remote ancestry and archive proof permit their scoped retirement.
+That pass has11 inspected captures and20 successful complete prospective observation intervals. The renderer stayed bound to939d268, SHA-256 `0fec6c85a715c43dac67e3e8ef5313b48fe1c63fbaf9f01b508d6ebfa36d0286`, while ending sourceHEAD had advanced tob01b27b. Those images remain private diagnostic evidence, not promoted current screenshots. Freeze source for fresh evidence and retain actual producer/build/runtime binding. Full physical-scale coverage and fresh-process persistence remain unfinished.
+
+## Documentation and required features
+
+Complete prepared wiki articles and navigation are preserved in `docs/wiki/pending/`. The supported wiki repository remains unavailable until initialization. Prepared content is not forge-wiki publication.
+
+Documentation run41625691315 stopped because the optional unavailable-wiki probe left native exit1 in the runner wrapper. The focused repair resets only that handled optional result; real required clone and manifest-download failures remain nonzero. Actual deployment, complete live routes/assets/downloads and the About-homepage readback remain unverified. Immutable event-source selection and explicit stable/main download eligibility are retained.
+
+The complete required-feature inventory remains unfinished, including full regex parity, remaining tool suites, every applicable Settings consumer, companion acceptance, accessibility and the complete display-scale matrix. An implemented inventory or a successful build is not acceptance.
+
+## Next actions
+
+1. Preserve the reviewed literal-command receipts, verify the complete outgoing history and push the integrated candidate.
+2. Run the exact root build, freeze the source during fresh UI evidence and promote only complete provenance/privacy receipts.
+3. Verify the actual documentation deployment and repository homepage, then refresh verified downloads after the new normal release.
+4. Complete the approved native HTTPS route, both host modes and the genuine0.1.1-to-later updater sequence while preserving existing data and caches.
+5. Obtain exact account/region/resource/cost approval before any paid worker launch. Verify bootstrap, enrollment, guided Slop Machine login, interactive GitHub CLI login, remote pairing and a live coding turn.
+6. Continue every unfinished applicable required feature. Preserve all task branches and working trees until completion, remote ancestry and archive proof permit scoped retirement.
+
+No full completion, destructive cleanup, forced history rewrite or unrun verification is claimed.

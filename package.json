@@ -1,6 +1,6 @@
 {
   "name": "slop-machine-fleet",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "type": "module",
   "workspaces": ["apps/service", "apps/web", "apps/desktop", "apps/docs", "packages/shared"],

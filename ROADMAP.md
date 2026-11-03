@@ -24,10 +24,10 @@
 ## Delivery
 
 - [x] Run exact root build and installer entrypoints successfully for source `939d268`; later source changes require fresh verification.
-- [ ] Verify that the separate build-cache location survives the supported installer/update route.
-- [ ] Repair and rerun protected local-file preparation through the exact hosting entrypoint.
+- [x] Verify that separate build-cache files survive the normal 0.1.0 to 0.1.1 Squirrel Setup upgrade.
+- [x] Repair protected local-file preparation and verify the exact detached entrypoint reaches running Compose services; native HTTPS trust remains separate.
 - [ ] Publish and inspect unsigned Squirrel installer and portable companions.
-- [ ] Publish immutable container image and verify tracked Compose startup.
+- [x] Publish and pull the immutable source939d268 container image and verify tracked Compose startup and certificate-verified cross-LAN health.
 - [ ] Verify both host modes and trusted HTTPS from an intended LAN client.
 - [ ] Publish complete interactive documentation and verify repository homepage.
 - [x] Preserve complete prepared wiki articles and navigation while forge-wiki initialization is unavailable.

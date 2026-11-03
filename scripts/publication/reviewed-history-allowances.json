@@ -36,6 +36,18 @@
       "line": 41,
       "sha256": "1fc09e46aed24596f7587ba7db21fd87251dc77406683197af0095eb679fa7ee",
       "reason": "technical-identifier"
+    },
+    {
+      "path": "scripts/test-caddy-ip-tls.mjs",
+      "line": 82,
+      "sha256": "a82ea8adcc4d67f77642ebe9806f190a8c1db43ebf6d8651a944effc6b8b79c2",
+      "reason": "technical-identifier"
+    },
+    {
+      "path": "scripts/test-caddy-ip-tls.mjs",
+      "line": 88,
+      "sha256": "4d17d92623a49c092c389ec283b978a7d095ffa0277890987e9660ff5e921411",
+      "reason": "technical-identifier"
     }
   ]
 }
