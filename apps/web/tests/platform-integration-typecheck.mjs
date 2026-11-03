@@ -6,7 +6,7 @@ const web=fileURLToPath(new URL('../',import.meta.url)),root=path.resolve(web,'.
 const virtual=new Map(),normalize=value=>path.resolve(value).replaceAll('\\','/').toLowerCase();
 const add=(ref,file)=>virtual.set(normalize(path.join(root,file)),execFileSync('git',['show',`${ref}:${file}`],{cwd:root,encoding:'utf8'}));
 for(const file of execFileSync('git',['ls-tree','-r','--name-only','6a90e50','apps/web/src/tools'],{cwd:root,encoding:'utf8'}).trim().split('\n').filter(Boolean))add('6a90e50',file);
-add('8115fd7','apps/web/src/DesktopUpdates.tsx');
+add('54b340b','apps/web/src/DesktopUpdates.tsx');
 const config=ts.readConfigFile(path.join(web,'tsconfig.json'),ts.sys.readFile);
 const parsed=ts.parseJsonConfigFileContent(config.config,ts.sys,web);
 const host=ts.createCompilerHost(parsed.options),originalRead=host.readFile,originalExists=host.fileExists,originalDirectory=host.directoryExists;
