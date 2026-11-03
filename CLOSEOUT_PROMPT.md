@@ -11,3 +11,9 @@ Incomplete: approved native HTTPS trust, both host modes, actual automatic-updat
 Documentation workflow41625691315 failed at a handled optional wiki probe's residual native exit1. Its focused repair and real TLS regression are integrated locally. Preserve the exact technical source receipts and require the complete outgoing-history scan before the next push. Protected policy data stays outside public source; no private wording was transmitted. Fresh source-bound UI evidence must begin and end on the same source revision.
 
 Continue the authorized independent work while the native certificate-route choice is pending. Do not alter trust without that choice, launch paid resources without exact review, expose protected values, force-push, discard unfinished work or claim complete delivery. Preserve every result's actual source and artifact identity.
+
+## Current preserved milestone for the next source checkpoint
+
+Five sourcec0544f7 browser screenshots passed complete promotion checks and are staged with exact inventory and README links. The initial live documentation148-article content, source hashes, fonts and eight download records passed HTTP/source verification; the exact About homepage is stored and read back. Live interaction/persistence/keyboard/accessibility/narrow proofs remain unavailable.
+
+The version-label fix reads the actual package manifest. The release-refresh correction now uses a reviewed immutable source in a main-ref child without expanding environment permissions; its provider result is pending. Base64 streaming work and its independent repair loop remain isolated and unactivated. Preserve and verify this documentation milestone before integrating any later UI work. Keep the private raw capture/build receipts and exact-byte archive; do not replace unavailable runtime proof with source checks.

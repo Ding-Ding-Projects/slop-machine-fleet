@@ -27,4 +27,19 @@ The tracked Compose stack has now pulled and started successfully after local pe
 - Normal release [build-41621036172-1](https://github.com/Ding-Ding-Projects/slop-machine-fleet/releases/tag/build-41621036172-1) declares version 0.1.1 and the stable/main channel. All eight payload files matched their published sizes and SHA-256 values; five executables were observed unsigned.
 - The supported physical Windows installation was upgraded from 0.1.0 to accepted 0.1.1 through Squirrel Setup. Installed package, executable and archive matched the verified release, and direct native launch and keyboard focus were observed. The separate build cache remained unchanged; the legacy cache was restored from verified backups. This is installer-upgrade proof, with automatic-updater behavior still unfinished.
 
-The [required-feature inventory](docs/features/requirements/README.md) retains unfinished capabilities, including full regex parity and the remaining tool suites. Full physical-scale coverage, fresh screenshot promotion, native updates, complete companion acceptance and live cloud workflows are unfinished. Design reference frames are not runtime screenshots. Follow the [roadmap](ROADMAP.md) and [handoff](HANDOFF.md) for exact remaining work.
+The [required-feature inventory](docs/features/requirements/README.md) retains unfinished capabilities, including full regex parity and the remaining tool suites. Five current browser screenshots have verified source, byte and privacy provenance. Full physical-scale coverage, native updates, complete companion acceptance and live cloud workflows remain unfinished. Design reference frames are not runtime screenshots. Follow the [roadmap](ROADMAP.md) and [handoff](HANDOFF.md) for exact remaining work.
+
+
+## Current built browser views
+
+These exact PNGs come from the compiled0.1.2 browser renderer at source `c0544f72554f877cbda1882179ff4bc002283d25`, captured on2026-11-03 UTC with real authenticated controller data and no created cloud workers. The producer held source, index and every built asset unchanged through teardown. They show current partial implementation, not completed cloud or required-feature acceptance. See [capture provenance and limits](docs/features/evidence/README.md).
+
+![Empty Fleet workspace in English with light theme at 1426 by 963](docs/captures/fleet-en-light-normal.png)
+
+![Loaded 115-entry feature inventory in English with dark theme at 1426 by 963](docs/captures/features-en-dark-normal.png)
+
+![Complete language article in English with dark theme at 1426 by 963](docs/captures/feature-article-en-dark-normal.png)
+
+![Bilingual appearance controls with light theme at 320 by 900](docs/captures/settings-bilingual-light-narrow.png)
+
+![Feature inventory with Cantonese controls and English article text in dark theme at 1426 by 963](docs/captures/features-cantonese-dark-normal.png)

@@ -48,3 +48,13 @@ The complete required-feature inventory remains unfinished, including full regex
 6. Continue every unfinished applicable required feature. Preserve all task branches and working trees until completion, remote ancestry and archive proof permit scoped retirement.
 
 No full completion, destructive cleanup, forced history rewrite or unrun verification is claimed.
+
+## Current screenshot and hosted-content milestone
+
+Five actual compiled0.1.2 browser views at sourcec0544f72554f877cbda1882179ff4bc002283d25 passed the promotion validator after exact raw-byte staging and a second pixel/privacy inspection. Source, index and all seven built assets stayed unchanged through capture and owned teardown. README.md, docs/capture-inventory.json and the evidence article now carry exact public paths, hashes, state tuples and limits. The original raw records and an exact hash-verified copy of the producing web build remain retained privately. Full physical-scale, narrow provenance/navigation, complete localization and native-wrapper acceptance remain unfinished.
+
+The public documentation at https://ding-ding-projects.github.io/slop-machine-fleet/ returned repeatedHTTP200. Actual hosted source2b0d604989bfc68f05b1690b7d8785780d0e173e/version0.1.2 contains148 unique complete articles; every body hash and normalized source blob matched, nine prepared wiki pages are bundled and164 source-relative targets exist. Main assets, dynamic tokens stylesheet and all three original font files returned200 with expected hashes. Eight embedded product downloads match actual normal releasebuild-41625691334-1/source95872c98c13ab7564760e24fbcbdd553d0d3ce3d metadata. The exact About homepage was set and read back. Rendered navigation, persistence, keyboard, accessibility and narrow-layout proof remain unavailable, so full documentation acceptance is not claimed.
+
+Release-triggered documentation run41632210697 passed resolve/build but stopped at the main-only environment because its event ref was a release tag. The local correction dispatches the reviewed immutable source through a main-ref child with scoped action permission and no recursion. The main-only environment restriction is unchanged. Actual release-parent/child provider proof remains pending.
+
+A separate Base64 streaming branch contains source implementation and independent repair checks, with no main activation yet. Three ownership/cancellation/cleanup findings are independently repaired; a separate text-preview boundary repair is preserved for final review. Actual browser storage, media, clipboard, sound and native lifecycle acceptance remain pending. Keep this unfinished work on its owning branch until its stated integration criteria pass.

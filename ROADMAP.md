@@ -19,7 +19,8 @@
 - [ ] Complete regex functionality and retain unsupported capabilities as unfinished.
 - [ ] Verify personal-wording import, drop, reset, local privacy and outcome sounds.
 - [ ] Complete required built-in tool suites and their runtime acceptance.
-- [ ] Record genuine source-bound screenshots and screen recording.
+- [x] Record and validate five representative source-bound browser screenshots at source `c0544f7`.
+- [ ] Complete workflow screenshot coverage, physical-scale matrix and screen recording.
 
 ## Delivery
 
@@ -30,6 +31,8 @@
 - [x] Publish and pull the immutable source939d268 container image and verify tracked Compose startup and certificate-verified cross-LAN health.
 - [ ] Verify both host modes and trusted HTTPS from an intended LAN client.
 - [ ] Publish complete interactive documentation and verify repository homepage.
+- [x] Deploy the initial 148-article documentation, verify live HTTP/content/assets and read back the exact repository homepage.
+- [ ] Verify live journeys, persistence, search, Settings, keyboard, accessibility and narrow layouts in an enabled runtime environment.
 - [x] Preserve complete prepared wiki articles and navigation while forge-wiki initialization is unavailable.
 - [ ] Publish and read back the forge wiki after its supported repository becomes available.
 - [ ] Verify release source binding, installed update where applicable and all acceptance evidence.
