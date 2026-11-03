@@ -1,5 +1,13 @@
 # Fleet delivery handoff
 
+## Fresh package-byte evidence
+
+The generated-package metadata findings are repaired in source `f2a2f6f` and integrated into candidate `16ce22d`. Its root build and17 focused release/payload checks passed; the unsigned negative fixture also passed. Fresh local installer production at exact source `f2a2f6f597bf534966bf3322b87d349a83066405` completed with explicitly nonpublishable version0.16.1.
+
+Actual new archives exclude builder configurations and unused companion stages. Worker output has no CodeView/embedded-PDB records or published symbols, and known local path markers are absent. All three portable payloads contain the exact reviewed native helper at its unpacked path. A bounded124-record scan has zero unresolved findings, and five release executables read NotSigned. These static results do not prove native helper execution, updater operation or browser interaction. Original private diagnostic packages remain retained.
+
+The intentional preservation-channel documentation skip is now verified by actual run41670431867: resolve succeeded, with refresh-main/build/deploy skipped and no deployment source accepted. Source publication, derived-version provider packaging and installed-update acceptance still require their own current readbacks. The independently built coupled authentication/Base64 candidate remains inactive on main.
+
 ## Release identity and preserved coupled candidate
 
 The release-version repair is integrated locally through `dba64a5`, with explicit documentation identity labels at `a22facd`. It retains strict newer-version updates, derives bounded versions from authenticated provider metadata, applies consistent isolated overlays and checks the actual accepted stable floor before serialized publication. Hosted documentation retains its own build identity and separately selected download identity.

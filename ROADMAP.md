@@ -41,4 +41,6 @@
 - [ ] Verify release source binding, installed update where applicable and all acceptance evidence.
 - [x] Verify consistent local0.16.1 package/feed/executable/renderer identity through the exact installer entrypoint at source5900784; receipt is explicitly nonpublishable.
 - [ ] Verify authenticated derived-version publication, stable-floor ordering and actual installed update.
+- [x] Rebuild sourcef2a2f6f local packages and inspect actual archive exclusions, worker symbol/path metadata, unpacked helper bytes and five unsigned executable statuses; native execution remains unverified.
+- [x] Verify actual preservation-channel documentation resolve success with dependent deployment jobs deliberately skipped in run41670431867.
 - [ ] Integrate and push completed work, preserve incomplete work and process eligible task-owned cleanup.

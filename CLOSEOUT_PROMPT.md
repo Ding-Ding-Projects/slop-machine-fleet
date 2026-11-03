@@ -1,5 +1,15 @@
 # Fleet continuation
 
+## Generated-payload repair and release readiness
+
+The local integrated candidate is `16ce22da61de992a3503d3b916ab4bc06e470816` before this handoff update. Its exact root build passed, as did17 selected release/payload checks and the actual unsigned-status negative fixture. Nine outgoing revisions passed the complete publication scan. It includes the reviewed packaging repair `f2a2f6f` and the compatible count-limit correction; the larger authentication/Base64 candidate remains isolated.
+
+Fresh exact staged `build-installer.bat /s` at source `f2a2f6f597bf534966bf3322b87d349a83066405` completed successfully with local0.16.1, explicitly nonpublishable. Actual package/version/archive/worker-debug checks and all five unsigned-executable checks passed. Setup is134346240 bytes, SHA2566664b177240eebf09f4b3507e2f5e14a703d22bac96dafcd7269b8c62f998cca; full package is133608106 bytes, SHA2569dc310de4ebe1a3433a8fd8e49ae90df0fe334be2d529c970d0293042f66c03c.
+
+The bounded fresh scan covered124 actual package members, receipts, renderers, archives and worker records with zero unresolved findings. Generated builder configurations are excluded; known local machine/staging markers are absent. The worker has no CodeView or embedded-PDB debug records and no published PDB. All three portable files were statically extracted: their runtime archives match verified archives and their unpacked configuration helper matches the unchanged source hash. No helper, application or updater was executed. The unchanged vendor pattern matched the verified official runtime baseline and did not establish a project credential.
+
+Provider publication is now ready for the next source push and actual workflow readback; local package proof must not be relabelled as provider or installed-update proof. The deliberate preservation-release documentation skip now has actual provider evidence: run41670431867/source0d39e06 succeeded in resolve and skipped refresh-main, build and deploy, with an explicit preservation-channel reason. The older failed tag-bound run remains historical evidence.
+
 ## Release-identity integration checkpoint
 
 The reviewed release-version correction is integrated locally through `dba64a5`, followed by the independent documentation-label change at `a22facd`. Provider releases derive one bounded numeric version from authenticated workflow/run/attempt identity, apply an isolated tracked-source overlay before producers, and require a strictly newer accepted stable floor immediately before serialized publication. Equal/older updater exclusion remains intact. The original checked-in version is not silently rewritten.
