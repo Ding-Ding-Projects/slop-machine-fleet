@@ -25,8 +25,16 @@ export function useErrors() {
         "內容無法以所選字元編碼表示。",
       ],
       "data-url": [
-        "Only valid Base64 data URLs are supported.",
-        "只支援有效的 Base64 資料網址。",
+        "The data URL header or encoding is invalid.",
+        "資料網址標頭或編碼無效。",
+      ],
+      "data-url-percent": [
+        "Malformed percent escape in the data URL.",
+        "資料網址的百分比跳脫序列無效。",
+      ],
+      "data-url-character": [
+        "This data URL byte must be percent-encoded.",
+        "此資料網址位元組必須使用百分比編碼。",
       ],
       structure: [
         "Use a rectangular array of scalar values or a consistently quoted table.",

@@ -1,3 +1,7 @@
+import {
+  DataURLStripper,
+  PercentOctetDecoder,
+} from "../../../../packages/shared/local-base64/data-url.mjs";
 export const MAX_BYTES = 8 * 1024 * 1024;
 export class ToolError extends Error {
   constructor(code, offset) {
@@ -92,8 +96,41 @@ export function decode64(input, { url = false, strict = true } = {}) {
 }
 export function parseDataURL(input) {
   if (input.length > MAX_BYTES * 1.5) throw new ToolError("size");
-  const match = /^data:([^,]*),(.*)$/s.exec(input);
+  const match = /^data:([^,]*),(.*)$/is.exec(input);
   if (!match) throw new ToolError("data-url");
+  if (match[1].split(";").at(-1) !== "base64") {
+    const parser = new DataURLStripper(),
+      parts = [];
+    let decoder = null,
+      length = 0;
+    try {
+      for (let offset = 0; offset < input.length; offset += 16384) {
+        const final = offset + 16384 >= input.length;
+        const payload = parser.push(
+          new TextEncoder().encode(input.slice(offset, offset + 16384)),
+          final,
+        );
+        if (parser.mime && !decoder)
+          decoder = new PercentOctetDecoder(parser.headerLength);
+        if (decoder) {
+          const bytes = decoder.push(payload, final);
+          length += bytes.length;
+          if (length > MAX_BYTES) throw new ToolError("size");
+          parts.push(bytes);
+        }
+      }
+    } catch (error) {
+      if (error instanceof ToolError) throw error;
+      throw new ToolError(error.code || "data-url", error.offset);
+    }
+    const bytes = new Uint8Array(length);
+    let offset = 0;
+    for (const part of parts) {
+      bytes.set(part, offset);
+      offset += part.length;
+    }
+    return { mime: parser.mime, parameters: parser.parameters, bytes };
+  }
   const parts = match[1].split(";"),
     mime = parts.shift() || "text/plain";
   if (!/^[\w.+-]+\/[\w.+-]+$/.test(mime) || parts.at(-1) !== "base64")

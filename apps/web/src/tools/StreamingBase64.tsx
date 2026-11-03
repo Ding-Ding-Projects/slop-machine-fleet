@@ -105,8 +105,16 @@ export function StreamingBase64({
         "文字無法以所選編碼表示。",
       ],
       "data-url": [
-        "The data URL header or Base64 declaration is invalid.",
-        "資料網址標頭或 Base64 宣告無效。",
+        "The data URL header or encoding declaration is invalid.",
+        "資料網址標頭或編碼宣告無效。",
+      ],
+      "data-url-percent": [
+        "Malformed percent escape in the data URL.",
+        "資料網址的百分比跳脫序列無效。",
+      ],
+      "data-url-character": [
+        "This data URL byte must be percent-encoded.",
+        "此資料網址位元組必須使用百分比編碼。",
       ],
       size: [
         "The input exceeds this workflow's supported size.",

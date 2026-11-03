@@ -68,7 +68,7 @@ test("data URL headers cross arbitrary boundaries without changing decoded bytes
 });
 test("invalid and oversized data URL headers reject without accepting injected attributes", () => {
   for (const value of [
-    "data:text/html,x",
+    "data:text/html;invalid,x",
     "data:text/plain;invalid;base64,AA==",
     "data:text/plain;base64" + "a".repeat(4100),
   ]) {

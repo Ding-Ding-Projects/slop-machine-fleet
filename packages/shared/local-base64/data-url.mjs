@@ -8,6 +8,90 @@ export function dataURLPrefix(mime = "application/octet-stream") {
     throw new Base64Error("data-url");
   return new TextEncoder().encode("data:" + mime + ";base64,");
 }
+// RFC 2397 imports RFC 2396 urlchar; percent escapes represent octets, not UTF-8 text.
+const URL_BYTE = /^[A-Za-z0-9\-_.!~*'();/?:@&=+$,]$/;
+export class PercentOctetDecoder {
+  constructor(offset = 0) {
+    this.offset = offset;
+    this.digits = 0;
+    this.first = 0;
+    this.escapeOffset = 0;
+    this.finished = false;
+  }
+  push(chunk, final = false) {
+    if (this.finished) throw new Base64Error("finished");
+    if (!(chunk instanceof Uint8Array) || chunk.length > 69632)
+      throw new Base64Error("chunk");
+    const output = new Uint8Array(chunk.length);
+    let length = 0;
+    for (const byte of chunk) {
+      const at = this.offset++;
+      if (this.digits) {
+        const digit =
+          byte >= 48 && byte <= 57
+            ? byte - 48
+            : byte >= 65 && byte <= 70
+              ? byte - 55
+              : byte >= 97 && byte <= 102
+                ? byte - 87
+                : -1;
+        if (digit < 0)
+          throw new Base64Error("data-url-percent", this.escapeOffset);
+        if (this.digits === 1) {
+          this.first = digit;
+          this.digits = 2;
+        } else {
+          output[length++] = (this.first << 4) | digit;
+          this.digits = 0;
+        }
+      } else if (byte === 37) {
+        this.escapeOffset = at;
+        this.digits = 1;
+      } else {
+        if (byte > 127 || !URL_BYTE.test(String.fromCharCode(byte)))
+          throw new Base64Error("data-url-character", at);
+        output[length++] = byte;
+      }
+    }
+    if (final) {
+      if (this.digits)
+        throw new Base64Error("data-url-percent", this.escapeOffset);
+      this.finished = true;
+    }
+    return output.subarray(0, length);
+  }
+}
+function headerPart(value, offset) {
+  const bytes = new PercentOctetDecoder(offset).push(
+    new TextEncoder().encode(value),
+    true,
+  );
+  return String.fromCharCode(...bytes);
+}
+export function parsePlainDataHeader(header) {
+  const pieces = header.split(";"),
+    rawMime = pieces.shift(),
+    mime = rawMime ? headerPart(rawMime, 5) : "text/plain";
+  const token = /^[!#$%&'*+\-.^_`|~{}A-Za-z0-9]+$/;
+  const types = mime.split("/");
+  if (types.length !== 2 || !types.every((value) => token.test(value)))
+    throw new Base64Error("data-url");
+  const parameters = [];
+  let offset = 5 + rawMime.length + 1;
+  for (const part of pieces) {
+    const equal = part.indexOf("=");
+    if (equal <= 0) throw new Base64Error("data-url");
+    const name = headerPart(part.slice(0, equal), offset),
+      value = headerPart(part.slice(equal + 1), offset + equal + 1);
+    if (!token.test(name) || /[\x00-\x1f\x7f]/.test(value))
+      throw new Base64Error("data-url");
+    parameters.push(name + "=" + value);
+    offset += part.length + 1;
+  }
+  if (!rawMime && !parameters.some((value) => /^charset=/i.test(value)))
+    parameters.unshift("charset=US-ASCII");
+  return { mime, parameters };
+}
 export class DataURLStripper {
   constructor() {
     this.pending = new Uint8Array();
@@ -15,6 +99,7 @@ export class DataURLStripper {
     this.mime = null;
     this.parameters = [];
     this.headerLength = 0;
+    this.base64 = null;
   }
   push(chunk, final = false) {
     if (this.ready) return chunk;
@@ -25,7 +110,8 @@ export class DataURLStripper {
       this.pending = combined;
       return new Uint8Array();
     }
-    const starts = String.fromCharCode(...combined.subarray(0, 5)) === "data:";
+    const starts =
+      String.fromCharCode(...combined.subarray(0, 5)).toLowerCase() === "data:";
     if (!starts) {
       this.ready = true;
       this.pending = new Uint8Array();
@@ -43,14 +129,21 @@ export class DataURLStripper {
       ),
       parts = header.split(";"),
       mime = parts.shift() || "text/plain";
-    dataURLPrefix(mime);
-    if (
-      parts.pop() !== "base64" ||
-      parts.some((value) => !/^[-\w]+=[-\w.+]+$/.test(value))
-    )
-      throw new Base64Error("data-url");
-    this.mime = mime;
-    this.parameters = parts;
+    this.base64 = parts.at(-1) === "base64";
+    if (this.base64) {
+      dataURLPrefix(mime);
+      if (
+        parts.pop() !== "base64" ||
+        parts.some((value) => !/^[-\w]+=[-\w.+]+$/.test(value))
+      )
+        throw new Base64Error("data-url");
+      this.mime = mime;
+      this.parameters = parts;
+    } else {
+      const parsed = parsePlainDataHeader(header);
+      this.mime = parsed.mime;
+      this.parameters = parsed.parameters;
+    }
     this.headerLength = comma + 1;
     this.ready = true;
     this.pending = new Uint8Array();
