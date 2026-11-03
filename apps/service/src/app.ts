@@ -616,6 +616,19 @@ export async function createService(o: ServiceOptions) {
             threadId: z.string().max(256).nullable().optional(),
             turnId: z.string().max(256).nullable().optional(),
             errorCode: z.string().max(160).nullable().optional(),
+            pendingApprovals: z
+              .array(
+                z.object({
+                  requestId: z.string().min(1).max(128),
+                  method: z.string().min(1).max(100),
+                  summary: z.string().max(2000),
+                  detailsAvailable: z.boolean().optional(),
+                  redacted: z.boolean().optional(),
+                  permissions: z.array(z.string().max(200)).max(20),
+                }),
+              )
+              .max(100)
+              .optional(),
             approvalRequestIds: z
               .array(z.string().max(128))
               .max(100)

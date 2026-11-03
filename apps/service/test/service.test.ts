@@ -50,6 +50,16 @@ async function fixture(pricing = true) {
               id: path.split("/").pop(),
               state: "running",
               approvalRequestIds: ["approval-1"],
+              pendingApprovals: [
+                {
+                  requestId: "approval-1",
+                  method: "command/exec",
+                  summary: "Run the configured project build",
+                  detailsAvailable: true,
+                  redacted: false,
+                  permissions: ["workspace-write"],
+                },
+              ],
               userCode: "must-not-forward",
             }
           : { state: "running" };
@@ -272,6 +282,10 @@ test("FIFO dispatch keeps one active task and rejects credential-bearing reposit
       "approval-1",
     ]);
     assert.equal(detail.json().workerTask.userCode, undefined);
+    assert.equal(
+      detail.json().workerTask.pendingApprovals[0].summary,
+      "Run the configured project build",
+    );
     assert.equal(
       (
         await f.app.inject({
