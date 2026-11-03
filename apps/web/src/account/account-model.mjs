@@ -1,0 +1,15 @@
+export function normalizeUsername(value){if(typeof value!=='string'||value.length>256)throw Error('USERNAME_INVALID');const username=value.normalize('NFKC').trim();if([...username].length<1||[...username].length>64||! /^[\p{L}\p{N}][\p{L}\p{N}\p{M}._-]*$/u.test(username))throw Error('USERNAME_INVALID');return username;}
+export function readAccount(value){if(!value||typeof value!=='object'||typeof value.usernameRequired!=='boolean')throw Error('ACCOUNT_PROTOCOL_INVALID');if(value.username===null&&value.usernameRequired)return {username:null,usernameRequired:true};if(typeof value.username==='string'&&!value.usernameRequired&&normalizeUsername(value.username)===value.username)return {username:value.username,usernameRequired:false};throw Error('ACCOUNT_PROTOCOL_INVALID');}
+export function readAccountStatus(value){if(!value||typeof value.authenticated!=='boolean'||typeof value.signupAvailable!=='boolean'||typeof value.setupAvailable!=='boolean'||value.setupAvailable!==value.signupAvailable||!['username-password','legacy-password'].includes(value.loginMode))throw Error('ACCOUNT_PROTOCOL_INVALID');return {authenticated:value.authenticated,signupAvailable:value.signupAvailable,loginMode:value.loginMode};}
+export function readAccountSession(value){if(!value||value.authenticated!==true||typeof value.csrfToken!=='string'||!value.csrfToken||value.csrfToken.length>4096||typeof value.scopeKey!=='string'||!/^[a-f0-9]{64}$/.test(value.scopeKey))throw Error('ACCOUNT_PROTOCOL_INVALID');return {authenticated:true,csrfToken:value.csrfToken,scopeKey:value.scopeKey,account:readAccount(value.account)};}
+export function accountRequest(mode,username,password,confirmation){
+ if(typeof password!=='string'||password.length<1||password.length>256)throw Error('PASSWORD_INVALID');
+ if(mode==='signup'){if(password.length<14)throw Error('PASSWORD_NEW_INVALID');if(password!==confirmation)throw Error('PASSWORD_CONFIRMATION_MISMATCH');return {path:'/auth/signup',method:'POST',body:{username:normalizeUsername(username),password}};}
+ if(mode==='username-password')return {path:'/auth/login',method:'POST',body:{username:normalizeUsername(username),password}};
+ if(mode==='legacy-password')return {path:'/auth/login',method:'POST',body:{password}};
+ if(mode==='adopt-username')return {path:'/auth/username',method:'PUT',body:{username:normalizeUsername(username),password}};
+ throw Error('ACCOUNT_MODE_INVALID');
+}
+export function shouldRefreshAccount(status,code){return status===409&&['OWNER_ALREADY_CLAIMED','USERNAME_ALREADY_SET','OWNER_CHANGED'].includes(code);}
+export function shouldExpireSession(path,status,code){return status===401&&!(code==='INVALID_CREDENTIALS'&&['/auth/login','/auth/username'].includes(path));}
+export function createAccountRequestOwner(){let mounted=false,revision=0;return {mount(){mounted=true;revision++;},dispose(){mounted=false;revision++;},begin(){if(!mounted)throw Error('ACCOUNT_VIEW_UNAVAILABLE');return ++revision;},current(value){return mounted&&value===revision;}};}

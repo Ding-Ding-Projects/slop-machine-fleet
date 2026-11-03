@@ -1,24 +1,31 @@
-# First-owner signup continuation
+# Fleet continuation
 
-Branch: `ai/feature/20261103-first-signup`, based on reviewed main source `4ae49affbdec60359babd4bbd02311321493916f`. This isolated branch contains only the requested first-owner signup change and its directly related tests/documentation. It does not activate the separate pending worker authentication protocol.
+## Objective and latest requested behavior
 
-## Preserved source
+Deliver the shared desktop/container controller and isolated Windows Server 2025 coding workers, including guided Slop Machine authentication, interactive GitHub CLI authentication, pairing, task dispatch and bulk lifecycle management. The broader required-feature inventory remains incomplete.
 
-- `9dd0bada908c28f744f8452df0d037978ef08672`: atomic PostgreSQL owner+initial-session claim, username/password login, legacy password-only compatibility and password-verified one-time username adoption, conditional identity initialization, test fixture and API contract.
-- `27a72cb818220ad72ab9afaedd4cd5961faa75fb`: empty-variable Postman examples and prepared signup wiki/article regression checks.
+The user now requests automatic host.bat hosting, first-user username/password signup, replacement of the current hosted controller and deletion of its current application data. The reset is authorized but has not occurred. Preserve the working HTTPS identity, hosting credentials and unrelated deployments. Normal host.bat launches must preserve data; this reset is one explicit operation.
 
-The first signup needs no host authorization code or dummy file. Only one concurrent claim can succeed. Later signup receives 409, and normal named login requires username and password. Existing owners without usernames keep usable password-only login until deliberate authenticated adoption; identity, password hash, sessions and scope are preserved. Passwords are never normalized or logged. Wrong username and wrong password return the same generic failure after password verification work.
+## Coupled source integration
 
-## Verified evidence
+The reviewed source units being integrated are service721751fb6de2bb66ff38d2e6de8fd7e94f298abb, interface d99efa8c6255cb33213d57f2fe9436645b153eb3 and hosting c05789b4d32e8674b7987b10902aa23eef002588. All three owning branches were pushed and read back before integration. Their original closeouts preserve detailed source/build receipts.
 
-The exact `cmd /c build.bat /s` passed at `9dd0bad`. The normal service suite passed 37 checks with one explicitly skipped opt-in PostgreSQL suite. The dedicated real PostgreSQL 16.11 run passed seven checks with zero failures/skips and complete required discovery. It used two independent service instances sharing an isolated database schema and verified exactly one owner and one initial session, transactional rollback on session-insert failure, no failure cookie, legacy adoption preservation, conditional identity initialization, Unicode handling, untouched password bytes and CSRF. The final documentation checks passed separately. Publication hooks passed with zero findings.
+Signup uses one PostgreSQL owner/session statement, accepts username/password without a setup code, and leaves subsequent access as sign-in. Legacy owners retain access and can adopt a username deliberately. The exact matched Unicode rules, password preservation, generic credential failures and session/CSRF boundaries were reviewed. The dedicated real-PostgreSQL run passed seven checks, including exactly one owner/session across two service instances and rollback on initial-session failure. The normal service run passed37 checks with one explicit optional-PostgreSQL skip; the separate PostgreSQL run had no skip. The UI passed10 focused checks and its exact root build.
 
-The fixture creates only a uniquely owned loopback container from an immutable official image digest, checks its server ownership marker before schema mutation, removes its isolated schemas/container and deletes temporary connection files. It does not touch the live controller database or create a live owner. No browser, updater, native helper, trust change, paid cloud resource or deployment action was performed.
+Hosting has nine focused check scripts and reviewed configuration, volume, backup, trust and TUI boundaries. It binds the exact existing deployment and original database container before backup, verifies accepted release/image identity, preserves configuration, reuses approved trust and reports signup availability. Unsupported overrides or ambiguous retained storage stop explicitly. Live host.bat and restoration acceptance remain pending.
 
-Independent review and the final integrated UI/hosting acceptance remain the parent's responsibility. The final source-bound build result must be read from its exact receipt; the earlier build must not be relabelled for a later source revision. Existing large-chunk/dependency warnings remain, and prepared wiki content is not a claim of live publication.
+Combined build, verification, accepted-image publication and the actual replacement/reset remain the next steps. Do not create a live owner during testing: leave first signup available for the user.
 
-## Next actions and deployment boundary
+## Established delivery baseline
 
-Preserve this final branch, run the parent's outgoing-history scan, review the signup source and integrate it with the separately assigned signup UI and hosting changes. Hosting should report signup availability after trusted HTTPS health, without retrieving a code or creating an account. Ordinary startup preserves old protected files and existing data.
+Normal stable release build-41673470590-1 is version0.24.1, source4ae49affbdec60359babd4bbd02311321493916f. Provider identity/image/desktop, privacy and documentation jobs succeeded. Uploaded package bytes and productive archive contents were inspected, and the provider receipt enforces five unsigned statuses. The running controller was updated to its immutable image and verified over certificate-checked HTTPS from a second LAN host. Current-user certificate trust was explicitly approved and independently verified; no machine-wide trust change occurred.
 
-The parent alone owns the explicitly authorized reset of the active application's data and deployment. Preserve the working URL, approved TLS identity, hosting credentials and unrelated projects. After reset/deployment, leave the live controller unclaimed for the human user. Never create that owner as a test. Keep private Status Hub writes held until owner-data privacy is established. No push or main change was performed by this lane.
+Public documentation hotfix6731db534f77a95e20d8a382314d33cc609eb12f was deployed. Actual served bytes now use one shared preferences identity for provider and Search; positive/negative real-component checks passed. HTTP assets were verified. Browser rendering acceptance remains unavailable.
+
+## Preserved limits and next steps
+
+The older coupled worker-authentication/Base64 candidate remains isolated at aa142d7 and is not part of this signup/hosting integration. Browser controls and the previously rejected native updater operation remain unavailable; do not retry them through alternate helpers. Static package evidence does not prove native execution.
+
+Before resetting the existing controller, recheck its exact containers/volumes and any real worker/task records. The last observed live worker, operation and task counts were zero. Reset only the authorized application database/controller state and obsolete setup authorization after the new image is ready. Preserve HTTPS identity and source/evidence. Verify fresh database state, trusted health, actual source/version and signup availability without claiming the first account.
+
+Paid cloud creation still needs an exact account, region, resource and cost review. Live worker bootstrap, authentication, pairing, model turns, complete required features, browser/native interactions and full layout acceptance remain unfinished. Preserve every incomplete branch and evidence record; do not force history or delete unrelated work.
