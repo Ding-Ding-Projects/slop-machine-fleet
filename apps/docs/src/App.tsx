@@ -279,8 +279,8 @@ export function App() {
           )}
         </p>
         <p>
-          v{content.version} · {t("Source", "來源")}:{" "}
-          <code>{content.commit.slice(0, 12)}</code> · {t("Built", "建立時間")}:{" "}
+          {t("Documentation build", "文件建置版本")} v{content.version} · {t("Documentation source", "文件來源")}:{" "}
+          <code>{content.commit.slice(0, 12)}</code> · {t("Documentation built", "文件建置時間")}:{" "}
           {content.generatedAt}
         </p>
         <p>
