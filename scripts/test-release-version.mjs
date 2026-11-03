@@ -28,6 +28,7 @@ test('provider workflow, source and run identity cannot reset or be relabelled',
   assert.equal(validateIdentity(identity,policy).version,'0.16.1');
   for(const changed of [{workflow_id:1},{path:'other.yml'},{head_sha:'b'.repeat(40)},{run_number:17},{run_attempt:2}])assert.throws(()=>deriveIdentity({...run,...changed},context,policy,{'package.json':'0.1.2'}));
   assert.throws(()=>validateIdentity({...identity,version:'0.16.2'},policy));
+  assert.throws(()=>validateIdentity({...identity,sourceRoot:'unexpected operational field'},policy));
   const local=localOverlay(source,'0.16.1',{'package.json':'0.1.2'});assert.equal(local.publishable,false);assert.throws(()=>validateIdentity(local,policy));
 });
 test('compiled image metadata must retain both overlaid version and source',()=>{

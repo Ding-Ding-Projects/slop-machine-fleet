@@ -1,6 +1,11 @@
 $ErrorActionPreference = 'Stop'
 $env:PSModulePath = (Join-Path $PSHOME 'Modules') + ';' + (Join-Path $env:ProgramFiles 'WindowsPowerShell\Modules')
 $root = Split-Path $PSScriptRoot -Parent
+function Assert-FleetUnsignedPayload([string]$File,[scriptblock]$ReadSignature = {param($Target) Get-AuthenticodeSignature -LiteralPath $Target}) {
+  $signature = & $ReadSignature $File
+  if ($signature.Status.ToString() -cne 'NotSigned' -or $null -ne $signature.SignerCertificate) { throw 'Expected unsigned project payload did not verify; publication is blocked.' }
+  return @{name=[IO.Path]::GetFileName($File);status='NotSigned';hasSignerCertificate=$false}
+}
 $version = (Get-Content (Join-Path $root 'apps/desktop/package.json') -Raw | ConvertFrom-Json).version
 $identityFile = Join-Path $root 'build-identity.json'
 $identity = if (Test-Path $identityFile) { Get-Content $identityFile -Raw | ConvertFrom-Json } else { @{ mode='local'; version=$version; publishable=$false } }
@@ -23,13 +28,16 @@ if ($feed -notmatch [regex]::Escape($full[0].Name)) { throw 'Produced update fee
 $executables = @((Join-Path $root 'release/worker/Fleet.Worker.exe'))
 foreach ($mode in @('build','host','docs')) { $executables += Join-Path $root "apps/desktop/release/companions/$mode/Fleet-$mode-$version.exe" }
 $metadata = @()
+$signatures = @((Assert-FleetUnsignedPayload (Join-Path $squirrel 'Setup.exe')))
+if (@(Get-ChildItem (Join-Path $root 'release/worker') -File -Filter '*.pdb').Count -gt 0) { throw 'Published worker output contains unnecessary debug symbols.' }
 foreach ($executable in $executables) {
+  $signatures += Assert-FleetUnsignedPayload $executable
   $info = [Diagnostics.FileVersionInfo]::GetVersionInfo($executable)
   if ($info.ProductVersion -ne $version -or $info.FileVersion -notin @($version,"$version.0")) { throw 'Actual worker or portable executable version differs from the common release identity.' }
   $metadata += @{ name=[IO.Path]::GetFileName($executable); productVersion=$info.ProductVersion; fileVersion=$info.FileVersion }
 }
 & node (Join-Path $PSScriptRoot 'verify-built-version.mjs')
 if ($LASTEXITCODE) { throw 'Embedded renderer or application version verification failed.' }
-$receipt = @{ schemaVersion=1; version=$version; identity=$identity; package=$full[0].Name; packageMetadataVersion=$nodes[0].InnerText; executables=$metadata; hostedDocumentation=@{ included=$false; sourceAndVersion='Separate reviewed documentation build and checked-in documentation version.'; downloads='Separately selected and verified accepted release.' }; setupBootstrapVersion='Not used as product identity; the Squirrel package and installed application carry the product version.'; runtimeAcceptance='Not performed by metadata verification.' }
+$receipt = @{ schemaVersion=1; version=$version; identity=$identity; package=$full[0].Name; packageMetadataVersion=$nodes[0].InnerText; executables=$metadata; signatures=$signatures; signatureScope='Actual project release-file status; signer-process audit is not implied.'; generatedPrivacyScope='Actual archives, required runtime inventory and current machine/staging markers; not a universal data-loss-prevention claim.'; workerDebug=@{type='none';symbols=$false;pathMapTarget='/_/fleet-worker'}; hostedDocumentation=@{ included=$false; sourceAndVersion='Separate reviewed documentation build and checked-in documentation version.'; downloads='Separately selected and verified accepted release.' }; setupBootstrapVersion='Not used as product identity; the Squirrel package and installed application carry the product version.'; runtimeAcceptance='Not performed by metadata verification.' }
 $receipt | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $root 'apps/desktop/release/produced-version-check.json')
 Write-Host "Produced package, feed, executable and embedded version identity verified: $version."

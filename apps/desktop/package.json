@@ -22,6 +22,8 @@
     },
     "files": [
       "dist/**",
+      "!dist/companions",
+      "!dist/companions/**",
       "package.json",
       "build/icon.ico",
       "build/LICENSE.material-symbols"
