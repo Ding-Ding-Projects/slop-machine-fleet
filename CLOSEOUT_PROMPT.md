@@ -1,46 +1,44 @@
-# Fleet continuation
+# Isolated authentication and bulk-recovery handoff
 
-## Latest checkpoint, superseding older pending states below
+## Current candidate
 
-Main1e7114ee79caf2a63e99532ec514ce3c511d005c is pushed and read back. Each new worker and matching operation target now record the actual resolved launch image; absent historical facts stay null. Independent review accepted the repair. Source tree8b08f215a0337f00b6e4bcbeecf0cb56fdef6746 matches18c9df7 exactly, whose root build passed and30 service tests passed. The full outgoing-history privacy scan passed. Provider runs41660602078,41660602082 and41660602130 are not yet verified successful.
+The candidate is preserved on `ai/feature/20261103-fleet-interface`. It has not been integrated into or activated on main by this lane. Browser, native interactive authentication and updater acceptance remain unverified.
 
-Normal0.1.2 releasebuild-41646405880-1/source4c0 has eight payload sizes/hashes and package/feed integrity verified. Installed0.1.1 remains the applied-and-verified baseline. The updater download operation was rejected before execution, with reason "blocked by policy". No updater ran. Browser use remains disabled in Work settings; do not retry either operation through another helper. Native trust awaits the existing user choice.
+- Recovery baseline: `4c2357d981c774d780a625962648d17ec24e1ddd`, merged as `6568164`.
+- Reviewed worker ownership and structured protocol: `38305a9` and `2b4ed65d7a87032d4c199239b214ea1e5f50dda0`, merged as `f20a9f2`. Existing pairing-expiry behavior and checks remain preserved.
+- Reviewed service relay: `bdf71b02a21e7d7bd1e589514eeb21abaa2640a1`, plus API/Postman/prepared-wiki follow-up `b61f1cb374d1930aa94861117ce53451229b8684`, merged as `c107b7f`.
+- Authentication UI units: `a1493d1`, `96ac366`, `591f6a6`, `4682953`, `bd2e231`. These are separate from Base64 activation. The intermediate acknowledgement predicate was corrected in `4682953`; use the complete chain.
+- Bulk UI units: `5b15f6f` and `23f0670`, depending on the accepted durable bulk contract `54b47a3` already present in the recovery baseline.
+- Count-control correction: `c1fac0af253e9ffc5e415aeaba3135cddda8607e`, maximum five, minimum one, existing review invalidation preserved.
 
-Base64 tools50ad71f has47 focused tests and an independent dry source review. The public documentation workspace and parser are combined on the isolated interface branch atc6d30ad42787f6b851516ae6a33fa93bd1730618: exact root build passed,47 tools and18 documentation tests passed, and four actual module graphs excluded protected application-state imports. These results do not establish browser OPFS, clipboard, navigation, audio or lifecycle acceptance. No Base64 interface activation on main is authorized by these source results. Read back newer branch preservation before claiming it pushed.
+## Behavior implemented
 
-Bulk restart/reconciliation is under bounded source audit. Preserve concrete findings and independent refutation separately. The complete product goal remains unfinished: real approved cloud provisioning, bootstrap, login, pairing, model turns, native update, both hosting modes and full required-feature/runtime acceptance are still pending. No paid resource was launched. Status Hub owner-data privacy remains unverified; no private writes are claimed.
+Authentication renders only recognized structured GitHub prompts and explicit Yes/No/Enter actions, with real session and prompt identities. Successful input acknowledgement triggers a guarded same-session status read. Old raw input and terminal transcript rendering are absent. Legacy workers are read-only or explicitly update-required; no identity is guessed. Device codes remain transient, hidden until revealed, and expire according to actual provider metadata. GitHub login and Git credential-helper setup are distinct: choosing No may leave login verified with setup declined.
 
-Objective: deliver the isolated Windows Server2025 EC2 coding-worker fleet with shared desktop/browser management, Slop Machine device login, interactive GitHub CLI login, remote pairing, coding tasks and bulk lifecycle controls, plus all applicable required features.
+Bulk recovery reads the actual durable operation ledger, reviews selected original targets, and submits the original request hash. Only pending or blocked targets proven never dispatched with a null attempt are eligible. Requested, completed, uncertain, attempted and legacy targets cannot be replayed. A failed or unavailable result invalidates the displayed ledger until a fresh read. The service still rechecks ownership, task activity and current configuration.
 
-Main95872c98c13ab7564760e24fbcbdd553d0d3ce3d was pushed and read back. Its exact root build passed with148 complete documentation articles. The next local candidate is0.1.2, needed for a genuine update pair from the accepted installed0.1.1. Review HANDOFF.md and ROADMAP.md for the full evidence and remaining work.
+## Verification binding
 
-Verified: published and pulled source939 immutable image; actual tracked Compose startup; certificate-verified cross-LAN health with no-SNI certificate selection repaired and wrong-IP checks still rejected; accepted normal stable/main0.1.1 release and all8 payload hashes; actual supported0.1.0-to0.1.1 Squirrel Setup upgrade, installed bytes, native launch and keyboard focus; external-cache preservation with exact legacy-cache restoration; focused browser feature/article, encoded authorization, tab, draft, Settings-focus and neutral-wording workflows.
+Exact `cmd /c build.bat /s` passed for coupled source `23f06700a7cad02b7e788404f5caf8eba59d6f51`. Focused checks on that source passed:
 
-Incomplete: approved native HTTPS trust, both host modes, actual automatic-updater states, signer-process audit and setup exit status, fresh screenshot promotion/full layout matrix, live documentation and About homepage, forge-wiki initialization, real cloud provisioning/account login/pairing/model turn and the rest of the115-entry required-feature inventory.
+- 45 service tests.
+- 17 authentication UI contract checks.
+- Seven bulk UI checks.
+- 36 controlled worker authentication consumer checks, using injected fake provider runtimes rather than real sign-in processes.
 
-Documentation workflow41625691315 failed at a handled optional wiki probe's residual native exit1. Its focused repair and real TLS regression are integrated locally. Preserve the exact technical source receipts and require the complete outgoing-history scan before the next push. Protected policy data stays outside public source; no private wording was transmitted. Fresh source-bound UI evidence must begin and end on the same source revision.
+After the one-field count-control correction, exact `cmd /c build.bat /s` passed again for final source `c1fac0af253e9ffc5e415aeaba3135cddda8607e`. The focused-check inputs above were unchanged by that correction; their original source binding is retained rather than relabelled.
 
-Continue the authorized independent work while the native certificate-route choice is pending. Do not alter trust without that choice, launch paid resources without exact review, expose protected values, force-push, discard unfinished work or claim complete delivery. Preserve every result's actual source and artifact identity.
+The final generated documentation records source `c1fac0af253e9ffc5e415aeaba3135cddda8607e`, version `0.1.2` and build time `2026-11-03T15:33:25.722Z`. Four actual production module graphs were inspected; both storage graphs use the public adapter, and forbidden application-state modules are absent.
 
-## Current preserved milestone for the next source checkpoint
+| Final built asset | Bytes | SHA-256 |
+| --- | ---: | --- |
+| `apps/web/dist/assets/index-DpcuGA2d.js` | 628216 | `d7a9adf615cd78434d0c735e1bfc54cca464cff1ddb33ba7d299859a8f79f638` |
+| `apps/docs/dist/assets/index-Cltj239l.js` | 696807 | `bc0132c2e8eedc3e3e983c7d0f4c41d35ab5d90c34479109537fcb3786629505` |
 
-Five sourcec0544f7 browser screenshots passed complete promotion checks and are staged with exact inventory and README links. The initial live documentation148-article content, source hashes, fonts and eight download records passed HTTP/source verification; the exact About homepage is stored and read back. Live interaction/persistence/keyboard/accessibility/narrow proofs remain unavailable.
+This handoff-only commit does not change the build's source identity. Existing large-chunk warnings remain. The generated documentation retains 152 complete articles and the five previously preserved image references; those images are not acceptance evidence for the new authentication or bulk flows.
 
-The version-label fix reads the actual package manifest. The release-refresh correction now uses a reviewed immutable source in a main-ref child without expanding environment permissions; its provider result is pending. Base64 streaming work and its independent repair loop remain isolated and unactivated. Preserve and verify this documentation milestone before integrating any later UI work. Keep the private raw capture/build receipts and exact-byte archive; do not replace unavailable runtime proof with source checks.
-## Verified 0.1.2 delivery milestone
+## Next permitted steps and limitations
 
-Main4c0bc037bfafcaf9bed7ab2bcb278f15fe762b4b is published. Build/release41646405880, publication privacy41646405896 and the main documentation deployment succeeded. The release-parent refresh41649088811 dispatched a main-ref child41649149159 successfully; the parent skipped deployment and the child deployed under the unchanged main-only environment rule.
+The integrating owner should preserve the candidate and its full history, retain the compatible active protocol until coupled activation criteria are satisfied, and use new source-bound evidence for any later build. Genuine interactive GitHub authentication, browser navigation, native input, bulk provider operations and updater behavior were not exercised. No browser, GUI helper or updater was launched; no trust or provider configuration was changed; no private status write, publication or remote push occurred in this lane.
 
-The live documentation now identifies source4c0 and version0.1.2. All149 unique articles match their declared hashes and normalized source blobs; nine prepared wiki pages are bundled. All five promoted screenshots return HTTP200 and match their source inventory byte-for-byte, retaining capture sourcec0544f7. Original font assets match, all eight download records match the selected normal releasebuild-41646405880-1/source4c0, and the exact About homepage is verified.
-
-The downloaded0.1.2 release passed all eight payload size/SHA256 checks, RELEASES SHA1, full-package CRC/path/identity checks and five NotSigned observations. Signer-process audit and native automatic-updater UI proof remain unverified. Installed0.1.1 remains the last applied-and-verified baseline; a supported non-GUI download-only staging operation is assigned separately and must not be reported as applied.
-
-Base64 streaming source is preserved on its owned branch at3d3eaed79b44022bb6b2e635b4a89596be42327a with all four findings independently repaired. Root workspace/dependency build integration is continuing in that isolated branch. It has not been activated on main. Actual browser OPFS, IndexedDB, clipboard/media/sound and lifecycle acceptance remains pending.
-
-Browser controls are unavailable in this verification environment. Continue authorized source, build, package and HTTP work; do not relay rejected browser actions through alternate tooling. Native HTTPS trust also awaits the explicit user choice. All remaining required-feature, cloud-account, live worker authentication/pairing/task and full layout duties remain incomplete.
-
-## Preserved Base64 branch and stopped staging
-
-The reviewed Base64 workspace is now preserved on ai/feature/20261103-local-tools at8fd472a947f5021ad23a66e1adcc7155f2a118a7, with exact remote-ref readback. Its complete17-revision outgoing history passed the trusted publication scan after one narrowly reviewed historical test-data allowance. The exact build entrypoint passed and41 tools tests passed. GUI acceptance remains pending; this branch is not activated on main.
-
-The assigned non-GUI updater download was rejected by automatic approval review before process creation, with reason blocked by policy. No updater ran and no package was staged through that route. Installed0.1.1 remains preserved; baseline RELEASES and package bytes were copied and verified before the rejected launch. Do not retry that operation through another route. Continue independent source and delivery work while the required interactive environment and certificate choice remain pending.
+Full required-feature acceptance remains incomplete. Do not infer runtime success, deployment, a release or main activation from compilation and controlled checks.
