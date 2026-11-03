@@ -16,6 +16,8 @@ Desktop production archives only regular tracked files from the immutable source
 
 The controller image applies the same receipt before dependency installation and compilation. Companions, renderer provenance, package metadata, worker metadata, manifests and update feeds consume that same version. This is a declared build overlay, not a claim that modified build inputs are a clean source checkout.
 
+The separate hosted documentation workflow retains its own reviewed documentation source and checked-in documentation version. Its download panel independently selects and verifies an accepted product release. Hosted documentation is not relabelled with the version or SHA of a release it did not build from; the common release overlay covers release-produced renderers and packaged documentation companions.
+
 ## Stable publication
 
 Stable desktop publication has serialized ownership and rechecks the actual normal-release history immediately before publication. The check follows pagination, verifies stable source/tag ancestry and hashed update-feed metadata, and requires the candidate version to exceed the highest accepted stable version. Earlier channel-less main history contributes a conservative floor only; it does not become updater eligible. Inaccessible or malformed possible stable history fails closed.
@@ -27,3 +29,5 @@ An older run retried after a newer accepted run cannot publish as a newer stable
 `build.bat /s` and `build-installer.bat /s` retain the checked-in version when no provider overlay exists and write an explicitly non-publishable local receipt. A deliberate local packaging check can stage a known version with `node scripts/release-version.mjs stage-local 0.16.1`; this writes a separate overlay marked `publishable: false`, never authenticated provider evidence. Set `FLEET_SOURCE_ROOT` to the original checkout and `FLEET_BUILD_SOURCE` to its exact source SHA before invoking that staged root's entrypoint. Do not run the productive application as part of metadata verification.
 
 Installer verification reads the actual full package metadata, update-feed filename, packaged application archive, worker/portable executable version resources, renderer bundles and companion metadata. Those results establish produced identity, not native installation, updater, browser, account or application-runtime acceptance. The updater retains strict newer-version comparison; a staging or provider publication receipt does not prove that an installed application was updated.
+
+Direct local `docker build` without the provider derivation receipt is currently unsupported and exits during image version preparation. Local desktop overlay verification does not prove a local controller-image build. The published image route supplies the authenticated shared receipt and verifies the compiled image version/source before publication. No local image, hosting or runtime result is implied by that source wiring.

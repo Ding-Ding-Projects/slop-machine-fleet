@@ -30,6 +30,6 @@ foreach ($executable in $executables) {
 }
 & node (Join-Path $PSScriptRoot 'verify-built-version.mjs')
 if ($LASTEXITCODE) { throw 'Embedded renderer or application version verification failed.' }
-$receipt = @{ schemaVersion=1; version=$version; identity=$identity; package=$full[0].Name; packageMetadataVersion=$nodes[0].InnerText; executables=$metadata; setupBootstrapVersion='Not used as product identity; the Squirrel package and installed application carry the product version.'; runtimeAcceptance='Not performed by metadata verification.' }
+$receipt = @{ schemaVersion=1; version=$version; identity=$identity; package=$full[0].Name; packageMetadataVersion=$nodes[0].InnerText; executables=$metadata; hostedDocumentation=@{ included=$false; sourceAndVersion='Separate reviewed documentation build and checked-in documentation version.'; downloads='Separately selected and verified accepted release.' }; setupBootstrapVersion='Not used as product identity; the Squirrel package and installed application carry the product version.'; runtimeAcceptance='Not performed by metadata verification.' }
 $receipt | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $root 'apps/desktop/release/produced-version-check.json')
 Write-Host "Produced package, feed, executable and embedded version identity verified: $version."

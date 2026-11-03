@@ -4,6 +4,17 @@ $env:PSModulePath = (Join-Path $PSHOME 'Modules') + ';' + (Join-Path $env:Progra
 $silent = $env:SILENT -eq '1' -or $Options -contains '/s' -or $Options -contains '--silent'
 $runAfter = $env:RUN_AFTER_BUILD -eq '1' -or $Options -contains '/run' -or $Options -contains '--run'
 $root = Split-Path $PSScriptRoot -Parent
+function Get-FleetBuildSource([string]$Directory) {
+  $identityPath = Join-Path $Directory 'build-identity.json'
+  if (Test-Path -LiteralPath $identityPath) {
+    $identity = Get-Content -LiteralPath $identityPath -Raw | ConvertFrom-Json
+    if ($identity.source -isnot [string] -or $identity.source -notmatch '^[a-f0-9]{40}$') { throw 'The explicit build overlay source identity is invalid.' }
+    return $identity.source
+  }
+  if ($env:GITHUB_SHA) { return $env:GITHUB_SHA }
+  if (Get-Command git -ErrorAction SilentlyContinue) { $source = & git rev-parse HEAD; if ($LASTEXITCODE -eq 0) { return $source } }
+  return $null
+}
 function Get-SquirrelPayload([string]$Directory) {
   $setup = Get-Item -LiteralPath (Join-Path $Directory 'Setup.exe')
   $releases = Get-Item -LiteralPath (Join-Path $Directory 'RELEASES')
@@ -80,11 +91,10 @@ try {
     $files = @(Get-SquirrelPayload (Join-Path $root 'apps/desktop/release/squirrel-windows'))
     $distribution = Join-Path $root 'apps/desktop/release'
     foreach ($file in $files) { Copy-Item -LiteralPath $file.FullName -Destination (Join-Path $distribution $file.Name) }
-    $source = $env:GITHUB_SHA
-    if (-not $source -and (Get-Command git -ErrorAction SilentlyContinue)) { $source = & git rev-parse HEAD; if ($LASTEXITCODE -ne 0) { $source = $null } }
+    $source = Get-FleetBuildSource $root
     $receipt = @{ source=$source; sourceDirectory='apps/desktop/release/squirrel-windows'; files=@($files | ForEach-Object { @{ name=$_.Name; bytes=$_.Length; sha256=(Get-FileHash -LiteralPath (Join-Path $distribution $_.Name) -Algorithm SHA256).Hash.ToLowerInvariant() } }) }
     $receipt | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $distribution 'squirrel-payload.json')
-    $receipt.files | Format-Table name,bytes,sha256
+    $receipt.files | ForEach-Object { [pscustomobject]$_ } | Format-Table name,bytes,sha256
     & (Join-Path $PSScriptRoot 'verify-release-versions.ps1')
     if (-not $?) { throw 'Produced release version verification failed.' }
   } elseif ($runAfter -or (-not $silent -and (Read-Host 'Build succeeded. Run the desktop client? [y/N]') -match '^[yY]$')) {
