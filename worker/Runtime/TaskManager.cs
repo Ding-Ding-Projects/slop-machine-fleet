@@ -17,7 +17,7 @@ public sealed class TaskManager : IDisposable {
         }
     }
     public TaskState Get(Guid id) { lock(sync) return tasks.TryGetValue(id,out var state)?state:throw new ArgumentException("Unknown task."); }
-    public object Details(Guid id) { var state=Get(id); lock(sync) return new {state.Id,state.State,state.ThreadId,state.TurnId,state.ErrorCode,approvalRequestIds=active==id?server?.PendingApprovals??[]:[]}; }
+    public object Details(Guid id) { var state=Get(id); lock(sync) return new {state.Id,state.State,state.ThreadId,state.TurnId,state.ErrorCode,approvalRequestIds=active==id?server?.PendingApprovals??[]:[],pendingApprovals=active==id?server?.ApprovalDetails??[]:[]}; }
     static void Validate(TaskRequest request) {
         if(!Uri.TryCreate(request.RepositoryUrl,UriKind.Absolute,out var uri)||uri.Scheme!="https"||!string.IsNullOrEmpty(uri.UserInfo)||uri.Query!=""||uri.Fragment!=""||uri.Port!=443||!string.Equals(uri.Host,"github.com",StringComparison.OrdinalIgnoreCase)||!System.Text.RegularExpressions.Regex.IsMatch(uri.AbsolutePath,@"^/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(?:\.git)?$")) throw new ArgumentException("Repository must be an ordinary GitHub HTTPS repository URL.");
         if(string.IsNullOrWhiteSpace(request.Prompt)||request.Prompt.Length>32000||request.Model?.Length>128||request.Model?.Any(char.IsControl)==true) throw new ArgumentException("Invalid task input.");
@@ -36,7 +36,7 @@ public sealed class TaskManager : IDisposable {
         try {
             var root=SafePath("repositories",id.ToString("N")); var checkout=SafePath("worktrees",id.ToString("N"));
             Directory.CreateDirectory(Path.GetDirectoryName(root)!); Directory.CreateDirectory(Path.GetDirectoryName(checkout)!);
-            if((await Commands.Run(settings.GitPath,["-c","credential.interactive=false","clone","--no-checkout","--",request.RepositoryUrl,root],cancellation:cancellation)).Code!=0) throw new InvalidOperationException("Clone failed.");
+            if((await Commands.Run(settings.GitPath,["-c","credential.interactive=false","-c","http.followRedirects=false","clone","--no-checkout","--",request.RepositoryUrl,root],cancellation:cancellation)).Code!=0) throw new InvalidOperationException("Clone failed.");
             cancellation.ThrowIfCancellationRequested();
             if((await Commands.Run(settings.GitPath,["worktree","add","-b",$"fleet/task-{id:N}",checkout,"HEAD"],root,cancellation)).Code!=0) throw new InvalidOperationException("Worktree creation failed.");
             lock(sync) { if(Get(id).State=="cancelled") return; server?.Dispose(); session=new(settings.CodexPath,checkout); server=session; }
@@ -47,7 +47,7 @@ public sealed class TaskManager : IDisposable {
             var thread=await session.Call("thread/start",new {cwd=checkout,model=request.Model,approvalPolicy="on-request",sandbox="workspace-write"});
             var threadId=thread.GetProperty("thread").GetProperty("id").GetString()!;
             cancellation.ThrowIfCancellationRequested();
-            Set(new(id,"running",threadId));
+            lock(sync) { if(active!=id||tasks[id].State=="cancelled") return; Set(new(id,"running",threadId)); }
             var turn=await session.Call("turn/start",new {threadId,input=new[]{new {type="text",text=request.Prompt}}});
             lock(sync) { var current=tasks[id]; if(current.State is "running" or "approval-pending") Set(current with {TurnId=turn.GetProperty("turn").GetProperty("id").GetString()}); }
         } catch(Exception) { lock(sync) { if(tasks[id].State!="cancelled") Set(tasks[id] with {State="failed",ErrorCode="TASK_START_FAILED"}); if(active==id) {active=null; server=null;} session?.Dispose(); } }
