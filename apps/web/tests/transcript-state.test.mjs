@@ -37,3 +37,8 @@ test('backward cursors require an explicit reset and keep a truthful reset marke
  const reset=mergeOutputPage(previous,page([event(1)],{resetReason:'worker-restarted',gap:true}));
  assert.equal(reset.gap,true);assert.equal(reset.resetReason,'worker-restarted');assert.equal(reset.discarded,1);assert.deepEqual(reset.events.map(e=>e.sequence),[1]);
 });
+
+test('a paginated snapshot is not misreported as truncated event content',()=>{
+ const state=mergeOutputPage(emptyTranscript(),page([event(1)],{truncated:true,latestSequence:3}));
+ assert.equal(state.truncated,false);assert.equal(state.cursor,1);assert.equal(state.latest,3);
+});

@@ -33,6 +33,6 @@ export function mergeOutputPage(previous,page) {
   if(restarted)discarded+=previous.events.length;
   while(events.length>512||bytes>262144){bytes-=encoder.encode(events.shift().content).length;discarded++;}
   return {events,cursor:page.nextCursor,latest:page.latestSequence,oldest:page.oldestSequence,
-    gap:previous.gap||page.gap||restarted,truncated:previous.truncated||page.truncated||page.events.some(event=>event.truncated),
+    gap:previous.gap||page.gap||restarted,truncated:previous.truncated||page.events.some(event=>event.truncated),
     resetReason:page.resetReason||previous.resetReason,discarded};
 }
