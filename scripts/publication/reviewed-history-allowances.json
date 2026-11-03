@@ -48,6 +48,12 @@
       "line": 88,
       "sha256": "4d17d92623a49c092c389ec283b978a7d095ffa0277890987e9660ff5e921411",
       "reason": "technical-identifier"
+    },
+    {
+      "path": "apps/web/tests/wording.test.mjs",
+      "line": 7,
+      "sha256": "82b6be2463f44efc25e639603d9e62be25d04305a2d5b5198ad838388a441f2f",
+      "reason": "technical-identifier"
     }
   ]
 }
