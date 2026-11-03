@@ -3,13 +3,13 @@
   "entries": [
     {
       "path": "scripts/publication/public-language-scan.mjs",
-      "line": 568,
+      "line": 570,
       "sha256": "6426814ed57ab129208bbeb0274b232f6501b473febe1be53ca5898a4a4fb89d",
       "reason": "technical-identifier"
     },
     {
       "path": "scripts/publication/public-language-scan.mjs",
-      "line": 614,
+      "line": 616,
       "sha256": "b066b9597c78949e760cefb759de7352de9bc51af1b5c34ab96d2bbeb5da3d4c",
       "reason": "technical-identifier"
     },

@@ -14,6 +14,7 @@
  * The exception file must be outside the candidate checkout. CI must use its
  * pinned trusted-policy copy. Stale, unused and malformed exceptions fail closed.
  */
+import { decodeWebFont } from './publication-web-font.mjs';
 import { createFontDecoder } from './publication-font-decoder.mjs';
 import { interpretBinaryContent } from './publication-binary-content.mjs';
 import { createHash, randomUUID } from 'node:crypto';
@@ -496,7 +497,7 @@ function gitlinkRoot(root, relative, metadata, budget) {
 // The aggregate ceiling counts every tracked occurrence, never resident bytes.
 // 2 GiB covers the measured 1.34 GB consumer corpus; I/O and memo storage stay
 // independently bounded at 16 MiB rather than buffering an entire submodule.
-export function scanRepository({ root, revision = 'HEAD', policy, exceptionsFile, aggregateBytes = LIMITS.total, cacheAnalysis = true, fontDecoderRoot }) {
+export function scanRepository({ root, revision = 'HEAD', policy, exceptionsFile, aggregateBytes = LIMITS.total, cacheAnalysis = true, fontDecoderRoot, fontPython }) {
   root = realpathSync(root);
   if (revision !== 'HEAD' && !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/u.test(revision)) fail('revision-invalid');
   if (!Number.isSafeInteger(aggregateBytes) || aggregateBytes < 1 || aggregateBytes > LIMITS.total) fail('aggregate-budget-invalid');
@@ -528,7 +529,8 @@ export function scanRepository({ root, revision = 'HEAD', policy, exceptionsFile
   function analyze(bytes, forceText) {
     if (!forceText) {
       try {
-        const interpreted = interpretBinaryContent(bytes, { decodeEot });
+        const webFont = bytes.length >= 4 && ['wOF2', 'wOFF'].includes(bytes.toString('latin1', 0, 4));
+        const interpreted = webFont ? decodeWebFont(bytes, fontPython) : interpretBinaryContent(bytes, { decodeEot });
         if (interpreted) {
           const matches = [];
           for (const value of interpreted.strings) {
@@ -671,6 +673,7 @@ async function main() {
     const value = args[i + 1];
     if (!value) fail('arguments-invalid');
     if (args[i] === '--root') options.root = value;
+    else if (args[i] === '--font-python') options.fontPython = value;
     else if (args[i] === '--font-decoder-root') options.fontDecoderRoot = value;
     else if (args[i] === '--revision') options.revision = value;
     else if (args[i] === '--aggregate-bytes') options.aggregateBytes = /^[1-9][0-9]*$/u.test(value) ? Number(value) : NaN;

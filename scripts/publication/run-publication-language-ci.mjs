@@ -74,7 +74,7 @@ async function main() {
   if (args.length % 2) fail('arguments-invalid');
   for (let index = 0; index < args.length; index += 2) {
     const key = args[index]; const value = args[index + 1];
-    if (!['--root', '--tip', '--base', '--mode', '--exceptions-file'].includes(key) || options[key] !== undefined || !value) fail('arguments-invalid');
+    if (!['--root', '--tip', '--base', '--mode', '--exceptions-file', '--font-decoder-root', '--font-python'].includes(key) || options[key] !== undefined || !value) fail('arguments-invalid');
     options[key] = value;
   }
   if (!options['--root']) fail('candidate-root-unavailable');
@@ -93,7 +93,7 @@ async function main() {
   try {
   for (const revision of revisions) {
     writeFileSync(selectedFile, JSON.stringify(selectRevisionExceptions(carrier, revision)), { mode: 0o600 });
-    const result = scanRepository({ root, revision, policy, exceptionsFile: selectedFile });
+    const result = scanRepository({ root, revision, policy, exceptionsFile: selectedFile, fontDecoderRoot: options['--font-decoder-root'], fontPython: options['--font-python'] });
     if (findings.length + observations.length + result.findings.length + result.observations.length > CI_LIMITS.records) fail('event-report-oversized');
     for (const finding of result.findings) findings.push(finding);
     for (const observation of result.observations) observations.push(observation);

@@ -34,6 +34,22 @@ jobs:
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '24.13.0'
+      - name: Prepare Python runtime
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.13.2'
+      - name: Provision verified font decoders before policy ingestion
+        shell: pwsh
+        run: |
+          $requirements = Join-Path $env:GITHUB_WORKSPACE 'trusted/scripts/publication/font-requirements.txt'
+          $fontPython = Join-Path $env:RUNNER_TEMP 'publication-font-python/Scripts/python.exe'
+          python -m venv (Join-Path $env:RUNNER_TEMP 'publication-font-python')
+          if ($LASTEXITCODE -ne 0) { throw 'Isolated font runtime unavailable.' }
+          & $fontPython -m pip install --disable-pip-version-check --only-binary=:all: --require-hashes -r $requirements
+          if ($LASTEXITCODE -ne 0) { throw 'Pinned font dependencies unavailable.' }
+          $prepare = Join-Path $env:GITHUB_WORKSPACE 'trusted/scripts/publication/publication-font-decoder-prepare.mjs'
+          node $prepare --destination (Join-Path $env:RUNNER_TEMP 'publication-eot-decoder')
+          if ($LASTEXITCODE -ne 0) { throw 'Verified font decoder unavailable.' }
       - name: Scan candidate without executing candidate code
         shell: pwsh
         env:
@@ -44,7 +60,7 @@ jobs:
         run: |
           $scanner = Join-Path $env:GITHUB_WORKSPACE 'trusted/scripts/publication/run-publication-language-ci.mjs'
           $candidate = Join-Path $env:GITHUB_WORKSPACE 'candidate'
-          $arguments = @('--regexp-interpret-all', $scanner, '--root', $candidate, '--tip', $env:EVENT_TIP, '--exceptions-file', (Join-Path $env:GITHUB_WORKSPACE 'trusted/scripts/publication/reviewed-exceptions.json'))
+          $arguments = @('--regexp-interpret-all', $scanner, '--root', $candidate, '--tip', $env:EVENT_TIP, '--exceptions-file', (Join-Path $env:GITHUB_WORKSPACE 'trusted/scripts/publication/reviewed-exceptions.json'), '--font-python', (Join-Path $env:RUNNER_TEMP 'publication-font-python/Scripts/python.exe'), '--font-decoder-root', (Join-Path $env:RUNNER_TEMP 'publication-eot-decoder'))
           if ($env:EVENT_NAME -eq 'push') { $arguments += @('--base', $env:EVENT_BASE) }
           elseif ($env:EVENT_NAME -eq 'workflow_dispatch') { $arguments += @('--mode', 'current-tree-only') }
           else { throw 'Unsupported event.' }
