@@ -1,6 +1,6 @@
 $ErrorActionPreference = 'Stop'
 if ($PSVersionTable.PSEdition -ne 'Desktop') { throw 'Run this host-entrypoint regression with Windows PowerShell 5.1.' }
-$ast = [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $PSScriptRoot 'host.ps1'),[ref]$null,[ref]$null)
+$ast = [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $PSScriptRoot 'hosting/permissions.ps1'),[ref]$null,[ref]$null)
 $function = $ast.Find({ param($node) $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Protect-LocalPath' },$true)
 if (-not $function) { throw 'The production permission function is missing.' }
 . ([scriptblock]::Create($function.Extent.Text))

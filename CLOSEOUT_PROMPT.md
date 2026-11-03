@@ -8,7 +8,7 @@ The user now requests automatic host.bat hosting, first-user username/password s
 
 ## Coupled source integration
 
-The reviewed source units being integrated are service721751fb6de2bb66ff38d2e6de8fd7e94f298abb, interface d99efa8c6255cb33213d57f2fe9436645b153eb3 and hosting c05789b4d32e8674b7987b10902aa23eef002588. All three owning branches were pushed and read back before integration. Their original closeouts preserve detailed source/build receipts.
+The reviewed source units integrated in this batch are service721751fb6de2bb66ff38d2e6de8fd7e94f298abb, interface d99efa8c6255cb33213d57f2fe9436645b153eb3 and hosting c05789b4d32e8674b7987b10902aa23eef002588. All three owning branches were pushed and read back before integration. Their original closeouts preserve detailed source/build receipts.
 
 Signup uses one PostgreSQL owner/session statement, accepts username/password without a setup code, and leaves subsequent access as sign-in. Legacy owners retain access and can adopt a username deliberately. The exact matched Unicode rules, password preservation, generic credential failures and session/CSRF boundaries were reviewed. The dedicated real-PostgreSQL run passed seven checks, including exactly one owner/session across two service instances and rollback on initial-session failure. The normal service run passed37 checks with one explicit optional-PostgreSQL skip; the separate PostgreSQL run had no skip. The UI passed10 focused checks and its exact root build.
 

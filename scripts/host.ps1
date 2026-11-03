@@ -1,116 +1,107 @@
 param([Parameter(ValueFromRemainingArguments=$true)][string[]]$Options)
-$ErrorActionPreference = 'Stop'
-$env:PSModulePath = (Join-Path $PSHOME 'Modules') + ';' + (Join-Path $env:ProgramFiles 'WindowsPowerShell\Modules')
-Set-Location -LiteralPath (Split-Path $PSScriptRoot -Parent)
-function Run-Compose([string[]]$Arguments) { & docker compose @Arguments; if ($LASTEXITCODE -ne 0) { throw "Docker Compose exited $LASTEXITCODE." } }
-try {
-  if ($Options | Where-Object { $_ -notin @('--detached','--logs') }) { throw 'Supported modes: --detached or --logs.' }
-  if (-not (Get-Command docker -ErrorAction SilentlyContinue)) { throw 'Docker Desktop with Compose is required. Use its supported installer and start the container engine before hosting.' }
-  & docker info --format '{{.ServerVersion}}'
-  if ($LASTEXITCODE -ne 0) { throw 'The Docker engine is not available.' }
-  & docker compose version
-  if ($LASTEXITCODE -ne 0) { throw 'Docker Compose v2 is unavailable.' }
-  if (-not (Test-Path .env)) { throw 'Copy .env.example to .env and configure the actual LAN host and published image first.' }
-  $config = @{}
-  Get-Content .env | ForEach-Object { if ($_ -match '^([A-Z_]+)=(.*)$') { $config[$matches[1]] = $matches[2].Trim() } }
-  $fleetHost = $config.FLEET_HOST
-  $port = if ($config.FLEET_HTTPS_PORT) { [int]$config.FLEET_HTTPS_PORT } else { 8443 }
-  if (-not $fleetHost -or $fleetHost -match '[/\\:@\s]' -or $port -lt 1 -or $port -gt 65535) { throw 'Invalid LAN hostname or HTTPS port.' }
-  $addresses = @([Net.Dns]::GetHostAddresses($fleetHost))
-  if (-not $addresses -or @($addresses | Where-Object { [Net.IPAddress]::IsLoopback($_) }).Count -gt 0) { throw 'FLEET_HOST must resolve to a non-loopback LAN address.' }
-  $mode = if ($Options -contains '--logs') { 'logs' } elseif ($Options -contains '--detached') { 'detached' } else { if ((Read-Host 'Choose [D]etached or interactive [L]ogs') -match '^[lL]$') { 'logs' } else { 'detached' } }
-  $local = Join-Path (Get-Location) '.local'
-  New-Item -ItemType Directory -Force $local | Out-Null
-  $identitySid = [Security.Principal.WindowsIdentity]::GetCurrent().User
-  $systemSid = New-Object Security.Principal.SecurityIdentifier('S-1-5-18')
-  function Protect-LocalPath([string]$Target) {
-    $phase = 'inspect path'; $category = 'configuration path'
-    try {
-      $item = Get-Item -LiteralPath $Target -Force
-      if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw 'Local configuration cannot contain symbolic links or junctions.' }
-      $category = if ($item.PSIsContainer) { 'configuration directory' } else { 'configuration file' }
-      $phase = 'read owner and group'
-      $metadata = [Security.AccessControl.AccessControlSections]::Owner -bor [Security.AccessControl.AccessControlSections]::Group
-      $before = if ($item.PSIsContainer) { [IO.Directory]::GetAccessControl($Target,$metadata) } else { [IO.File]::GetAccessControl($Target,$metadata) }
-      $owner = $before.GetOwner([Security.Principal.SecurityIdentifier]).Value
-      $group = $before.GetGroup([Security.Principal.SecurityIdentifier]).Value
-      $phase = 'prepare DACL'
-      # A fresh descriptor marks only access rules as modified; owner, group and audit are not written.
-      $acl = if ($item.PSIsContainer) { New-Object Security.AccessControl.DirectorySecurity } else { New-Object Security.AccessControl.FileSecurity }
-      $acl.SetAccessRuleProtection($true, $false)
-      foreach ($sid in @($identitySid,$systemSid)) {
-        if ($item.PSIsContainer) { $rule = New-Object Security.AccessControl.FileSystemAccessRule($sid,'FullControl','ContainerInherit,ObjectInherit','None','Allow') }
-        else { $rule = New-Object Security.AccessControl.FileSystemAccessRule($sid,'FullControl','Allow') }
-        $acl.AddAccessRule($rule)
-      }
-      $phase = 'persist DACL'
-      if ($item.PSIsContainer) { [IO.Directory]::SetAccessControl($Target,$acl) } else { [IO.File]::SetAccessControl($Target,$acl) }
-      $phase = 'read back DACL and metadata'
-      $sections = $metadata -bor [Security.AccessControl.AccessControlSections]::Access
-      $verified = if ($item.PSIsContainer) { [IO.Directory]::GetAccessControl($Target,$sections) } else { [IO.File]::GetAccessControl($Target,$sections) }
-      $rules = @($verified.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier]))
-      $expectedInheritance = if ($item.PSIsContainer) { [Security.AccessControl.InheritanceFlags]'ContainerInherit,ObjectInherit' } else { [Security.AccessControl.InheritanceFlags]::None }
-      if (-not $verified.AreAccessRulesProtected -or $rules.Count -ne 2 -or $verified.GetOwner([Security.Principal.SecurityIdentifier]).Value -ne $owner -or $verified.GetGroup([Security.Principal.SecurityIdentifier]).Value -ne $group) { throw 'Local configuration permissions or owner/group preservation did not verify.' }
-      foreach ($sid in @($identitySid,$systemSid)) {
-        $matching = @($rules | Where-Object { $_.IdentityReference.Value -eq $sid.Value -and $_.AccessControlType -eq 'Allow' -and $_.FileSystemRights -eq [Security.AccessControl.FileSystemRights]::FullControl -and -not $_.IsInherited -and $_.InheritanceFlags -eq $expectedInheritance -and $_.PropagationFlags -eq [Security.AccessControl.PropagationFlags]::None })
-        if ($matching.Count -ne 1) { throw 'Local configuration requires exactly the current identity and SYSTEM with explicit full control.' }
-      }
-    } catch {
-      throw ('Local permissions failed during {0} for {1}: {2}, HRESULT 0x{3:X8}.' -f $phase,$category,$_.Exception.GetType().FullName,$_.Exception.HResult)
-    }
+$ErrorActionPreference='Stop'
+$env:PSModulePath=(Join-Path $PSHOME 'Modules')+';'+(Join-Path $env:ProgramFiles 'WindowsPowerShell\Modules')
+foreach($module in @('context','permissions','release','trust','runtime')){. (Join-Path $PSScriptRoot ('hosting/'+$module+'.ps1'))}
+$record=$null;$local=$null;$deploymentLock=$null
+try{
+  $settings=Get-HostOptions $Options (Split-Path $PSScriptRoot -Parent)
+  $docker=Get-Command docker.exe -CommandType Application -ErrorAction SilentlyContinue
+  if(-not $docker){throw 'Docker Desktop with Compose is required. Install and start its supported engine before hosting; no substitute engine or privileged helper is launched.'}
+  if($env:DOCKER_HOST -and -not $env:DOCKER_CONTEXT){throw 'An unnamed daemon override is active. Select its existing named Docker context explicitly before hosting; this entrypoint does not switch engine targets.'}
+  $dockerContext=Invoke-HostCommand $docker.Source @('context','show') 20
+  if(-not $dockerContext -or $dockerContext -match '[\r\n]'){throw 'The active Docker context could not be resolved.'}
+  $context=[pscustomobject]@{Docker=$docker.Source;DockerContext=$dockerContext;Root=$settings.Root;EnvFile=(Join-Path $settings.Root '.env');Project='';Environment=@{}}
+  $null=Invoke-HostDocker $context @('info','--format','{{.ServerVersion}}') 30
+  $null=Invoke-HostDocker $context @('compose','version') 20
+  $config=Read-HostEnvironment $context.EnvFile
+  $existing=@(Get-ExistingHostProjects $context)
+  $requested=$settings.Project
+  if(-not $requested -and $config.COMPOSE_PROJECT_NAME){$requested=$config.COMPOSE_PROJECT_NAME}
+  $context.Project=Select-HostProject $existing $context.Root $requested
+  if(-not $context.Project){
+    if($settings.NonInteractive){throw 'No existing deployment was identified. Select --project explicitly for an unattended first deployment.'}
+    $context.Project=Select-HostProject $existing $context.Root (Read-Host 'No existing deployment matches this directory. Enter the new Compose project name')
+    if(-not $context.Project){throw 'A deliberate project identity is required.'}
   }
-  Protect-LocalPath $local
-  Get-ChildItem -LiteralPath $local -Recurse -Force | ForEach-Object { Protect-LocalPath $_.FullName }
-  function New-ProtectedValue([string]$Name) {
-    $file = Join-Path $local $Name
-    if (-not (Test-Path $file)) {
-      $bytes = New-Object byte[] 32
-      $rng = [Security.Cryptography.RandomNumberGenerator]::Create()
-      try { $rng.GetBytes($bytes) } finally { $rng.Dispose() }
-      [IO.File]::WriteAllText($file, (($bytes | ForEach-Object { $_.ToString('x2') }) -join ''))
-    }
+  Assert-HostComposeOwnership $context $existing
+  Assert-HostStorage $context $existing
+  $hostName=if($settings.HostName){$settings.HostName}else{$config.FLEET_HOST}
+  $port=if($settings.Port){$settings.Port}elseif($config.FLEET_HTTPS_PORT){$config.FLEET_HTTPS_PORT}else{'8443'}
+  if(-not $hostName){if($settings.NonInteractive){throw 'Set --host to this computer''s intended LAN hostname or IPv4 address.'};$hostName=Read-Host 'This computer''s intended LAN hostname or IPv4 address'}
+  Assert-HostAddress $hostName $port
+  $addresses=@([Net.Dns]::GetHostAddresses($hostName))
+  $localAddresses=@([Net.NetworkInformation.NetworkInterface]::GetAllNetworkInterfaces() | Where-Object OperationalStatus -eq 'Up' | ForEach-Object {$_.GetIPProperties().UnicastAddresses | ForEach-Object {$_.Address.IPAddressToString}})
+  foreach($address in $addresses){$bytes=$address.GetAddressBytes();$private=$bytes.Length -eq 4 -and ($bytes[0] -eq 10 -or ($bytes[0] -eq 172 -and $bytes[1] -ge 16 -and $bytes[1] -le 31) -or ($bytes[0] -eq 192 -and $bytes[1] -eq 168) -or ($bytes[0] -eq 100 -and $bytes[1] -ge 64 -and $bytes[1] -le 127));if(-not $private -or $address.IPAddressToString -notin $localAddresses){throw 'The selected hostname must resolve only to this computer''s intended private LAN addresses.'}}
+  if(-not $addresses.Count){throw 'No LAN address resolved.'}
+  if(-not $settings.Mode){$settings.Mode=if($settings.NonInteractive){'detached'}elseif((Read-Host 'Choose [D]etached or interactive [L]ogs') -match '^[lL]$'){'logs'}else{'detached'}}
+  if($settings.Mode -eq 'logs' -and $settings.NonInteractive){throw 'Interactive logs require an attended keyboard console.'}
+  Write-Host ('Deployment: '+$context.Project+' | Docker context: '+$context.DockerContext)
+  $volumeNames=@((Invoke-HostDocker $context @('volume','ls','--filter',('label=com.docker.compose.project='+$context.Project),'--format','{{.Name}}') 20) -split '\r?\n' | Where-Object {$_})
+  if($volumeNames.Count -and -not @($existing | Where-Object project -eq $context.Project).Count){throw 'Retained volumes have no current container configuration proof. Preserve them and restore the known deployment context before automatic startup.'}
+  foreach($volumeName in $volumeNames){
+    if($volumeName -notmatch '^[A-Za-z0-9][A-Za-z0-9_.-]*$'){throw 'Unexpected persistent-volume identity.'}
+    $labels=Invoke-HostDocker $context @('volume','inspect','--format','{{json .Labels}}',$volumeName) 20 | ConvertFrom-Json
+    if($labels.'com.docker.compose.project' -cne $context.Project){throw 'Persistent-volume ownership changed.'}
+    if($labels.'com.docker.compose.volume' -eq 'database' -and -not @($existing | Where-Object {$_.project -eq $context.Project -and $_.service -eq 'database'}).Count){$existing+=[pscustomobject]@{project=$context.Project;service='database';id='';workingDirectory=$context.Root}}
   }
-  New-ProtectedValue 'database-password'
-  New-ProtectedValue 'setup-code'
-  $databaseUrlFile = Join-Path $local 'database-url'
-  if (-not (Test-Path $databaseUrlFile)) { $password = [IO.File]::ReadAllText((Join-Path $local 'database-password')); [IO.File]::WriteAllText($databaseUrlFile, "postgresql://fleet:${password}@database:5432/fleet"); $password = $null }
-  New-Item -ItemType Directory -Force (Join-Path $local 'aws') | Out-Null
-  if (-not (Test-Path (Join-Path $local 'worker-release.json'))) { throw 'Download the source-bound worker-release.json from the accepted release into .local/worker-release.json before starting the controller.' }
-  $workerRelease = Get-Content (Join-Path $local 'worker-release.json') -Raw | ConvertFrom-Json
-  foreach ($property in @('version','assetUrl','assetSha256','bootstrapUrl','bootstrapSha256')) { if (-not $workerRelease.$property) { throw 'The worker release manifest is incomplete.' } }
-  foreach ($property in @('assetSha256','bootstrapSha256')) { if ($workerRelease.$property -notmatch '^[a-f0-9]{64}$') { throw 'The worker release manifest digest is invalid.' } }
-  foreach ($property in @('assetUrl','bootstrapUrl')) { $assetUri = [Uri]$workerRelease.$property; if ($assetUri.Scheme -ne 'https' -or $assetUri.UserInfo -or $assetUri.Query -or $assetUri.Fragment) { throw 'Worker release assets must use immutable HTTPS addresses without credentials or query values.' } }
-  Get-ChildItem -LiteralPath $local -Recurse -Force | ForEach-Object { Protect-LocalPath $_.FullName }
-  Run-Compose @('pull')
-  Run-Compose @('up','-d','--wait','--wait-timeout','180')
-  $url = "https://${fleetHost}:$port/api/health"
-  $healthy = $false
-  for ($attempt = 0; $attempt -lt 30; $attempt++) {
-    try { $response = Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 5; if ($response.StatusCode -eq 200) { $healthy = $true; break } } catch {}
-    Start-Sleep -Seconds 2
+  Write-Host 'Resolving an accepted main release and its worker/source identity.'
+  $release=Get-AcceptedHostRelease $settings.Release
+  foreach($service in @($existing | Where-Object {$_.project -eq $context.Project -and $_.service -eq 'service'})){
+    $imageId=Invoke-HostDocker $context @('inspect','--format','{{.Image}}',$service.id) 20
+    $oldLabels=Invoke-HostDocker $context @('image','inspect','--format','{{json .Config.Labels}}',$imageId) 20 | ConvertFrom-Json
+    $oldVersion=$oldLabels.'org.opencontainers.image.version'
+    if($oldVersion -and [Version]$release.Version -lt [Version]$oldVersion){throw 'The selected release would downgrade this deployment. Existing services were retained.'}
   }
-  if (-not $healthy) { throw 'HTTPS health verification did not pass. Trust the Caddy local CA through your approved certificate process, verify LAN DNS and retry. No TLS validation was disabled. Running containers are preserved.' }
-  Write-Host "Verified LAN endpoint: https://${fleetHost}:$port/"
-  Write-Host 'Initial setup authorization is stored in .local/setup-code. Do not paste it into logs or chat.'
-  if ($mode -eq 'logs') {
-    $services = @('service','gateway','database'); $selected = 0; $following = $true
-    while ($true) {
-      Clear-Host
-      Write-Host "Fleet live logs | service: $($services[$selected]) | follow: $following"
-      Write-Host '[Left/Right] select service  [F] follow/pause  [R/Q] return (containers keep running)'
-      Run-Compose @('ps')
-      Run-Compose @('logs','--no-color','--tail','18',$services[$selected])
-      for ($tick = 0; $tick -lt 20; $tick++) {
-        if ([Console]::KeyAvailable) {
-          $key = [Console]::ReadKey($true).Key
-          if ($key -in @('Q','R','Escape')) { exit 0 }
-          if ($key -eq 'LeftArrow') { $selected = ($selected + 2) % 3; break }
-          if ($key -eq 'RightArrow') { $selected = ($selected + 1) % 3; break }
-          if ($key -eq 'F') { $following = -not $following; break }
-        }
-        if ($following) { Start-Sleep -Milliseconds 100 } else { Start-Sleep -Milliseconds 100; $tick = 0 }
-      }
-    }
-  }
+  Write-Host ('Pulling accepted controller version '+$release.Version+'.')
+  $null=Invoke-HostDocker $context @('pull',$release.ImageTag) 300
+  $image=(Invoke-HostDocker $context @('image','inspect',$release.ImageTag) 20 | ConvertFrom-Json)[0]
+  $digest=Assert-HostImage $image $release
+  $local=Join-Path $context.Root '.local'
+  $deploymentLock=Enter-HostLock $local
+  if(@($existing | Where-Object {$_.project -eq $context.Project -and $_.service -eq 'database'}).Count){if(-not (Test-Path -LiteralPath $context.EnvFile)){throw 'Existing database configuration is missing. Restore its environment before updating.'};foreach($name in @('database-password','database-url')){if(-not (Test-Path -LiteralPath (Join-Path $local $name))){throw 'Existing database authorization is missing. Restore its protected configuration before updating; it is never regenerated for an existing database.'}}}
+  Initialize-HostLocal $local
+  $context.Environment=@{FLEET_HOST=$hostName;FLEET_HTTPS_PORT=$port;FLEET_IMAGE=$digest;COMPOSE_PROJECT_NAME=$context.Project}
+  if($config.FLEET_AWS_PROFILE){$context.Environment.FLEET_AWS_PROFILE=$config.FLEET_AWS_PROFILE}
+  Assert-HostStorage $context $existing
+  # Preserve prior data with the old configuration before changing service inputs.
+  $backup=''
+  if(Test-Path -LiteralPath $context.EnvFile){$backup=Save-HostDatabase $context $existing $local}
+  $previousWorker=Join-Path $local 'worker-release.json'
+  if(Test-Path -LiteralPath $previousWorker){Copy-Item -LiteralPath $previousWorker -Destination (Join-Path $local ('worker-release-before-'+[guid]::NewGuid().ToString('N')+'.json'))}
+  Save-HostJson $previousWorker $release.Worker
+  Save-HostEnvironment $context.EnvFile @{FLEET_HOST=$hostName;FLEET_HTTPS_PORT=$port;FLEET_IMAGE=$digest;COMPOSE_PROJECT_NAME=$context.Project} $local
+  $record=@{project=$context.Project;root=$context.Root;dockerContext=$context.DockerContext;source=$release.Source;version=$release.Version;release=$release.Tag;image=$digest;preservedVolumes=$volumeNames;databaseBackup=$backup;databaseRestoreVerified=$false;startedAt=[DateTimeOffset]::UtcNow.ToString('o');state='starting';crossDeviceHealth='not performed by this local entrypoint'}
+  Save-HostJson (Join-Path $local 'hosting-context.json') $record
+  Write-Host 'Pulling pinned services and starting the preserved Compose project.'
+  $null=Invoke-HostCompose $context @('pull') 300
+  $null=Invoke-HostCompose $context @('up','-d','--wait','--wait-timeout','180') 240
+  $serviceId=Invoke-HostCompose $context @('ps','-q','service') 20
+  if($serviceId -notmatch '^[a-f0-9]{12,64}$'){throw 'Exactly one running controller is required.'}
+  $runningImage=Invoke-HostDocker $context @('inspect','--format','{{.Image}}',$serviceId) 20
+  if($runningImage -cne $image.Id){throw 'Running controller image differs from the verified image.'}
+  $identity=Invoke-HostCompose $context @('exec','-T','service','node','-p','JSON.stringify({identity:require("/app/build-identity.json"),version:require("/app/package.json").version,web:require("/app/apps/web/dist/build-version.json")})') 20 | ConvertFrom-Json
+  if($identity.identity.source -cne $release.Source -or $identity.identity.version -cne $release.Version -or $identity.version -cne $release.Version -or $identity.web.source -cne $release.Source -or $identity.web.version -cne $release.Version){throw 'Running source/version and compiled interface do not match the accepted release.'}
+  $record.state='trust-pending';Save-HostJson (Join-Path $local 'hosting-context.json') $record
+  $record.caSha256=Confirm-HostTrust $context $settings $local
+  $url='https://'+$hostName+':'+$port+'/'
+  Write-Host 'Verifying trusted HTTPS health through the actual LAN address.'
+  Wait-HostHealth $url
+  $record.httpsHealthVerified=$true;$record.state='account-status-pending'
+  $status=Invoke-RestMethod -Uri ($url+'api/auth/status') -TimeoutSec 10
+  if(-not $status.PSObject.Properties['signupAvailable'] -or $status.signupAvailable -isnot [bool]){throw 'The selected release does not provide the username/password signup status contract. HTTPS is healthy, but account workflow verification remains incomplete.'}
+  $record.state='healthy';$record.url=$url;$record.completedAt=[DateTimeOffset]::UtcNow.ToString('o')
+  $record.signup=if($status.PSObject.Properties['signupAvailable']){if($status.signupAvailable){'available'}else{'already-claimed'}}else{'status-contract-unavailable'}
+  Save-HostJson (Join-Path $local 'hosting-context.json') $record
+  Write-Host ('Verified same-host LAN HTTPS: '+$url)
+  Write-Host ('Source: '+$release.Source+' | Version: '+$release.Version+' | Image: '+$digest)
+  Write-Host ('LAN addresses: '+(($addresses | ForEach-Object {$_.IPAddressToString}) -join ', '))
+  Write-Host 'Cross-device reachability requires a separate request from an intended LAN client; it is not inferred from this local check.'
+  if($record.signup -eq 'available'){Write-Host 'First-user username/password signup is available at the displayed HTTPS address. Enter credentials only in that protected interface.'}
+  elseif($record.signup -eq 'already-claimed'){Write-Host 'An owner already exists. Existing accounts and data were preserved; use the protected sign-in interface.'}
+  else{Write-Host 'The selected service does not expose the username/password signup status contract. Account setup remains unverified; no setup authorization is displayed.'}
+  if($deploymentLock){$deploymentLock.Dispose();$deploymentLock=$null;Protect-LocalPath (Join-Path $local 'hosting.lock')}
+  if($settings.Mode -eq 'logs'){Show-HostLogs $context $record}
+  elseif(-not $settings.NonInteractive -and $Options.Count -eq 0){$null=Read-Host 'Hosting completed. The verified URL above remains available. Press Enter to close'}
   exit 0
-} catch { Write-Error $_; exit 1 }
+}catch{$failure=$_.Exception.Message;if($record -and $local){try{$record.failedAfter=$record.state;$record.state='incomplete';$record.failedAt=[DateTimeOffset]::UtcNow.ToString('o');Save-HostJson (Join-Path $local 'hosting-context.json') $record}catch{}};Write-Host ('Hosting incomplete: '+$failure);exit 1}
+finally{if($deploymentLock){$deploymentLock.Dispose();try{Protect-LocalPath (Join-Path $local 'hosting.lock')}catch{}}}
