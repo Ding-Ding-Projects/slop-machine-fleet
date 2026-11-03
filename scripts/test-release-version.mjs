@@ -4,7 +4,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
-import {deriveVersion,deriveIdentity,validateIdentity,compareVersions,applyOverlay} from './release-version.mjs';
+import {deriveVersion,deriveIdentity,validateIdentity,compareVersions,applyOverlay,localOverlay} from './release-version.mjs';
 const policy={schemaVersion:1,epoch:0,componentMaximum:65534,repository:'Ding-Ding-Projects/slop-machine-fleet',workflowId:'405397166',workflowPath:'.github/workflows/release.yml'};
 const source='a'.repeat(40);
 const context={GITHUB_ACTIONS:'true',GITHUB_REPOSITORY:policy.repository,GITHUB_SHA:source,GITHUB_RUN_ID:'100',GITHUB_RUN_NUMBER:'16',GITHUB_RUN_ATTEMPT:'1',GITHUB_REF:'refs/heads/main'};
@@ -28,6 +28,7 @@ test('provider workflow, source and run identity cannot reset or be relabelled',
   assert.equal(validateIdentity(identity,policy).version,'0.16.1');
   for(const changed of [{workflow_id:1},{path:'other.yml'},{head_sha:'b'.repeat(40)},{run_number:17},{run_attempt:2}])assert.throws(()=>deriveIdentity({...run,...changed},context,policy,{'package.json':'0.1.2'}));
   assert.throws(()=>validateIdentity({...identity,version:'0.16.2'},policy));
+  const local=localOverlay(source,'0.16.1',{'package.json':'0.1.2'});assert.equal(local.publishable,false);assert.throws(()=>validateIdentity(local,policy));
 });
 test('explicit overlay updates packages, locks and worker metadata while retaining base-version receipts',async()=>{
   const root=await fs.mkdtemp(path.join(os.tmpdir(),'fleet-version-overlay-'));

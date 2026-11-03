@@ -36,6 +36,18 @@ export function validateIdentity(identity, policy) {
   for (const value of Object.values(identity.baseVersions)) numericVersion(value);
   return identity;
 }
+export function localOverlay(source,version,baseVersions){
+  if(!/^[a-f0-9]{40}$/.test(source))throw Error('Local overlay requires an explicit immutable source.');numericVersion(version);
+  for(const value of Object.values(baseVersions))numericVersion(value);
+  return{schemaVersion:1,mode:'local-overlay',publishable:false,source,version,baseVersions};
+}
+function validateBuildIdentity(identity,policy){
+  if(identity.mode==='local-overlay'){
+    if(identity.publishable!==false||identity.schemaVersion!==1||!identity.baseVersions||!Object.keys(identity.baseVersions).length)throw Error('Local overlay identity is invalid.');
+    localOverlay(identity.source,identity.version,identity.baseVersions);return identity;
+  }
+  return validateIdentity(identity,policy);
+}
 export async function packageInventory(root) {
   const pkg = JSON.parse(await fs.readFile(path.join(root,'package.json'),'utf8'));
   const result = { 'package.json':pkg.version };
@@ -47,7 +59,7 @@ export async function packageInventory(root) {
   return result;
 }
 export async function applyOverlay(root, identity, policy, { worker = true } = {}) {
-  validateIdentity(identity,policy);
+  validateBuildIdentity(identity,policy);
   const inventory = await packageInventory(root);
   if (JSON.stringify(inventory) !== JSON.stringify(identity.baseVersions)) throw Error('Overlay base package versions differ from the source receipt.');
   const manifests = Object.keys(inventory);
@@ -105,9 +117,9 @@ async function main() {
     await fs.mkdir(path.join(root,'.agent'),{recursive:true});
     await fs.writeFile(path.join(root,'.agent/release-identity.json'),JSON.stringify(identity,null,2));
     console.log(`version=${identity.version}\nidentity64=${Buffer.from(JSON.stringify(identity)).toString('base64')}`);
-  } else if (mode === 'stage') {
-    if(args.length!==1)throw Error('Stage requires one public derivation receipt encoded as base64.');
-    const identity=validateIdentity(JSON.parse(Buffer.from(args[0],'base64').toString('utf8')),policy);
+  } else if (mode === 'stage'||mode==='stage-local') {
+    if(args.length!==1)throw Error('Stage requires one derivation receipt, or stage-local requires one explicit non-publishable version.');
+    const identity=mode==='stage-local'?localOverlay(git(['rev-parse','HEAD']),args[0],await packageInventory(root)):validateIdentity(JSON.parse(Buffer.from(args[0],'base64').toString('utf8')),policy);
     if(git(['rev-parse','HEAD'])!==identity.source || git(['status','--porcelain','--untracked-files=no']))throw Error('Release staging requires the exact clean source checkout.');
     const entries=git(['ls-tree','-r','--name-only',identity.source]).split(/\r?\n/);
     if(git(['ls-tree','-r','--format=%(objectmode)',identity.source]).split(/\r?\n/).some(mode=>!['100644','100755'].includes(mode)))throw Error('Release staging requires regular tracked source files, without links or nested repositories.');
@@ -127,8 +139,8 @@ async function main() {
   } else if (mode === 'verify-inputs') {
     const file=path.join(root,'build-identity.json');
     const identity=await fs.readFile(file,'utf8').then(JSON.parse).catch(error=>{if(error.code==='ENOENT')return null;throw error;});
-    if(identity){validateIdentity(identity,policy);for(const value of Object.values(await packageInventory(root)))if(value!==identity.version)throw Error('Build producer version differs from the release overlay.');console.log(`Provider overlay version: ${identity.version}; source ${identity.source}.`);}
+    if(identity){validateBuildIdentity(identity,policy);for(const value of Object.values(await packageInventory(root)))if(value!==identity.version)throw Error('Build producer version differs from the release overlay.');console.log(`${identity.mode} version: ${identity.version}; source ${identity.source}; publishable ${identity.mode==='provider-overlay'}.`);}
     else {const versions=await packageInventory(root);numericVersion(versions['package.json']);await fs.mkdir(path.join(root,'.agent'),{recursive:true});await fs.writeFile(path.join(root,'.agent/local-build-identity.json'),JSON.stringify({schemaVersion:1,mode:'local',publishable:false,version:versions['package.json'],baseVersions:versions,source:git(['rev-parse','HEAD']),dirty:!!git(['status','--porcelain','--untracked-files=no'])},null,2));console.log(`Local known version: ${versions['package.json']}; not a provider publication.`);}
-  } else throw Error('Supported modes: derive, stage, apply-image, verify-inputs.');
+  } else throw Error('Supported modes: derive, stage, stage-local, apply-image, verify-inputs.');
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url))await main();

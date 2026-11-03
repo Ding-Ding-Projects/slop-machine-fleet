@@ -13,6 +13,7 @@ export default defineConfig({
  plugins:[{
   name:'preserved-design-font-provenance',
   generateBundle(){
+   this.emitFile({type:'asset',fileName:'build-version.json',source:JSON.stringify({version:packageVersion,source:process.env.FLEET_BUILD_SOURCE||'local',buildTime:process.env.FLEET_BUILD_TIME||''})});
    const fontFiles=['Geist-Variable.woff2','GeistMono-Variable.woff2','MaterialSymbolsRounded.woff2'];
    const fonts=fontFiles.map(name=>{const bytes=readFileSync(fileURLToPath(new URL(`fonts/${name}`,designRoot)));return {name,sha256:createHash('sha256').update(bytes).digest('hex'),bytes:bytes.length};});
    for(const name of ['LICENSE-Geist.txt','LICENSE-MaterialSymbols.txt'])this.emitFile({type:'asset',fileName:`licenses/${name}`,source:readFileSync(fileURLToPath(new URL(`fonts/${name}`,designRoot)))});
