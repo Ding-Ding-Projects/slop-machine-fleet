@@ -5,10 +5,15 @@ COPY packages/shared/package*.json packages/shared/
 COPY apps/service/package*.json apps/service/
 COPY apps/web/package*.json apps/web/
 COPY apps/desktop/package*.json apps/desktop/
+COPY apps/docs/package*.json apps/docs/
 RUN npm install --ignore-scripts --no-audit --no-fund
 COPY packages/shared packages/shared
 COPY apps/service apps/service
 COPY apps/web apps/web
+COPY design/design-system design/design-system
+COPY docs docs
+COPY deploy deploy
+COPY README.md ROADMAP.md HANDOFF.md ./
 RUN npm run build --workspace packages/shared && npm run build --workspace apps/service && npm run build --workspace apps/web
 RUN npm prune --omit=dev --ignore-scripts
 FROM node:22.16.0-bookworm-slim
