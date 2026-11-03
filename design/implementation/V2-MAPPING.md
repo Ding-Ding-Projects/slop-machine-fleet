@@ -18,3 +18,7 @@ Read-only source: imported `design/design-system/` at integration commit `3aa1ca
 ## Verification and bounds
 
 Run focused type checks and adapter/token-mapping tests, then preserve the exact commit for the integrating owner to build through root build.bat. Actual built screenshots, font load checks, interaction, contrast and the complete viewport/theme/language/scale matrix are separate acceptance work. The existing functional state and current evidence are retained. No sample workers, fake checks, fabricated full-screen coverage, cloud action or publication is authorized by this mapping.
+
+## Review disposition and implemented scope
+
+Independent review with gpt-6-astra accepted bounded implementation before runtime edits. Conditions: one fixed-primary action per active view, original secondary focus ring, bilingual secondary labels, preserved font licences and hidden-by-default device codes. The runtime mapping follows those conditions for the scoped adapters. The integrated root build and genuine runtime evidence remain pending. The full component catalogue is not represented as complete screens.
