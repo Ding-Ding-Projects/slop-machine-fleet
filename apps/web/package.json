@@ -1,9 +1,24 @@
 {
   "name": "@fleet/web",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "private": true,
   "type": "module",
-  "scripts": { "dev": "vite --host 127.0.0.1", "build": "tsc --noEmit && vite build", "test": "node --test tests/*.test.mjs", "preview": "vite preview --host 127.0.0.1" },
-  "dependencies": { "react": "^19.1.0", "react-dom": "^19.1.0", "@material/web": "^2.4.0" },
-  "devDependencies": { "@types/react": "^19.1.0", "@types/react-dom": "^19.1.0", "typescript": "^5.8.3", "vite": "^6.3.5" }
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build",
+    "test": "node --test tests/*.test.mjs",
+    "preview": "vite preview --host 127.0.0.1"
+  },
+  "dependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "@material/web": "^2.4.0",
+    "@fleet/local-base64": "0.1.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5"
+  }
 }

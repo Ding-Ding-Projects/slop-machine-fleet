@@ -1,0 +1,113 @@
+import {
+  blobChunks,
+  createControl,
+} from "../../../../packages/shared/local-base64/codec.mjs";
+import { convertStream } from "../../../../packages/shared/local-base64/stream.mjs";
+import { detectedMedia } from "../../../../packages/shared/local-base64/preview.mjs";
+import {
+  encodeTextChunks,
+  textByteLength,
+} from "../../../../packages/shared/local-base64/data-url.mjs";
+import {
+  createVerifiedZip,
+  zipPlan,
+} from "../../../../packages/shared/local-base64/archive.mjs";
+import {
+  createTemporarySink,
+  storageBudget,
+} from "../../../../packages/shared/local-base64/storage.mjs";
+let control = null;
+self.onmessage = async ({ data }) => {
+  if (data.type === "pause") {
+    control?.pause();
+    self.postMessage({ type: "paused" });
+    return;
+  }
+  if (data.type === "resume") {
+    control?.resume();
+    self.postMessage({ type: "resumed" });
+    return;
+  }
+  if (data.type === "cancel") {
+    control?.cancel();
+    return;
+  }
+  if (data.type !== "start" || control) return;
+  control = createControl();
+  let sink;
+  try {
+    const hasText = typeof data.options.textPayload === "string";
+    const textEncoding =
+      data.mode === "decode" ? "utf-8" : data.options.encoding || "utf-8";
+    if (hasText && data.options.textPayload.length > 8 * 1024 * 1024)
+      throw Error("size");
+    const sourceSize = hasText
+      ? textByteLength(data.options.textPayload, textEncoding)
+      : data.file.size;
+    const id = data.claim.id;
+    sink = await createTemporarySink({ claim: data.claim });
+    self.postMessage({ type: "attached", id });
+    await control.checkpoint();
+    let last = 0;
+    const onProgress = (value) => {
+      if (performance.now() - last > 100) {
+        last = performance.now();
+        self.postMessage({
+          type: "progress",
+          ...value,
+          total:
+            data.mode === "zip"
+              ? data.options.files.reduce(
+                  (sum, entry) => sum + entry.file.size,
+                  0,
+                )
+              : sourceSize,
+        });
+      }
+    };
+    const result =
+      data.mode === "zip"
+        ? await createVerifiedZip({
+            files: data.options.files,
+            sink,
+            control,
+            onProgress,
+          })
+        : await convertStream({
+            source: () =>
+              hasText
+                ? encodeTextChunks(data.options.textPayload, textEncoding)
+                : blobChunks(data.file),
+            sink,
+            mode: data.mode,
+            options: data.options,
+            control,
+            onProgress,
+          });
+    const file = await sink.file();
+    result.mime =
+      data.mode === "zip"
+        ? "application/zip"
+        : data.mode === "encode"
+          ? "text/plain"
+          : detectedMedia(
+              new Uint8Array(await file.slice(0, 65536).arrayBuffer()),
+            ) || "application/octet-stream";
+    self.postMessage({ type: "complete", id, result, file });
+  } catch (error) {
+    let cleanupFailed = false;
+    try {
+      await sink?.abort();
+    } catch {
+      cleanupFailed = true;
+    }
+    self.postMessage({
+      type: "error",
+      code: error.code || "processing",
+      offset: error.offset,
+      cleanupFailed,
+    });
+  } finally {
+    control = null;
+  }
+};

@@ -1,0 +1,9 @@
+{
+  default_sni {$FLEET_HOST}
+}
+
+{$FLEET_HOST} {
+  tls internal
+  header Strict-Transport-Security "max-age=31536000"
+  reverse_proxy service:3000
+}

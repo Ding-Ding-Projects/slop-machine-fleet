@@ -1,14 +1,34 @@
 {
   "name": "slop-machine-fleet",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "private": true,
   "type": "module",
-  "workspaces": ["apps/service", "apps/web", "apps/desktop", "packages/shared"],
+  "workspaces": [
+    "apps/service",
+    "apps/web",
+    "apps/desktop",
+    "apps/docs",
+    "packages/shared",
+    "packages/shared/local-base64"
+  ],
   "scripts": {
-    "build": "npm run build --workspace packages/shared && npm run build --workspace apps/service && npm run build --workspace apps/web && npm run build --workspace apps/desktop",
+    "build": "npm run build --workspace @fleet/shared && npm run build --workspace apps/service && npm run build --workspace apps/web && npm run build --workspace apps/desktop && npm run build --workspace apps/docs",
     "test": "npm run test --workspaces --if-present",
     "dev": "npm run dev --workspace apps/service",
     "start": "npm run start --workspace apps/service"
   },
-  "engines": { "node": ">=22.16.0" }
+  "engines": {
+    "node": ">=22.16.0"
+  },
+  "overrides": {
+    "@fastify/static": {
+      "glob": "14.0.2"
+    }
+  },
+  "allowScripts": {
+    "electron@39.2.7": true,
+    "electron-winstaller@5.4.0": true,
+    "esbuild@0.28.2": true,
+    "esbuild@0.25.12": true
+  }
 }

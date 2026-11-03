@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "packages": [
+    {
+      "name": "@noble/hashes",
+      "version": "2.0.1",
+      "source": "https://github.com/paulmillr/noble-hashes/tree/2.0.1",
+      "integrity": "sha512-XlOlEbQcE9fmuXxrVTXCTlG2nlRXa9Rj3rr5Ue/+tX+nmkgbX720YHh0VR3hBF9xDvwnb8D2shVGOwNx+ulArw==",
+      "size": 135794,
+      "license": "MIT",
+      "verifiedAgainst": "npm registry dist.integrity and downloaded tarball SHA-512"
+    },
+    {
+      "name": "fflate",
+      "version": "0.8.2",
+      "source": "https://github.com/101arrowz/fflate/tree/v0.8.2",
+      "integrity": "sha512-cPJU47OaAoCbg0pBvzsgpTPhmhqI5eJjh/JIu8tPj5q+T7iLvW/JAYUqmE7KOB4R1ZyEhzBaIQpQpardBF5z8A==",
+      "size": 168507,
+      "license": "MIT",
+      "verifiedAgainst": "npm registry dist.integrity and downloaded tarball SHA-512"
+    },
+    {
+      "name": "fake-indexeddb",
+      "version": "6.2.4",
+      "source": "https://github.com/dumbmatter/fakeIndexedDB/tree/v6.2.4",
+      "integrity": "sha512-INKeIKEtSViN4yVtEWEUqbsqmaIy7Ls+MfU0yxQVXg67pOJ/sH1ZxcVrP8XrKULUFohcPD9gnmym+qBfEybACw==",
+      "size": 52246,
+      "license": "Apache-2.0",
+      "scope": "test-only",
+      "verifiedAgainst": "npm registry dist.integrity and downloaded tarball SHA-512"
+    }
+  ]
+}

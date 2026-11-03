@@ -1,0 +1,36 @@
+# Streaming Base64 core
+
+The reusable modules in `packages/shared/local-base64/` process at most 65,536 input bytes per chunk. Stateful encoding retains at most two source bytes; decoding retains at most three alphabet entries. Standard/URL-safe alphabets, canonical padding validation, absolute invalid-character offsets and wrapping survive arbitrary chunk boundaries.
+
+`convertStream` accepts a source iterator, a sink and cooperative pause/resume/cancel controls. It hashes input and output incrementally with the maintained MIT-licensed `@noble/hashes` 2.0.1 implementation, seals and rereads the output, compares its independent readback hash, then performs a Base64 decoding round-trip before allowing the sink to commit. Cancellation, invalid input and altered output abort the sink rather than exposing partial data as complete. A source iterator may have one bounded chunk prefetched at a pause boundary; it does not continue advancing while paused.
+
+The file workspace now wires this core to a module worker and browser-private temporary storage. It requires explicit payload-storage consent, checks estimated quota before opening output, rejects filename collisions, exposes pause/resume/cancel and records cleanup uncertainty in lifecycle safety. Results remain temporary until explicitly downloaded and are removed only by their exact owned identifier on clear or cancellation. Browser crashes can leave temporary copies; that limitation is disclosed before consent. Bounded text/hex and sandboxed dimension-checked image previews require an explicit preview action. ZIP export, durable metadata history, audio/video preview and streaming data URLs remain follow-up work. Actual browser runtime acceptance is pending.
+
+## Dependencies and provenance
+
+Exact pins are `@noble/hashes` 2.0.1 and `fflate` 0.8.2. Their official tagged sources are https://github.com/paulmillr/noble-hashes/tree/2.0.1 and https://github.com/101arrowz/fflate/tree/v0.8.2. Both use the MIT licence. Retained licence bytes and independently calculated downloaded-package SHA-512 receipts live beside the scoped package. Registry integrity comparison establishes downloaded bytes, not an independent security audit. Root dependency integration is separately reviewed.
+
+## Verification
+
+Tests compare codec output against Node's independent Base64 implementation across every small split, reject malformed padding/trailing bits and report offsets across chunks, corrupt real sink readback to prove commit prevention, verify pause/resume/cancel behavior and compare incremental SHA-256 against Node crypto. A synthetic file larger than the former 8 MiB UI bound uses a real disk-backed sink while every write and read remains bounded. Runtime and UI acceptance are not claimed by these core checks.
+
+
+The independently exported `StreamingBase64` component is available for later documentation integration. It uses the host preference interface for localized copy and notifications. The current application cancels owned work and invalidates asynchronous generations on unmount; host authentication transitions must unmount or explicitly discard the owning tool. No controller API or payload network request is used. Three storage tests verify consent before access, quota failures, collision refusal, commit-before-exposure and exact-owned cleanup.
+
+## Streaming ZIP and durable metadata history
+
+Verified file results can be exported as a streaming ZIP archive. The archive uses stored members, awaits every output write before reading more input, then reopens the actual output and compares every member hash and byte count before allowing download. ZIP32 limits apply: no member or complete archive may reach 4 GiB, and there may be at most 65,535 entries. ZIP64 and compression-level controls are unavailable.
+
+Text and file conversions append only validated metadata to a dedicated IndexedDB database: names, sizes, hashes, conversion options and timestamps. Payload-shaped fields are rejected before transactions. Linked records and redo links have no arbitrary history-length limit; reads are paged and actual storage quota remains authoritative. Undo/redo changes metadata selection, never promises restoration of payloads that were not stored. New work after undo creates a new history path. Permanent clearing requires both a typed CLEAR acknowledgement and a separate confirmation checkbox. Storage failures remain visible and do not turn a successful conversion into a history-save claim.
+
+The test-only fake-indexeddb 6.2.4 package is pinned, carries its Apache 2.0 licence and has a downloaded SHA-512 receipt. It is imported only by tests. Transaction tests cover reopening, undo/redo, new history paths, bounded pages, payload rejection and confirmed clearing. These model checks do not establish actual browser IndexedDB acceptance.
+
+## Complete streamed variants and safe previews
+
+The streamed route also handles editor text incrementally in UTF-8, UTF-16 LE, UTF-16 BE and Latin-1. Surrogate pairs survive chunk boundaries. Data URL encoding uses a validated chosen MIME type and the standard padded alphabet. Decoding recognizes bounded data URL headers across arbitrary chunk boundaries and retains parsed MIME/parameters separately from payload bytes. Validation offsets include the consumed header.
+
+Clipboard import and copy require explicit buttons. The editor and complete-text clipboard action are bounded to 8 MiB; larger output remains available through file download. Empty input has its own explanation. Media type and download extension are suggested from bounded byte signatures, never a supplied filename alone. Preview requires an explicit action, limits media to 32 MiB and images to 8192 pixels per side/16 megapixels, and uses a script-disabled sandbox with no external content. Audio/video controls do not autoplay and report unavailable browser codecs. Unsupported media stays available as bytes, not an executable document.
+
+The separately exported `Base64Workspace.tsx` wraps the Base64 UI with independent lifecycle safety. A future public documentation integration must provide its safe public preference binding for every tools import of `../preferences`; it must not import the authenticated application's private preference provider. The pure shared modules are UI-independent. No documentation surface integration is claimed by this export.
+
+Action cues honor the existing sound switch, volume and low-stimulation preference; sound failures never change conversion results. Actual media playback, clipboard permission, sound and browser-storage acceptance remain unverified until the built UI is exercised.
