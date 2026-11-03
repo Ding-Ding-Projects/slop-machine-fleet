@@ -20,6 +20,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       source: ${{ steps.source.outputs.sha }}
+      eligible: ${{ steps.source.outputs.eligible }}
+      reason: ${{ steps.source.outputs.reason }}
     steps:
       - name: Resolve immutable main-channel documentation source
         id: source
@@ -62,7 +64,13 @@ jobs:
               $text = gh release download $tag --repo $repository --pattern source-manifest.json --output -
               if ($LASTEXITCODE) { throw 'Published channel manifest readback failed.' }
               $manifest = $text | ConvertFrom-Json
-              if ($manifest.updateChannel -ne 'stable' -or $manifest.sourceBranch -ne 'main' -or $manifest.source -notmatch '^[a-f0-9]{40}$') { throw 'The published release is outside the accepted stable main channel.' }
+              if ($manifest.updateChannel -isnot [string] -or $manifest.sourceBranch -isnot [string]) { throw 'Published release channel metadata is malformed or contradictory.' }
+              if ($manifest.source -isnot [string] -or $manifest.source -notmatch '^[a-f0-9]{40}$') { throw 'The published release source identity is invalid.' }
+              $preservation = $manifest.updateChannel -ceq 'preservation' -and $manifest.sourceBranch.Length -gt 0 -and $manifest.sourceBranch.Length -le 255 -and $manifest.sourceBranch -cne 'main'
+              if ($preservation) {
+                git check-ref-format --branch $manifest.sourceBranch | Out-Null
+                if ($LASTEXITCODE) { throw 'Preservation release branch metadata is invalid.' }
+              } elseif ($manifest.updateChannel -cne 'stable' -or $manifest.sourceBranch -cne 'main') { throw 'Published release channel metadata is malformed or contradictory.' }
               $reference = Read-Api "git/ref/tags/$tag"
               $object = $reference.object
               for ($depth = 0; $object.type -eq 'tag' -and $depth -lt 3; $depth++) {
@@ -70,6 +78,12 @@ jobs:
                 $object = (Read-Api "git/tags/$($object.sha)").object
               }
               if ($object.type -ne 'commit' -or $object.sha -ne $manifest.source) { throw 'Published release tag and source manifest differ.' }
+              if ($preservation) {
+                'eligible=false' | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+                'reason=preservation-channel' | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+                Write-Host 'Valid non-main preservation release: documentation refresh is deliberately ineligible. No deployment source was accepted.'
+                exit 0
+              }
               $comparison = Read-Api "compare/$($manifest.source)...$source"
               if ($comparison.status -notin @('ahead','identical') -or $comparison.merge_base_commit.sha -ne $manifest.source) { throw 'Published release source is not an ancestor of the resolved main source.' }
             }
@@ -77,10 +91,12 @@ jobs:
           $commit = Read-Api "commits/$source"
           if ($commit.sha -ne $source) { throw 'Immutable source readback differs from the selected commit.' }
           "sha=$source" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          'eligible=true' | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          'reason=verified-main-source' | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
           Write-Host "Resolved immutable documentation source: $source."
   refresh-main:
     needs: resolve
-    if: github.event_name == 'release'
+    if: github.event_name == 'release' && needs.resolve.outputs.eligible == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -98,7 +114,7 @@ jobs:
           Write-Host "Requested main-ref refresh for reviewed source $env:REVIEWED_SOURCE. Deployment remains unverified."
   build:
     needs: resolve
-    if: github.event_name != 'release'
+    if: github.event_name != 'release' && needs.resolve.outputs.eligible == 'true'
     runs-on: windows-latest
     permissions:
       contents: read
@@ -140,7 +156,7 @@ jobs:
             if ($LASTEXITCODE) { throw 'Published source manifest download failed.' }
             $manifest = $manifestText | ConvertFrom-Json
             if ($manifest.source -notmatch '^[a-f0-9]{40}$' -or -not $manifest.files -or $manifest.files.Count -gt 64) { continue }
-            if ($manifest.updateChannel -ne 'stable' -or $manifest.sourceBranch -ne 'main') { continue }
+            if ($manifest.updateChannel -isnot [string] -or $manifest.sourceBranch -isnot [string] -or $manifest.updateChannel -cne 'stable' -or $manifest.sourceBranch -cne 'main') { continue }
             git fetch origin "refs/tags/${tag}:refs/tags/${tag}"
             if ($LASTEXITCODE) { throw 'Release tag readback failed.' }
             $tagSource = git rev-parse "${tag}^{commit}"
@@ -210,7 +226,8 @@ jobs:
         with:
           path: apps/docs/dist
   deploy:
-    needs: build
+    needs: [resolve, build]
+    if: github.event_name != 'release' && needs.resolve.outputs.eligible == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
