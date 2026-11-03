@@ -51,8 +51,9 @@ function Install-OfficialTools {
     [Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12
     $tools=Join-Path $InstallRoot 'tools'; New-Item -ItemType Directory -Path $tools -Force | Out-Null
     $receipts=@(); $paths=@{}
-    foreach($spec in @(@{name='git';repo='git-for-windows/git';pattern='^Git-[0-9.]+-64-bit.exe$';kind='git'},@{name='gh';repo='cli/cli';pattern='^gh_[0-9.]+_windows_amd64.msi$';kind='msi'},@{name='codex';repo='openai/codex';pattern='^codex-x86_64-pc-windows-msvc.exe.tar.gz$';kind='tar'})) {
-        $release=Invoke-RestMethod -Uri "https://api.github.com/repos/$($spec.repo)/releases/latest" -Headers @{'User-Agent'='SlopMachineFleet-Bootstrap'}
+    foreach($spec in @(@{name='git';repo='git-for-windows/git';pattern='^Git-[0-9.]+-64-bit.exe$';kind='git'},@{name='gh';repo='cli/cli';pattern='^gh_2\.96\.0_windows_amd64.msi$';kind='msi';tag='v2.96.0'},@{name='codex';repo='openai/codex';pattern='^codex-x86_64-pc-windows-msvc.exe.tar.gz$';kind='tar'})) {
+        $releasePath=if($spec.tag){"tags/$($spec.tag)"}else{'latest'}
+        $release=Invoke-RestMethod -Uri "https://api.github.com/repos/$($spec.repo)/releases/$releasePath" -Headers @{'User-Agent'='SlopMachineFleet-Bootstrap'}
         if($release.draft -or $release.prerelease -or !$release.tag_name) { throw 'Expected a stable official tool release' }
         $assets=@($release.assets | Where-Object name -Match $spec.pattern)
         if($assets.Count -ne 1 -or $assets[0].digest -notmatch '^sha256:([a-f0-9]{64})$') { throw "Official immutable SHA-256 release digest unavailable for $($spec.name)" }

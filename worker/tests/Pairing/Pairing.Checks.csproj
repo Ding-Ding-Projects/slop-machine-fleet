@@ -1,4 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><TargetFramework>net8.0-windows</TargetFramework><OutputType>Exe</OutputType><AssemblyName>Fleet.Worker.PairingChecks</AssemblyName><Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings><EnableDefaultCompileItems>false</EnableDefaultCompileItems><SelfContained>true</SelfContained><RuntimeIdentifier>win-x64</RuntimeIdentifier><TreatWarningsAsErrors>true</TreatWarningsAsErrors></PropertyGroup>
-  <ItemGroup><Compile Include="../PairingChecks.cs" /><ProjectReference Include="../../Fleet.Worker.csproj" /></ItemGroup>
+  <ItemGroup><Compile Include="../PairingChecks.cs" /><Compile Include="../InteractiveChecks.cs" /><ProjectReference Include="../../Fleet.Worker.csproj" /></ItemGroup>
 </Project>
