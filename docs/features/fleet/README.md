@@ -3,6 +3,7 @@
 | Goal | Guide |
 | --- | --- |
 | Connect desktop and browser to one controller | [Setup](setup.md) |
+| Create or access the controller owner account | [Account access](account-access.md) |
 | Launch a worker after reviewing costs | [Provisioning](provisioning.md) |
 | Complete both CLI logins and remote pairing | [Authentication](authentication.md) |
 | Submit work and respond to approvals | [Coding tasks](tasks.md) |
