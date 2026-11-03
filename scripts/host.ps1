@@ -2,7 +2,7 @@ param([Parameter(ValueFromRemainingArguments=$true)][string[]]$Options)
 $ErrorActionPreference='Stop'
 $env:PSModulePath=(Join-Path $PSHOME 'Modules')+';'+(Join-Path $env:ProgramFiles 'WindowsPowerShell\Modules')
 foreach($module in @('context','permissions','release','trust','runtime')){. (Join-Path $PSScriptRoot ('hosting/'+$module+'.ps1'))}
-$record=$null;$local=$null
+$record=$null;$local=$null;$deploymentLock=$null
 try{
   $settings=Get-HostOptions $Options (Split-Path $PSScriptRoot -Parent)
   $docker=Get-Command docker.exe -CommandType Application -ErrorAction SilentlyContinue
@@ -23,6 +23,8 @@ try{
     $context.Project=Select-HostProject $existing $context.Root (Read-Host 'No existing deployment matches this directory. Enter the new Compose project name')
     if(-not $context.Project){throw 'A deliberate project identity is required.'}
   }
+  Assert-HostComposeOwnership $context $existing
+  Assert-HostStorage $context $existing
   $hostName=if($settings.HostName){$settings.HostName}else{$config.FLEET_HOST}
   $port=if($settings.Port){$settings.Port}elseif($config.FLEET_HTTPS_PORT){$config.FLEET_HTTPS_PORT}else{'8443'}
   if(-not $hostName){if($settings.NonInteractive){throw 'Set --host to this computer''s intended LAN hostname or IPv4 address.'};$hostName=Read-Host 'This computer''s intended LAN hostname or IPv4 address'}
@@ -35,6 +37,7 @@ try{
   if($settings.Mode -eq 'logs' -and $settings.NonInteractive){throw 'Interactive logs require an attended keyboard console.'}
   Write-Host ('Deployment: '+$context.Project+' | Docker context: '+$context.DockerContext)
   $volumeNames=@((Invoke-HostDocker $context @('volume','ls','--filter',('label=com.docker.compose.project='+$context.Project),'--format','{{.Name}}') 20) -split '\r?\n' | Where-Object {$_})
+  if($volumeNames.Count -and -not @($existing | Where-Object project -eq $context.Project).Count){throw 'Retained volumes have no current container configuration proof. Preserve them and restore the known deployment context before automatic startup.'}
   foreach($volumeName in $volumeNames){
     if($volumeName -notmatch '^[A-Za-z0-9][A-Za-z0-9_.-]*$'){throw 'Unexpected persistent-volume identity.'}
     $labels=Invoke-HostDocker $context @('volume','inspect','--format','{{json .Labels}}',$volumeName) 20 | ConvertFrom-Json
@@ -51,13 +54,15 @@ try{
   }
   Write-Host ('Pulling accepted controller version '+$release.Version+'.')
   $null=Invoke-HostDocker $context @('pull',$release.ImageTag) 300
-  $image=@(Invoke-HostDocker $context @('image','inspect',$release.ImageTag) 20 | ConvertFrom-Json)[0]
+  $image=(Invoke-HostDocker $context @('image','inspect',$release.ImageTag) 20 | ConvertFrom-Json)[0]
   $digest=Assert-HostImage $image $release
   $local=Join-Path $context.Root '.local'
+  $deploymentLock=Enter-HostLock $local
   if(@($existing | Where-Object {$_.project -eq $context.Project -and $_.service -eq 'database'}).Count){if(-not (Test-Path -LiteralPath $context.EnvFile)){throw 'Existing database configuration is missing. Restore its environment before updating.'};foreach($name in @('database-password','database-url')){if(-not (Test-Path -LiteralPath (Join-Path $local $name))){throw 'Existing database authorization is missing. Restore its protected configuration before updating; it is never regenerated for an existing database.'}}}
   Initialize-HostLocal $local
   $context.Environment=@{FLEET_HOST=$hostName;FLEET_HTTPS_PORT=$port;FLEET_IMAGE=$digest;COMPOSE_PROJECT_NAME=$context.Project}
   if($config.FLEET_AWS_PROFILE){$context.Environment.FLEET_AWS_PROFILE=$config.FLEET_AWS_PROFILE}
+  Assert-HostStorage $context $existing
   # Preserve prior data with the old configuration before changing service inputs.
   $backup=''
   if(Test-Path -LiteralPath $context.EnvFile){$backup=Save-HostDatabase $context $existing $local}
@@ -94,6 +99,9 @@ try{
   if($record.signup -eq 'available'){Write-Host 'First-user username/password signup is available at the displayed HTTPS address. Enter credentials only in that protected interface.'}
   elseif($record.signup -eq 'already-claimed'){Write-Host 'An owner already exists. Existing accounts and data were preserved; use the protected sign-in interface.'}
   else{Write-Host 'The selected service does not expose the username/password signup status contract. Account setup remains unverified; no setup authorization is displayed.'}
-  if($settings.Mode -eq 'logs'){Show-HostLogs $context}
+  if($deploymentLock){$deploymentLock.Dispose();$deploymentLock=$null;Protect-LocalPath (Join-Path $local 'hosting.lock')}
+  if($settings.Mode -eq 'logs'){Show-HostLogs $context $record}
+  elseif(-not $settings.NonInteractive -and $Options.Count -eq 0){$null=Read-Host 'Hosting completed. The verified URL above remains available. Press Enter to close'}
   exit 0
 }catch{$failure=$_.Exception.Message;if($record -and $local){try{$record.failedAfter=$record.state;$record.state='incomplete';$record.failedAt=[DateTimeOffset]::UtcNow.ToString('o');Save-HostJson (Join-Path $local 'hosting-context.json') $record}catch{}};Write-Host ('Hosting incomplete: '+$failure);exit 1}
+finally{if($deploymentLock){$deploymentLock.Dispose();try{Protect-LocalPath (Join-Path $local 'hosting.lock')}catch{}}}

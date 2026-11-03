@@ -8,18 +8,19 @@ function Invoke-HostCommand([string]$Executable,[string[]]$Arguments,[int]$Timeo
   $info.UseShellExecute=$false; $info.CreateNoWindow=$true; $info.RedirectStandardOutput=$true; $info.RedirectStandardError=$true
   foreach($key in $Environment.Keys){$info.EnvironmentVariables[$key]=[string]$Environment[$key]}
   $child=New-Object Diagnostics.Process; $child.StartInfo=$info
-  $fileStream=$null
+  $fileStream=$null;$started=$false
   try {
     if($OutputFile){$fileStream=[IO.File]::Open($OutputFile,[IO.FileMode]::CreateNew);Protect-LocalPath $OutputFile}
     if(-not $child.Start()){throw 'The required command did not start.'}
+    $started=$true
     $output=if($fileStream){$child.StandardOutput.BaseStream.CopyToAsync($fileStream)}else{$child.StandardOutput.ReadToEndAsync()}; $errorOutput=$child.StandardError.ReadToEndAsync()
-    if(-not $child.WaitForExit($TimeoutSeconds*1000)){try{$child.Kill()}catch{};throw 'The command exceeded its time limit. Running containers and completed effects were preserved.'}
+    if(-not $child.WaitForExit($TimeoutSeconds*1000)){try{$child.Kill();$null=$child.WaitForExit(5000)}catch{};throw 'The command exceeded its time limit. Running containers and completed effects were preserved.'}
     $text=$output.GetAwaiter().GetResult(); $discard=$errorOutput.GetAwaiter().GetResult(); $discard=$null
     if($child.ExitCode -ne 0){throw ('Required command exited {0}. No raw output containing configuration is displayed.' -f $child.ExitCode)}
     if($fileStream){$fileStream.Flush($true);return ''}
     if($text.Length -gt 1048576){throw 'Command output exceeded the supported bound.'}
     return $text.Trim()
-  } finally {if($fileStream){$fileStream.Dispose()};$child.Dispose()}
+  } finally {if($started){try{if(-not $child.HasExited){$child.Kill();$null=$child.WaitForExit(5000)}}catch{}};if($fileStream){$fileStream.Dispose()};$child.Dispose()}
 }
 function Get-HostOptions([string[]]$Values,[string]$DefaultRoot) {
   $result=@{Root=$DefaultRoot;Project='';Release='';HostName='';Port='';Mode='';NonInteractive=([Console]::IsInputRedirected -or $env:CI -eq 'true');Trust=$false;Fingerprint=''}

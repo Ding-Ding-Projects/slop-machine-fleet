@@ -14,4 +14,14 @@ $worker.version='0.3.1';Reject {Assert-HostRelease $release $manifest $worker};$
 $image=[pscustomobject]@{Id='sha256:'+('c'*64);RepoDigests=@('ghcr.io/ding-ding-projects/slop-machine-fleet@sha256:'+('d'*64));Config=[pscustomobject]@{Labels=[pscustomobject]@{'org.opencontainers.image.source'='https://github.com/Ding-Ding-Projects/slop-machine-fleet';'org.opencontainers.image.revision'=$sha;'org.opencontainers.image.version'='0.2.1'}}}
 if((Assert-HostImage $image $accepted) -notmatch '@sha256:'){throw 'Image was not pinned.'}
 $image.Config.Labels.'org.opencontainers.image.version'='0.1.0';Reject {Assert-HostImage $image $accepted}
+$release.assets+=@([pscustomobject]@{name='source-manifest.json';size=1000;browser_download_url=$base+'/source-manifest.json'},[pscustomobject]@{name='worker-release.json';size=500;browser_download_url=$base+'/worker-release.json'})
+function Get-HostPublicText([string]$Url){
+  if($Url.EndsWith('/releases?per_page=10')){return ConvertTo-Json -InputObject @($release,[pscustomobject]@{draft=$true;prerelease=$false;tag_name='draft-fixture'}) -Depth 8}
+  if($Url.EndsWith('/source-manifest.json')){return $manifest | ConvertTo-Json -Depth 8}
+  if($Url.EndsWith('/worker-release.json')){return $worker | ConvertTo-Json -Depth 8}
+  if($Url.EndsWith('/git/ref/tags/build-fixture')){return @{object=@{type='commit';sha=$sha}} | ConvertTo-Json -Depth 4}
+  if($Url.EndsWith('/compare/'+$sha+'...main')){return @{status='ahead';base_commit=@{sha=$sha}} | ConvertTo-Json -Depth 4}
+  throw 'Unexpected fixture URL.'
+}
+if((Get-AcceptedHostRelease '').Tag -cne 'build-fixture'){throw 'Windows PowerShell release array discovery failed.'}
 Write-Host 'PASS: accepted main release, exact worker metadata, version/source labels and immutable image binding; preservation, foreign URLs and mismatched versions rejected. No network or container operation ran.'

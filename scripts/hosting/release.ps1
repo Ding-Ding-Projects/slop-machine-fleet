@@ -32,7 +32,7 @@ function Assert-HostRelease([object]$Release,[object]$Manifest,[object]$Worker) 
   return [pscustomobject]@{Tag=$Release.tag_name;Source=$Manifest.source;Version=$Manifest.version;ImageTag=$Manifest.intendedImageReference;Worker=$Worker}
 }
 function Get-AcceptedHostRelease([string]$Tag) {
-  $releases=if($Tag){@((Get-HostPublicText ($script:FleetApi+'/releases/tags/'+$Tag) | ConvertFrom-Json))}else{@((Get-HostPublicText ($script:FleetApi+'/releases?per_page=10') | ConvertFrom-Json))}
+  $releases=if($Tag){@((Get-HostPublicText ($script:FleetApi+'/releases/tags/'+$Tag) | ConvertFrom-Json))}else{@(Get-HostPublicText ($script:FleetApi+'/releases?per_page=10') | ConvertFrom-Json | ForEach-Object {$_})}
   if($releases.Count -gt 10){throw 'Release inventory exceeds its bound.'};$candidates=@()
   foreach($release in $releases){
     if($release.draft -or $release.prerelease -or $release.tag_name -notmatch '^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$'){continue}
