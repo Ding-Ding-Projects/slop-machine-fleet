@@ -16,7 +16,7 @@ try {
   $port = if ($config.FLEET_HTTPS_PORT) { [int]$config.FLEET_HTTPS_PORT } else { 8443 }
   if (-not $fleetHost -or $fleetHost -match '[/\\:@\s]' -or $port -lt 1 -or $port -gt 65535) { throw 'Invalid LAN hostname or HTTPS port.' }
   $addresses = @([Net.Dns]::GetHostAddresses($fleetHost))
-  if (-not $addresses -or $addresses | Where-Object { [Net.IPAddress]::IsLoopback($_) }) { throw 'FLEET_HOST must resolve to a non-loopback LAN address.' }
+  if (-not $addresses -or @($addresses | Where-Object { [Net.IPAddress]::IsLoopback($_) }).Count -gt 0) { throw 'FLEET_HOST must resolve to a non-loopback LAN address.' }
   $mode = if ($Options -contains '--logs') { 'logs' } elseif ($Options -contains '--detached') { 'detached' } else { if ((Read-Host 'Choose [D]etached or interactive [L]ogs') -match '^[lL]$') { 'logs' } else { 'detached' } }
   $local = Join-Path (Get-Location) '.local'
   New-Item -ItemType Directory -Force $local | Out-Null

@@ -14,6 +14,6 @@
     "files": ["dist/**", "package.json"],
     "asar": true,
     "win": { "target": ["squirrel"], "signAndEditExecutable": false, "forceCodeSigning": false },
-    "squirrelWindows": { "name": "SlopMachineFleet", "remoteReleases": false }
+    "squirrelWindows": { "name": "SlopMachineFleet", "remoteReleases": false, "artifactName": "Setup.exe" }
   }
 }

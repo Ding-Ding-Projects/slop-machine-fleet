@@ -44,6 +44,8 @@ jobs:
         shell: pwsh
         run: |
           $files = Get-ChildItem apps/desktop/release -File | Where-Object { $_.Extension -in '.exe','.nupkg' -or $_.Name -eq 'RELEASES' }
+          Copy-Item release/worker/Fleet.Worker.exe apps/desktop/release/Fleet.Worker.exe
+          $files = @($files) + @(Get-Item apps/desktop/release/Fleet.Worker.exe)
           if (-not $files) { throw 'Missing desktop release payload.' }
           $manifest = @{ source = '${{ github.sha }}'; image = 'ghcr.io/ding-ding-projects/slop-machine-fleet:sha-${{ github.sha }}'; unsigned = $true; files = @($files | ForEach-Object { @{ name=$_.Name; bytes=$_.Length; sha256=(Get-FileHash $_.FullName -Algorithm SHA256).Hash } }) }
           $manifest | ConvertTo-Json -Depth 5 | Set-Content apps/desktop/release/source-manifest.json
