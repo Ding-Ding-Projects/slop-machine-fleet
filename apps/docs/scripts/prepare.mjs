@@ -7,6 +7,7 @@ import { marked } from "marked";
 import { readContainedFile, replaceGenerated } from "./files.mjs";
 const here = path.dirname(fileURLToPath(import.meta.url)),
   root = path.resolve(here, "../../.."),
+  sourceRoot = process.env.FLEET_SOURCE_ROOT || root,
   app = path.resolve(here, "..");
 const digest = (bytes) =>
   crypto.createHash("sha256").update(bytes).digest("hex");
@@ -147,12 +148,12 @@ export async function prepare() {
   let tokens = execFileSync(
     "git",
     ["show", reference + ":design/design-system/tokens.css"],
-    { cwd: root, encoding: "utf8" },
+    { cwd: sourceRoot, encoding: "utf8" },
   );
   const fontPaths = execFileSync(
     "git",
     ["ls-tree", "-r", "--name-only", reference, "design/design-system"],
-    { cwd: root, encoding: "utf8" },
+    { cwd: sourceRoot, encoding: "utf8" },
   )
     .split(/\r?\n/)
     .filter(
@@ -162,7 +163,7 @@ export async function prepare() {
   await fs.mkdir(path.join(generated, "fonts"), { recursive: true });
   for (const font of fontPaths) {
     const bytes = execFileSync("git", ["show", reference + ":" + font], {
-      cwd: root,
+      cwd: sourceRoot,
       maxBuffer: 20 * 1024 * 1024,
     });
     await fs.writeFile(
@@ -182,8 +183,8 @@ export async function prepare() {
   } catch (error) {
     if (error.code !== "ENOENT") throw error;
   }
-  const commit = execFileSync("git", ["rev-parse", "HEAD"], {
-    cwd: root,
+  const commit = execFileSync("git", ["rev-parse", process.env.FLEET_BUILD_SOURCE || "HEAD"], {
+    cwd: sourceRoot,
     encoding: "utf8",
   }).trim();
   const content = {

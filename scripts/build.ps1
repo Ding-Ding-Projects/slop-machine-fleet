@@ -56,6 +56,8 @@ try {
   & node --version
   & node (Join-Path $PSScriptRoot 'check-vocabulary.mjs')
   if ($LASTEXITCODE -ne 0) { throw 'Private source currency validation did not pass.' }
+  & node (Join-Path $PSScriptRoot 'release-version.mjs') verify-inputs
+  if ($LASTEXITCODE -ne 0) { throw 'Explicit build-version identity did not validate.' }
   if ($LASTEXITCODE -ne 0) { throw 'Node verification failed.' }
   . (Join-Path $PSScriptRoot 'dotnet.ps1')
   $workerProject = Join-Path $root 'worker/Fleet.Worker.csproj'
@@ -83,6 +85,8 @@ try {
     $receipt = @{ source=$source; sourceDirectory='apps/desktop/release/squirrel-windows'; files=@($files | ForEach-Object { @{ name=$_.Name; bytes=$_.Length; sha256=(Get-FileHash -LiteralPath (Join-Path $distribution $_.Name) -Algorithm SHA256).Hash.ToLowerInvariant() } }) }
     $receipt | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $distribution 'squirrel-payload.json')
     $receipt.files | Format-Table name,bytes,sha256
+    & (Join-Path $PSScriptRoot 'verify-release-versions.ps1')
+    if (-not $?) { throw 'Produced release version verification failed.' }
   } elseif ($runAfter -or (-not $silent -and (Read-Host 'Build succeeded. Run the desktop client? [y/N]') -match '^[yY]$')) {
     & npm.cmd start --workspace apps/desktop
     if ($LASTEXITCODE -ne 0) { throw "Desktop exited $LASTEXITCODE." }

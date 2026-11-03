@@ -6,6 +6,9 @@ COPY apps/service/package*.json apps/service/
 COPY apps/web/package*.json apps/web/
 COPY apps/desktop/package*.json apps/desktop/
 COPY apps/docs/package*.json apps/docs/
+COPY scripts/release-version.mjs scripts/release-version-policy.json scripts/
+ARG FLEET_RELEASE_IDENTITY64
+RUN FLEET_RELEASE_IDENTITY64="$FLEET_RELEASE_IDENTITY64" node scripts/release-version.mjs apply-image
 RUN npm install --ignore-scripts --no-audit --no-fund
 COPY packages/shared packages/shared
 COPY apps/service apps/service

@@ -11,7 +11,30 @@ concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 jobs:
+  identity:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      identity64: ${{ steps.version.outputs.identity64 }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Derive one authenticated version before every producer
+        id: version
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api 'repos/${{ github.repository }}/actions/runs/${{ github.run_id }}' | node scripts/release-version.mjs derive | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          if ($LASTEXITCODE) { throw 'Authenticated release version derivation failed.' }
+          node scripts/check-stable-version.mjs .agent/release-identity.json .agent/stable-preflight.json
+          if ($LASTEXITCODE) { throw 'Stable version preflight failed.' }
   image:
+    needs: identity
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,14 +51,21 @@ jobs:
         with:
           context: .
           push: true
+          build-args: |
+            FLEET_RELEASE_IDENTITY64=${{ needs.identity.outputs.identity64 }}
           tags: ghcr.io/ding-ding-projects/slop-machine-fleet:sha-${{ github.sha }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ needs.identity.outputs.version }}
       - name: Verify published immutable image reference
         run: docker buildx imagetools inspect ghcr.io/ding-ding-projects/slop-machine-fleet:sha-${{ github.sha }}
   desktop:
+    needs: identity
     runs-on: windows-latest
+    concurrency:
+      group: ${{ github.ref == 'refs/heads/main' && 'accepted-stable-publication' || format('preservation-{0}-{1}', github.run_id, github.run_attempt) }}
+      cancel-in-progress: false
     env:
       CSC_IDENTITY_AUTO_DISCOVERY: 'false'
     steps:
@@ -45,11 +75,23 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22.16.0'
+      - name: Stage an explicit immutable version overlay
+        shell: pwsh
+        env:
+          RELEASE_IDENTITY64: ${{ needs.identity.outputs.identity64 }}
+        run: |
+          $result = node scripts/release-version.mjs stage $env:RELEASE_IDENTITY64
+          if ($LASTEXITCODE -or $result -notmatch '^root=(.+)$') { throw 'Release source overlay staging failed.' }
+          "FLEET_BUILD_ROOT=$($matches[1])" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "FLEET_SOURCE_ROOT=$env:GITHUB_WORKSPACE" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "FLEET_BUILD_SOURCE=${{ github.sha }}" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
       - name: Build unsigned Squirrel installer through supported entrypoint
         shell: cmd
+        working-directory: ${{ env.FLEET_BUILD_ROOT }}
         run: build-installer.bat /s
       - name: Create source and payload manifest
         shell: pwsh
+        working-directory: ${{ env.FLEET_BUILD_ROOT }}
         env:
           SOURCE_REF: ${{ github.ref }}
           SOURCE_BRANCH: ${{ github.ref_name }}
@@ -75,15 +117,19 @@ jobs:
           if (-not $files) { throw 'Missing desktop release payload.' }
           $tag = 'build-${{ github.run_id }}-${{ github.run_attempt }}'
           $version = (Get-Content apps/desktop/package.json -Raw | ConvertFrom-Json).version
+          $identity = Get-Content build-identity.json -Raw | ConvertFrom-Json
+          if ($identity.source -ne '${{ github.sha }}' -or $identity.version -ne $version) { throw 'Produced version differs from its derivation receipt.' }
+          Copy-Item build-identity.json apps/desktop/release/release-identity.json
           $workerVersion = (Get-Content package.json -Raw | ConvertFrom-Json).version
           $base = "https://github.com/${{ github.repository }}/releases/download/$tag"
           $worker = @{ version=$workerVersion; assetUrl="$base/Fleet.Worker.exe"; assetSha256=(Get-FileHash apps/desktop/release/Fleet.Worker.exe -Algorithm SHA256).Hash.ToLowerInvariant(); bootstrapUrl="$base/Bootstrap-Worker.ps1"; bootstrapSha256=(Get-FileHash apps/desktop/release/Bootstrap-Worker.ps1 -Algorithm SHA256).Hash.ToLowerInvariant() }
           $worker | ConvertTo-Json | Set-Content apps/desktop/release/worker-release.json
           $updateChannel = if ($env:SOURCE_REF -eq 'refs/heads/main') { 'stable' } else { 'preservation' }
-          $manifest = @{ version=$version; updateChannel=$updateChannel; sourceBranch=$env:SOURCE_BRANCH; source = '${{ github.sha }}'; intendedImageReference = 'ghcr.io/ding-ding-projects/slop-machine-fleet:sha-${{ github.sha }}'; imagePublicationEvidence = 'See workflow-evidence.json. Desktop packaging is independent of image publication.'; unsigned = $true; files = @($files | ForEach-Object { @{ name=$_.Name; bytes=$_.Length; sha256=(Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant() } }) }
+          $manifest = @{ version=$version; releaseIdentity=$identity; updateChannel=$updateChannel; sourceBranch=$env:SOURCE_BRANCH; source = '${{ github.sha }}'; intendedImageReference = 'ghcr.io/ding-ding-projects/slop-machine-fleet:sha-${{ github.sha }}'; imagePublicationEvidence = 'See workflow-evidence.json. Desktop packaging is independent of image publication.'; unsigned = $true; files = @($files | ForEach-Object { @{ name=$_.Name; bytes=$_.Length; sha256=(Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant() } }) }
           $manifest | ConvertTo-Json -Depth 5 | Set-Content apps/desktop/release/source-manifest.json
       - name: Publish unique normal release and verify stored state
         shell: pwsh
+        working-directory: ${{ env.FLEET_BUILD_ROOT }}
         env:
           GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.ORG_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
@@ -121,7 +167,9 @@ jobs:
             if ($file.Length -ne $_.bytes -or (Get-FileHash $file.FullName -Algorithm SHA256).Hash -ne $_.sha256) { throw 'Source-bound release payload verification failed.' }
             $file.FullName
           })
-          $assets += @('source-manifest.json','worker-release.json','workflow-evidence.json','squirrel-payload.json') | ForEach-Object { (Get-Item -LiteralPath (Join-Path apps/desktop/release $_)).FullName }
+          node scripts/check-stable-version.mjs
+          if ($LASTEXITCODE) { throw 'Stable publication floor changed or the candidate is stale.' }
+          $assets += @('source-manifest.json','worker-release.json','workflow-evidence.json','squirrel-payload.json','release-identity.json','stable-version-check.json','produced-version-check.json') | ForEach-Object { (Get-Item -LiteralPath (Join-Path apps/desktop/release $_)).FullName }
           gh release create $tag @assets --target '${{ github.sha }}' --title "Slop Machine Fleet $tag" --notes-file release-notes.txt --repo '${{ github.repository }}'
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           $release = gh release view $tag --repo '${{ github.repository }}' --json isDraft,isPrerelease,assets,tagName | ConvertFrom-Json
