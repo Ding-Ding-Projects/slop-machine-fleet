@@ -1,0 +1,2 @@
+#!/bin/sh
+exec node scripts/publication/local.mjs --mode outgoing --remote-name "$1" --remote-location "$2"
