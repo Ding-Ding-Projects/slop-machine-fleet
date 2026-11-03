@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-11-03T06:47:58.339Z",
+  "generatedAt": "2026-11-03T15:30:13.524Z",
   "sourceCount": 115,
   "surfaces": [
     "desktop",
@@ -30,7 +30,7 @@
       "category": "Language, voice, and personalization",
       "applicable": true,
       "state": "unfinished",
-      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "reason": "Inspected browser controls show Cantonese and bilingual wording. Feature titles and article prose still include English; full translation, persistence and every surface/layout remain unfinished.",
       "surfaces": [
         "desktop",
         "browser",
@@ -40,8 +40,14 @@
         "hosting-wizard",
         "build-companion"
       ],
-      "implementation": [],
-      "verification": [],
+      "implementation": [
+        "apps/web/src/preferences.tsx",
+        "apps/web/src/Settings.tsx",
+        "apps/web/src/App.tsx"
+      ],
+      "verification": [
+        "docs/capture-inventory.json: features-cantonese-dark-normal and settings-bilingual-light-narrow, source c0544f72554f877cbda1882179ff4bc002283d25."
+      ],
       "documentation": "docs/features/requirements/language.md"
     },
     {
@@ -350,7 +356,7 @@
       "category": "Material Design 3, appearance, and layout",
       "applicable": true,
       "state": "unfinished",
-      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "reason": "Typed appearance properties and draft/apply/reset controls exist. The screenshot demonstrates one surface, not every property or element; complete theme/language/scale and native acceptance remains unfinished.",
       "surfaces": [
         "desktop",
         "browser",
@@ -360,8 +366,15 @@
         "hosting-wizard",
         "build-companion"
       ],
-      "implementation": [],
-      "verification": [],
+      "implementation": [
+        "apps/web/src/Settings.tsx",
+        "apps/web/src/platform/PlatformSettings.tsx",
+        "apps/web/src/platform/core.mjs",
+        "apps/web/src/preferences.tsx"
+      ],
+      "verification": [
+        "docs/capture-inventory.json: inspected narrow Settings view, source c0544f72554f877cbda1882179ff4bc002283d25."
+      ],
       "documentation": "docs/features/requirements/appearance-editor.md"
     },
     {
@@ -490,7 +503,7 @@
       "category": "Navigation, search, and commands",
       "applicable": true,
       "state": "unfinished",
-      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "reason": "Controller setup steps, health checks and launch configuration exist in source. Complete account/network setup, save/resume, keyboard access and productive completion across all clients remain unverified.",
       "surfaces": [
         "desktop",
         "browser",
@@ -500,7 +513,10 @@
         "hosting-wizard",
         "build-companion"
       ],
-      "implementation": [],
+      "implementation": [
+        "apps/web/src/App.tsx",
+        "apps/web/src/CreateWorkers.tsx"
+      ],
       "verification": [],
       "documentation": "docs/features/requirements/onboarding-wizard.md"
     },
@@ -510,7 +526,7 @@
       "category": "Navigation, search, and commands",
       "applicable": true,
       "state": "unfinished",
-      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "reason": "Workspace and utility tabs preserve explicit navigation and drafts in implemented workflows. Complete catalog coverage, persistence, localization, accessibility and current-build acceptance remain unfinished.",
       "surfaces": [
         "desktop",
         "browser",
@@ -520,8 +536,15 @@
         "hosting-wizard",
         "build-companion"
       ],
-      "implementation": [],
-      "verification": [],
+      "implementation": [
+        "apps/web/src/platform/PlatformShell.tsx",
+        "apps/web/src/platform/context.tsx",
+        "apps/web/src/platform/core.mjs",
+        "apps/web/src/platform/integration/RepositoryTasks.tsx"
+      ],
+      "verification": [
+        "HANDOFF.md: source 939d268 browser observations of explicit tab creation, draft-navigation veto, cancellation preservation and acknowledged discard."
+      ],
       "documentation": "docs/features/requirements/tabs.md"
     },
     {
@@ -670,7 +693,7 @@
       "category": "Navigation, search, and commands",
       "applicable": true,
       "state": "unfinished",
-      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "reason": "Real appearance controls and contextual settings navigation exist. Every applicable control, its consumer, explanation, reset/recovery and fresh-process persistence still require complete acceptance.",
       "surfaces": [
         "desktop",
         "browser",
@@ -680,8 +703,14 @@
         "hosting-wizard",
         "build-companion"
       ],
-      "implementation": [],
-      "verification": [],
+      "implementation": [
+        "apps/web/src/Settings.tsx",
+        "apps/web/src/platform/PlatformSettings.tsx",
+        "apps/web/src/platform/integration/registrations.ts"
+      ],
+      "verification": [
+        "docs/capture-inventory.json: settings-bilingual-light-narrow at 320x900, source c0544f72554f877cbda1882179ff4bc002283d25."
+      ],
       "documentation": "docs/features/requirements/settings-explanations.md"
     },
     {
@@ -890,7 +919,7 @@
       "category": "Records, history, and messages",
       "applicable": true,
       "state": "unfinished",
-      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "reason": "Fleet selection and per-target outcomes exist. Durable dispatch attempts and conservative reconciliation preserve uncertainty; only proven never-dispatched targets may resume. The new recovery interface remains isolated, and mixed outcomes, live provider observation and retained-volume acceptance remain unfinished.",
       "surfaces": [
         "desktop",
         "browser",
@@ -900,8 +929,16 @@
         "hosting-wizard",
         "build-companion"
       ],
-      "implementation": [],
-      "verification": [],
+      "implementation": [
+        "apps/web/src/App.tsx",
+        "apps/web/src/WorkerDetail.tsx",
+        "apps/service/src/app.ts",
+        "apps/service/src/bulk-operations.ts",
+        "apps/service/src/cloud.ts"
+      ],
+      "verification": [
+        "Source 4c2357d integrates independently reviewed durable dispatch/recovery with 37 service checks; exact root build passed. No live provider recovery or complete GUI acceptance is claimed."
+      ],
       "documentation": "docs/features/requirements/bulk-actions.md"
     },
     {
@@ -970,7 +1007,7 @@
       "category": "Records, history, and messages",
       "applicable": true,
       "state": "unfinished",
-      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "reason": "Nonblocking notices, structured records, filters and bulk dismissal exist in source. No dedicated accepted notification runtime receipt is recorded; persistence, recovery, accessibility and all notification sources remain unfinished.",
       "surfaces": [
         "desktop",
         "browser",
@@ -980,7 +1017,12 @@
         "hosting-wizard",
         "build-companion"
       ],
-      "implementation": [],
+      "implementation": [
+        "apps/web/src/preferences.tsx",
+        "apps/web/src/platform/PlatformSettings.tsx",
+        "apps/web/src/platform/context.tsx",
+        "apps/web/src/platform/core.mjs"
+      ],
       "verification": [],
       "documentation": "docs/features/requirements/notifications.md"
     },
@@ -1182,7 +1224,7 @@
       "category": "Completeness and evidence",
       "applicable": true,
       "state": "unfinished",
-      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "reason": "The complete inventory and article reader make delivery gaps discoverable. Their presence does not establish implementation or acceptance of the 115 entries themselves.",
       "surfaces": [
         "desktop",
         "browser",
@@ -1192,8 +1234,14 @@
         "hosting-wizard",
         "build-companion"
       ],
-      "implementation": [],
-      "verification": [],
+      "implementation": [
+        "docs/required-features.json",
+        "apps/web/src/Features.tsx",
+        "apps/service/src/features.ts"
+      ],
+      "verification": [
+        "docs/capture-inventory.json: features-en-dark-normal shows 115 entries; feature-article-en-dark-normal shows a complete article, source c0544f72554f877cbda1882179ff4bc002283d25."
+      ],
       "documentation": "docs/features/requirements/completeness-parity.md"
     },
     {
@@ -1202,7 +1250,7 @@
       "category": "Completeness and evidence",
       "applicable": true,
       "state": "unfinished",
-      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "reason": "The browser displays its build version and timestamp. The scrolled narrow Settings capture does not show the footer, so persistent provenance at every minimum layout and native/companion surface remains unfinished.",
       "surfaces": [
         "desktop",
         "browser",
@@ -1212,8 +1260,13 @@
         "hosting-wizard",
         "build-companion"
       ],
-      "implementation": [],
-      "verification": [],
+      "implementation": [
+        "apps/web/src/App.tsx",
+        "apps/web/vite.config.ts"
+      ],
+      "verification": [
+        "docs/features/evidence/README.md: version 0.1.2 and build timestamp displayed at source c0544f72554f877cbda1882179ff4bc002283d25."
+      ],
       "documentation": "docs/features/requirements/front-provenance.md"
     },
     {
@@ -1222,7 +1275,7 @@
       "category": "Completeness and evidence",
       "applicable": true,
       "state": "unfinished",
-      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "reason": "Five genuine source-bound browser views are recorded. Complete workflow coverage, current-source refresh, physical display scales, native wrapper, updater and cloud-worker evidence remain unfinished.",
       "surfaces": [
         "desktop",
         "browser",
@@ -1232,8 +1285,13 @@
         "hosting-wizard",
         "build-companion"
       ],
-      "implementation": [],
-      "verification": [],
+      "implementation": [
+        "docs/capture-inventory.json",
+        "docs/features/evidence/README.md"
+      ],
+      "verification": [
+        "docs/capture-inventory.json: five inspected browser records retain source c0544f72554f877cbda1882179ff4bc002283d25, renderer hash, image hashes and interaction receipt identities."
+      ],
       "documentation": "docs/features/requirements/product-evidence.md"
     },
     {
@@ -1342,7 +1400,7 @@
       "category": "GitHub Pages and shared links",
       "applicable": true,
       "state": "unfinished",
-      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "reason": "Task journeys, articles and downloads are implemented and hosted content was verified over HTTP. Rendered navigation, saved progress, keyboard/accessibility, narrow layouts and complete required features remain unverified.",
       "surfaces": [
         "desktop",
         "browser",
@@ -1352,8 +1410,17 @@
         "hosting-wizard",
         "build-companion"
       ],
-      "implementation": [],
-      "verification": [],
+      "implementation": [
+        "apps/docs/src/App.tsx",
+        "apps/docs/src/Journey.tsx",
+        "apps/docs/src/ArticleCards.tsx",
+        "apps/docs/src/Markdown.tsx",
+        "apps/docs/src/Downloads.tsx",
+        "apps/docs/src/journeys.ts"
+      ],
+      "verification": [
+        "HANDOFF.md: hosted source 4c0 has 149 source-matched articles, original fonts, five inspected screenshot hashes and eight exact download records."
+      ],
       "documentation": "docs/features/requirements/landing-site.md"
     },
     {
@@ -1402,7 +1469,7 @@
       "category": "GitHub Pages and shared links",
       "applicable": true,
       "state": "unfinished",
-      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "reason": "Complete feature articles are available through the authenticated reader and documentation source. Full localized reading, keyboard interaction and all built/deployed surfaces remain unfinished.",
       "surfaces": [
         "desktop",
         "browser",
@@ -1412,8 +1479,14 @@
         "hosting-wizard",
         "build-companion"
       ],
-      "implementation": [],
-      "verification": [],
+      "implementation": [
+        "apps/web/src/Features.tsx",
+        "apps/service/src/features.ts",
+        "apps/docs/src/Markdown.tsx"
+      ],
+      "verification": [
+        "docs/capture-inventory.json: feature-article-en-dark-normal, source c0544f72554f877cbda1882179ff4bc002283d25."
+      ],
       "documentation": "docs/features/requirements/feature-articles.md"
     },
     {
@@ -1462,7 +1535,7 @@
       "category": "GitHub Pages and shared links",
       "applicable": true,
       "state": "unfinished",
-      "reason": "Implementation and built-surface acceptance evidence are required.",
+      "reason": "The repository homepage points to the verified hosted home URL. This evidence is scoped to that readback; continued URL synchronization and the wider documentation acceptance remain open.",
       "surfaces": [
         "desktop",
         "browser",
@@ -1472,8 +1545,12 @@
         "hosting-wizard",
         "build-companion"
       ],
-      "implementation": [],
-      "verification": [],
+      "implementation": [
+        "HANDOFF.md"
+      ],
+      "verification": [
+        "HANDOFF.md records exact stored homepage readback: https://ding-ding-projects.github.io/slop-machine-fleet/."
+      ],
       "documentation": "docs/features/requirements/homepage-link.md"
     },
     {

@@ -1,5 +1,15 @@
 # Fleet delivery handoff
 
+## Recovery and protocol checkpoint
+
+The compatible pairing-expiry consumer fix and durable bulk recovery are on verified remote main `4c2357d981c774d780a625962648d17ec24e1ddd`. Exact integrated root builds passed. Ten controlled expiry checks and37 service checks cover their respective units; these do not establish real cloud or account behavior. Bulk retries preserve uncertainty and only advance original targets proven never dispatched.
+
+Thirteen required-feature inventory entries now identify existing implementation and scoped evidence instead of empty generic fields. Their delivery state stays unfinished. The five browser screenshots retain source `c0544f7`; later source and metadata changes do not relabel them.
+
+New structured authentication remains isolated pending combined verification and actual interaction. Reviewed worker `2b4ed65` adds atomic ownership and session/prompt-bound actions, pinned CLI prompt recognition and separate helper consent. Service `bdf71b0` and corrected interface consumers preserve the same protocol. Worker36-check and service45-check results are separate overlapping suites. Candidate `23f0670` combines these changes without main activation; its fresh build and later remote proof must be checked.
+
+Stable release package-version reuse is independently confirmed: different0.1.2 bytes cannot update an installed0.1.2 through the correct strict comparator. A durable release-version preparation/publication check is being implemented in isolation. No native updater action is permitted by this source finding. See CLOSEOUT_PROMPT.md for exact pending delivery and environment boundaries.
+
 ## Current checkpoint
 
 Main1e7114ee79caf2a63e99532ec514ce3c511d005c is pushed and verified. Resolved image provenance is persisted per worker and operation target without inventing legacy facts or changing review-admission semantics. Its tree matches independently reviewed18c9df7, whose exact root build and30 service tests passed. Outgoing-history privacy passed. New provider results remain pending.

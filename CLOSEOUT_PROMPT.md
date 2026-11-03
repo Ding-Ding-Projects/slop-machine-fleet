@@ -1,5 +1,17 @@
 # Fleet continuation
 
+## Current continuation after recovery repairs
+
+Main `4c2357d981c774d780a625962648d17ec24e1ddd` is pushed and read back. It includes the compatible expired-pairing consumer repair at `81e00ac` and durable bulk dispatch/reconciliation. Both integrated source revisions passed their exact root builds. The expiry consumer has ten controlled checks; the independently reviewed bulk candidate has37 service checks. Live provider reconciliation and GUI resume acceptance remain unverified.
+
+The next source checkpoint enriches13 existing required-feature records with actual implementation paths, source-bound evidence and explicit remaining work. All115 identities remain and all13 edited items remain unfinished. Earlier screenshots keep source `c0544f7`; no later renderer acceptance is inferred.
+
+Structured worker authentication is a coupled, inactive change: worker `2b4ed65`, service `bdf71b0` plus API/wiki/Postman followup `b61f1cb`, and the updated interface chain. Independent source review accepted the matching protocol. Worker checks total36; service checks total45; these overlap earlier counts and must not be summed. The isolated interface candidate `23f06700a7cad02b7e788404f5caf8eba59d6f51` is assembling the reviewed changes with a fresh exact build. Confirm its later result and preservation ref before claiming completion. Worker handoff tip is `11bb88f`; service handoff tip is `9947315`. Parent owns their final history scans and remote readback.
+
+A separate delivery repair addresses two different stable payloads both carrying package version0.1.2. The strict updater treats an equal version as current. Keep that comparison; derive and verify a distinct bounded release version consistently across all producers, then compare against accepted stable history before publication. Native updater execution remains blocked. Preservation release `build-41661384621-1` succeeded, but documentation run41664391903 failed because its older tag-bound resolver rejected the preservation channel. That run does not verify the newer intentional-skip logic.
+
+Do not activate the coupled authentication protocol without its matching consumers or claim browser/native acceptance while those routes remain unavailable. Retain all isolated work, existing installations and evidence. No paid cloud worker, live login, pairing connection or model turn has been performed by these repairs.
+
 ## Latest checkpoint, superseding older pending states below
 
 Main1e7114ee79caf2a63e99532ec514ce3c511d005c is pushed and read back. Each new worker and matching operation target now record the actual resolved launch image; absent historical facts stay null. Independent review accepted the repair. Source tree8b08f215a0337f00b6e4bcbeecf0cb56fdef6746 matches18c9df7 exactly, whose root build passed and30 service tests passed. The full outgoing-history privacy scan passed. Provider runs41660602078,41660602082 and41660602130 are not yet verified successful.
