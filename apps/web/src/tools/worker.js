@@ -94,7 +94,9 @@ self.onmessage = async ({ data }) => {
     if (data.action === "encode") {
       text = encode64(bytes, data.options);
       if (data.dataURL) {
-        mime = sniff(bytes);
+        mime = data.mime || sniff(bytes);
+        if (!/^[-\w.+]+\/[-\w.+]+$/.test(mime) || mime.length > 255)
+          throw new ToolError("data-url");
         text = `data:${mime};base64,${encode64(bytes)}`;
       }
       output = encodeText(text);

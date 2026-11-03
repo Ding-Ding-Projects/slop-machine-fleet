@@ -10,6 +10,8 @@ export type StreamResult = {
     inputSha256: string;
     outputSha256: string;
     verified: boolean;
+    mime?: string;
+    dataURL?: { mime: string; parameters: string[] };
     options: Record<string, unknown>;
   };
 };

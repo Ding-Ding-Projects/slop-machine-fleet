@@ -8,8 +8,10 @@ import { deriveToolSafety } from "./safety.mjs";
 import { StreamingBase64 } from "./StreamingBase64";
 import { ToolSafety } from "./ToolSafetyContext";
 import { Base64History, HistoryWriter } from "./Base64History";
+import { useToolCue } from "./useToolCue";
 const encodings = ["utf-8", "utf-16le", "utf-16be", "latin1"];
 export function Base64Tool() {
+  const cue = useToolCue();
   const [streamSafety, setStreamSafety] = useState<ToolSafety>({
     known: false,
     dirty: false,
@@ -28,6 +30,8 @@ export function Base64Tool() {
     [strict, setStrict] = useState(true),
     [wrap, setWrap] = useState(0),
     [dataURL, setDataURL] = useState(false),
+    [mime, setMime] = useState("application/octet-stream"),
+    [clipboardBusy, setClipboardBusy] = useState(false),
     [result, setResult] = useState<Result | null>(null),
     [error, setError] = useState(""),
     [resultName, setResultName] = useState("result.b64");
@@ -47,8 +51,13 @@ export function Base64Tool() {
           !padding ||
           !strict ||
           wrap !== 0 ||
-          dataURL,
-        busy: processor.busy || streamSafety.pendingWrites || historyBusy,
+          dataURL ||
+          mime !== "application/octet-stream",
+        busy:
+          processor.busy ||
+          streamSafety.pendingWrites ||
+          historyBusy ||
+          clipboardBusy,
       }),
       known: streamSafety.known,
     },
@@ -84,9 +93,11 @@ export function Base64Tool() {
         encoding,
         options: { url, padding, strict, wrap },
         dataURL,
+        mime,
       });
       if (!mounted.current || current !== revision.current) return;
       setResult(output);
+      cue(true);
       if (output.inputSha256)
         void historyWriter
           .current?.({
@@ -96,7 +107,7 @@ export function Base64Tool() {
             outputSize: output.outputSize,
             inputSha256: output.inputSha256,
             outputSha256: output.sha256,
-            options: { url, padding, strict, wrap, encoding, dataURL },
+            options: { url, padding, strict, wrap, encoding, dataURL, mime },
           })
           .catch(() => {});
       setResultName(
@@ -108,7 +119,31 @@ export function Base64Tool() {
                 : ".bin"),
       );
     } catch (e) {
+      if (mounted.current && current === revision.current) cue(false);
       if (mounted.current && current === revision.current) setError(message(e));
+    }
+  };
+  const importClipboard = async () => {
+    const current = ++revision.current;
+    setClipboardBusy(true);
+    try {
+      const value = await navigator.clipboard.readText();
+      if (!mounted.current || current !== revision.current) return;
+      if (value.length > MAX_BYTES) throw Error("size");
+      invalidate();
+      setFile(null);
+      setText(value);
+    } catch (error) {
+      if (mounted.current && current === revision.current)
+        setError(
+          message(
+            error instanceof Error && error.message === "size"
+              ? error
+              : Error("clipboard"),
+          ),
+        );
+    } finally {
+      if (mounted.current) setClipboardBusy(false);
     }
   };
   return (
@@ -134,6 +169,13 @@ export function Base64Tool() {
           disabled={!!file}
         />
       </label>
+      <button
+        type="button"
+        disabled={clipboardBusy}
+        onClick={() => void importClipboard()}
+      >
+        {t("Import clipboard text", "匯入剪貼簿文字")}
+      </button>
       <label>
         {t("Or choose a file (up to 8 MiB)", "或選擇檔案（最多 8 MiB）")}
         <input
@@ -240,6 +282,19 @@ export function Base64Tool() {
         </label>
       </div>
       <div className="tool-actions">
+        {dataURL && (
+          <label>
+            {t("Data URL MIME type", "資料網址 MIME 類型")}
+            <input
+              value={mime}
+              maxLength={255}
+              onChange={(event) => {
+                invalidate();
+                setMime(event.target.value);
+              }}
+            />
+          </label>
+        )}
         <button disabled={processor.busy} onClick={() => void run("encode")}>
           {t("Encode", "編碼")}
         </button>
@@ -276,7 +331,8 @@ export function Base64Tool() {
         )}
       </p>
       <StreamingBase64
-        options={{ url, padding, strict, wrap }}
+        options={{ url, padding, strict, wrap, dataURL, mime, encoding }}
+        textSource={text}
         onHistory={(metadata) =>
           historyWriter.current?.(metadata) || Promise.resolve()
         }

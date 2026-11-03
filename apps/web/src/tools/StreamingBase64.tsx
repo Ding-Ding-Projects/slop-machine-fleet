@@ -3,6 +3,11 @@ import { useUI } from "../preferences";
 import { useBase64Stream, StreamResult } from "./useBase64Stream";
 import { ToolSafety } from "./ToolSafetyContext";
 import { sniff, decodeText, imageDimensions } from "./core.mjs";
+import {
+  detectedMedia,
+  previewLabel,
+} from "../../../../packages/shared/local-base64/preview.mjs";
+import { useToolCue } from "./useToolCue";
 type Entry = {
   id: string;
   name: string;
@@ -24,6 +29,20 @@ function StreamOutput({ entry }: { entry: Entry }) {
     [preview, setPreview] = useState(""),
     [media, setMedia] = useState<{ url: string; mime: string } | null>(null);
   const output = entry.output!;
+  const extension =
+    (
+      {
+        "image/png": ".png",
+        "image/jpeg": ".jpg",
+        "image/webp": ".webp",
+        "audio/wav": ".wav",
+        "audio/mpeg": ".mp3",
+        "audio/ogg": ".ogg",
+        "audio/flac": ".flac",
+        "video/mp4": ".mp4",
+        "video/webm": ".webm",
+      } as Record<string, string>
+    )[output.result.mime || ""] || ".bin";
   const previewGeneration = useRef(0),
     mounted = useRef(true);
   useEffect(() => {
@@ -41,14 +60,50 @@ function StreamOutput({ entry }: { entry: Entry }) {
   );
   const inspect = async () => {
     const current = ++previewGeneration.current;
-    const bytes = new Uint8Array(
-        await output.file.slice(0, 65536).arrayBuffer(),
-      ),
-      mime = sniff(bytes);
+    const raw = await output.file
+      .slice(0, 65536)
+      .arrayBuffer()
+      .catch(() => null);
     if (!mounted.current || current !== previewGeneration.current) return;
-    if (mime.startsWith("image/")) {
+    if (!raw) {
+      setPreview(
+        t("Temporary output is no longer available.", "暫存輸出已無法使用。"),
+      );
+      return;
+    }
+    const bytes = new Uint8Array(raw),
+      mime = detectedMedia(bytes);
+    if (!mounted.current || current !== previewGeneration.current) return;
+    if (mime && output.file.size > 32 * 1024 * 1024) {
+      setPreview(
+        t(
+          "Media preview exceeds the 32 MiB bound. Download preserves the complete file.",
+          "媒體預覽超過 32 MiB 上限，下載保留完整檔案。",
+        ),
+      );
+      return;
+    }
+    if (mime?.startsWith("image/")) {
       try {
-        imageDimensions(bytes, mime);
+        if (mime === "image/png") {
+          const view = new DataView(
+              bytes.buffer,
+              bytes.byteOffset,
+              bytes.byteLength,
+            ),
+            width = view.getUint32(16),
+            height = view.getUint32(20);
+          if (
+            !width ||
+            !height ||
+            width > 8192 ||
+            height > 8192 ||
+            width * height > 16000000
+          )
+            throw Error("dimensions");
+          if (new TextDecoder("latin1").decode(bytes).includes("acTL"))
+            throw Error("animation");
+        } else imageDimensions(bytes, mime);
         setMedia({
           url: URL.createObjectURL(new Blob([output.file], { type: mime })),
           mime,
@@ -64,9 +119,33 @@ function StreamOutput({ entry }: { entry: Entry }) {
         return;
       }
     }
+    if (mime?.startsWith("audio/") || mime?.startsWith("video/")) {
+      const element = document.createElement(
+        mime.startsWith("audio/") ? "audio" : "video",
+      );
+      if (!element.canPlayType(mime)) {
+        setPreview(
+          t(
+            "This browser has no supported preview codec for this format.",
+            "此瀏覽器沒有支援此格式的預覽編碼器。",
+          ),
+        );
+        return;
+      }
+      setMedia({
+        url: URL.createObjectURL(new Blob([output.file], { type: mime })),
+        mime,
+      });
+      return;
+    }
     try {
       setPreview(
-        decodeText(bytes) +
+        decodeText(
+          bytes,
+          output.result.mode === "encode"
+            ? "utf-8"
+            : String(output.result.options.encoding || "utf-8"),
+        ) +
           (output.file.size > 65536
             ? "\n" +
               t(
@@ -85,12 +164,26 @@ function StreamOutput({ entry }: { entry: Entry }) {
   };
   return (
     <section>
+      {output.result.inputSize === 0 && (
+        <p>
+          {t(
+            "Empty input produced an empty payload.",
+            "空白輸入產生空白內容。",
+          )}
+        </p>
+      )}
       <p>
         {output.result.inputSize.toLocaleString()} →{" "}
         {output.result.outputSize.toLocaleString()}{" "}
         {t("bytes, verified", "位元組，已驗證")}
       </p>
       <p className="tool-hash">SHA-256: {output.result.outputSha256}</p>
+      {output.result.dataURL && (
+        <p>
+          {t("Parsed data URL", "已解析資料網址")}: {output.result.dataURL.mime}{" "}
+          {output.result.dataURL.parameters.join("; ")}
+        </p>
+      )}
       <div className="tool-actions">
         <button
           onClick={() =>
@@ -101,7 +194,7 @@ function StreamOutput({ entry }: { entry: Entry }) {
                   ? ".b64"
                   : output.result.mode === "zip"
                     ? ""
-                    : ".decoded"),
+                    : extension),
             )
           }
         >
@@ -110,6 +203,47 @@ function StreamOutput({ entry }: { entry: Entry }) {
         <button onClick={() => void inspect()}>
           {t("Preview safely", "安全預覽")}
         </button>
+        {output.result.mode !== "zip" &&
+          output.file.size <= 8 * 1024 * 1024 && (
+            <button
+              onClick={async () => {
+                const current = ++previewGeneration.current;
+                try {
+                  const data = new Uint8Array(await output.file.arrayBuffer());
+                  if (!mounted.current || current !== previewGeneration.current)
+                    return;
+                  await navigator.clipboard.writeText(
+                    decodeText(
+                      data,
+                      output.result.mode === "encode"
+                        ? "utf-8"
+                        : String(output.result.options.encoding || "utf-8"),
+                    ),
+                  );
+                  if (mounted.current && current === previewGeneration.current)
+                    setPreview(
+                      t(
+                        "Complete text copied explicitly.",
+                        "已明確複製完整文字。",
+                      ),
+                    );
+                } catch {
+                  if (mounted.current && current === previewGeneration.current)
+                    setPreview(
+                      t(
+                        "Text cannot be copied in the selected encoding, or clipboard access is unavailable.",
+                        "所選編碼無法複製此文字，或剪貼簿存取不可用。",
+                      ),
+                    );
+                }
+              }}
+            >
+              {t(
+                "Copy complete text (up to 8 MiB)",
+                "複製完整文字（最多 8 MiB）",
+              )}
+            </button>
+          )}
         <button
           onClick={() =>
             saveFile(
@@ -133,10 +267,10 @@ function StreamOutput({ entry }: { entry: Entry }) {
       {preview && <pre>{preview}</pre>}
       {media && (
         <iframe
-          title={t("Sandboxed image preview", "沙盒圖片預覽")}
+          title={t("Sandboxed media preview", "沙盒媒體預覽")}
           sandbox=""
           referrerPolicy="no-referrer"
-          srcDoc={`<!doctype html><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src blob:; style-src 'unsafe-inline'"><style>body{margin:0}img{max-width:100%;max-height:300px}</style><img alt="Preview" src="${media.url}">`}
+          srcDoc={`<!doctype html><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src blob:; media-src blob:; style-src 'unsafe-inline'"><style>body{margin:0}img,video,audio{max-width:100%;max-height:300px}</style>${previewLabel(media.mime) === "image" ? `<img alt="Preview" src="${media.url}">` : `<${previewLabel(media.mime)} controls preload="none" src="${media.url}"></${previewLabel(media.mime)}>`}`}
         />
       )}
     </section>
@@ -147,12 +281,23 @@ export function StreamingBase64({
   onSafety,
   onDispose,
   onHistory,
+  textSource = "",
 }: {
-  options: { url: boolean; padding: boolean; strict: boolean; wrap: number };
+  options: {
+    url: boolean;
+    padding: boolean;
+    strict: boolean;
+    wrap: number;
+    dataURL?: boolean;
+    mime?: string;
+    encoding?: string;
+  };
+  textSource?: string;
   onSafety: (value: ToolSafety) => void;
   onDispose: (callback: (() => void) | null) => void;
   onHistory: (metadata: Record<string, unknown>) => Promise<void>;
 }) {
+  const cue = useToolCue();
   const { t, notice } = useUI(),
     stream = useBase64Stream();
   const [files, setFiles] = useState<FileList | null>(null),
@@ -221,6 +366,10 @@ export function StreamingBase64({
         "Temporary output could not be written. No result was completed.",
         "未能寫入暫存輸出，沒有已完成結果。",
       ],
+      "zip-limit": [
+        "ZIP32 supports fewer than 65,536 entries and archives below 4 GiB; ZIP64 is unavailable.",
+        "ZIP32 支援少於 65,536 個項目及小於 4 GiB 的封存檔，未提供 ZIP64。",
+      ],
       cancelled: [
         "Cancelled; no partial result is offered.",
         "已取消，不提供不完整結果。",
@@ -250,6 +399,7 @@ export function StreamingBase64({
   const run = async (mode: "encode" | "decode") => {
     if (!files) return;
     const current = ++generation.current;
+    let failures = 0;
     setRunning(true);
     setMessage("");
     for (let index = 0; index < files.length; index++) {
@@ -283,6 +433,7 @@ export function StreamingBase64({
           options: output.result.options,
         }).catch(() => {});
       } catch (error) {
+        failures++;
         if (!alive.current || current !== generation.current) break;
         setEntries((previous) =>
           previous.map((entry, i) =>
@@ -301,6 +452,7 @@ export function StreamingBase64({
     }
     if (alive.current && current === generation.current) {
       setRunning(false);
+      cue(failures === 0);
       notice(
         t(
           "File processing finished. Review each result.",
@@ -357,6 +509,46 @@ export function StreamingBase64({
       if (alive.current && current === generation.current) setRunning(false);
     }
   };
+  const runText = async (mode: "encode" | "decode") => {
+    const current = ++generation.current;
+    setRunning(true);
+    setMessage("");
+    try {
+      const output = await stream.run(
+        new File([], "Text input"),
+        mode,
+        { ...options, textPayload: textSource },
+        consent,
+      );
+      if (!alive.current || current !== generation.current) {
+        void stream.release(output.id);
+        return;
+      }
+      setEntries((previous) => [
+        ...previous,
+        {
+          id: crypto.randomUUID(),
+          name: "Text input",
+          status: "verified",
+          output,
+        },
+      ]);
+      void onHistory({
+        name: "Text input",
+        mode,
+        inputSize: output.result.inputSize,
+        outputSize: output.result.outputSize,
+        inputSha256: output.result.inputSha256,
+        outputSha256: output.result.outputSha256,
+        options: output.result.options,
+      }).catch(() => {});
+    } catch (error) {
+      if (alive.current && current === generation.current)
+        setMessage(describe(error));
+    } finally {
+      if (alive.current && current === generation.current) setRunning(false);
+    }
+  };
   return (
     <section
       className="tool-panel"
@@ -373,8 +565,8 @@ export function StreamingBase64({
       <h3>{t("Stream large files locally", "在本機串流處理大型檔案")}</h3>
       <p>
         {t(
-          "Files are processed in 64 KiB chunks and verified by incremental SHA-256 and readback. Inputs remain unchanged. This file route uses the alphabet, padding and wrapping options above; data URLs use the text route for now.",
-          "檔案以 64 KiB 分段處理，並以增量 SHA-256 及讀回驗證，輸入保持不變。此檔案流程使用上方字母表、補位及換行選項；資料網址暫時使用文字流程。",
+          "Text and files are processed in bounded chunks and verified by incremental SHA-256 and readback. Inputs remain unchanged. Data URLs use the standard alphabet and chosen MIME type; pasted or file-based data URLs are detected automatically.",
+          "文字及檔案以有界分段處理，並以增量 SHA-256 及讀回驗證，輸入保持不變。資料網址使用標準字母表及所選 MIME 類型，貼上或檔案形式的資料網址會自動辨識。",
         )}
       </p>
       <label>
@@ -403,6 +595,18 @@ export function StreamingBase64({
         {files?.length || 0} {t("files selected", "個已選檔案")}
       </p>
       <div className="tool-actions">
+        <button
+          disabled={!consent || running || stream.busy}
+          onClick={() => void runText("encode")}
+        >
+          {t("Stream editor text", "串流編碼編輯器文字")}
+        </button>
+        <button
+          disabled={!consent || running || stream.busy}
+          onClick={() => void runText("decode")}
+        >
+          {t("Stream decode editor text", "串流解碼編輯器文字")}
+        </button>
         <button
           disabled={!consent || !files?.length || running || stream.busy}
           onClick={() => void run("encode")}

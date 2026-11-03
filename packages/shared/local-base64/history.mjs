@@ -32,6 +32,7 @@ export function metadataOnly(value) {
     "wrap",
     "encoding",
     "dataURL",
+    "mime",
     "compression",
     "entries",
   ];
@@ -40,7 +41,7 @@ export function metadataOnly(value) {
     Object.values(options).some(
       (item) =>
         !["boolean", "number", "string"].includes(typeof item) ||
-        (typeof item === "string" && item.length > 40),
+        (typeof item === "string" && item.length > 255),
     )
   )
     throw new Base64Error("history-metadata");

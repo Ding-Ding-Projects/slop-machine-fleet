@@ -6,6 +6,7 @@ import {
   CHUNK_BYTES,
   createControl,
 } from "./codec.mjs";
+import { DataURLStripper, dataURLPrefix } from "./data-url.mjs";
 const hex = (bytes) =>
   Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("");
 export async function convertStream({
@@ -17,6 +18,9 @@ export async function convertStream({
   onProgress = () => {},
 }) {
   if (!["encode", "decode"].includes(mode)) throw new Base64Error("mode");
+  if (mode === "encode" && options.dataURL)
+    options = { ...options, url: false, padding: true, wrap: 0 };
+  const inputStripper = mode === "decode" ? new DataURLStripper() : null;
   const inputHash = sha256.create(),
     outputHash = sha256.create();
   let inputSize = 0,
@@ -34,17 +38,33 @@ export async function convertStream({
     }
   };
   try {
+    if (mode === "encode" && options.dataURL)
+      await write(dataURLPrefix(options.mime));
     for await (const chunk of source()) {
       await control.checkpoint();
       if (chunk.length > CHUNK_BYTES) throw new Base64Error("chunk");
       inputHash.update(chunk);
       inputSize += chunk.length;
-      await write(transform.push(chunk));
+      const payload = inputStripper ? inputStripper.push(chunk) : chunk;
+      if (inputStripper?.mime) {
+        options = { ...options, url: false };
+        transform.options.url = false;
+        if (transform.offset === 0)
+          transform.offset = inputStripper.headerLength;
+      }
+      await write(transform.push(payload));
       onProgress({ phase: "transform", inputSize, outputSize });
       if (++iteration % 8 === 0)
         await new Promise((resolve) => setTimeout(resolve, 0));
     }
-    await write(transform.push(new Uint8Array(), true));
+    await write(
+      transform.push(
+        inputStripper
+          ? inputStripper.push(new Uint8Array(), true)
+          : new Uint8Array(),
+        true,
+      ),
+    );
     await control.checkpoint();
     await sink.seal();
     const inputSha256 = hex(inputHash.digest()),
@@ -57,7 +77,14 @@ export async function convertStream({
           ? new Base64Encoder({ url: options.url, padding: options.padding })
           : null;
     let verifiedBytes = 0;
-    const consume = (bytes) => roundHash.update(decoder.push(bytes));
+    const verificationStripper =
+      mode === "encode" && options.dataURL ? new DataURLStripper() : null;
+    const consume = (bytes) =>
+      roundHash.update(
+        decoder.push(
+          verificationStripper ? verificationStripper.push(bytes) : bytes,
+        ),
+      );
     for await (const chunk of sink.chunks()) {
       await control.checkpoint();
       if (chunk.length > CHUNK_BYTES) throw new Base64Error("chunk");
@@ -67,6 +94,10 @@ export async function convertStream({
       onProgress({ phase: "verify", inputSize, outputSize, verifiedBytes });
     }
     if (encoder) consume(encoder.push(new Uint8Array(), true));
+    if (verificationStripper)
+      roundHash.update(
+        decoder.push(verificationStripper.push(new Uint8Array(), true)),
+      );
     roundHash.update(decoder.push(new Uint8Array(), true));
     if (
       hex(readHash.digest()) !== outputSha256 ||
@@ -89,7 +120,20 @@ export async function convertStream({
         padding: options.padding !== false,
         strict: options.strict !== false,
         wrap: options.wrap || 0,
+        dataURL: !!options.dataURL || !!inputStripper?.mime,
+        encoding: options.encoding || "utf-8",
+        ...(options.mime || inputStripper?.mime
+          ? { mime: inputStripper?.mime || options.mime }
+          : {}),
       },
+      ...(inputStripper?.mime
+        ? {
+            dataURL: {
+              mime: inputStripper.mime,
+              parameters: inputStripper.parameters,
+            },
+          }
+        : {}),
     };
   } catch (error) {
     await sink.abort();
