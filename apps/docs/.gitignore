@@ -2,3 +2,6 @@ node_modules/
 dist/
 src/content.generated.json
 public/generated/
+.generated-stage-*/
+.generated-retired-*/
+.test-fixtures-*/
