@@ -10,6 +10,7 @@ export class ApiError extends Error { constructor(public code:string,message:str
 export async function api<T>(path:string,method='GET',body?:unknown):Promise<T>{
   const response=await fetch(`/api${path}`,{method,credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(method==='GET'?15000:60000),headers:{Accept:'application/json',...(body!==undefined?{'Content-Type':'application/json'}:{}),...(method!=='GET'?{'x-csrf-token':csrf}:{})},...(body!==undefined?{body:JSON.stringify(body)}:{})});
   const value=await response.json().catch(()=>null);
+  if(response.status===401)window.dispatchEvent(new Event('fleet:session-expired'));
   if(!response.ok) throw new ApiError(value?.error?.code||'REQUEST_FAILED',value?.error?.message||`Request failed (${response.status})`,response.status);
   return value as T;
 }
