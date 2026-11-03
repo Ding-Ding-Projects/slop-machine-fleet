@@ -1,5 +1,13 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { removeTemporary } from "../../../../packages/shared/local-base64/storage.mjs";
+import {
+  removeTemporary,
+  claimTemporary,
+  acquireAndStart,
+  storageBudget,
+} from "../../../../packages/shared/local-base64/storage.mjs";
+import { textByteLength } from "../../../../packages/shared/local-base64/data-url.mjs";
+import { zipPlan } from "../../../../packages/shared/local-base64/archive.mjs";
+type Claim = { id: string; owner: string; expectedBytes: number };
 export type StreamResult = {
   id: string;
   file: File;
@@ -18,7 +26,7 @@ export type StreamResult = {
 export function useBase64Stream() {
   const worker = useRef<Worker | null>(null),
     generation = useRef(0),
-    owned = useRef(new Set<string>()),
+    owned = useRef(new Map<string, Claim>()),
     activeId = useRef<string | null>(null),
     alive = useRef(true),
     timer = useRef<ReturnType<typeof setTimeout> | null>(null),
@@ -34,9 +42,11 @@ export function useBase64Stream() {
     }),
     [cleanupError, setCleanupError] = useState(false);
   const retire = useCallback(async (id: string) => {
+    const claim = owned.current.get(id);
+    if (!claim) return;
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
-        await removeTemporary(id);
+        await removeTemporary(claim);
         owned.current.delete(id);
         return;
       } catch {
@@ -61,7 +71,7 @@ export function useBase64Stream() {
   }, [retire]);
   const dispose = useCallback(() => {
     stop();
-    for (const id of owned.current) void retire(id);
+    for (const id of owned.current.keys()) void retire(id);
   }, [stop, retire]);
   useEffect(() => {
     alive.current = true;
@@ -99,74 +109,94 @@ export function useBase64Stream() {
       });
       return new Promise<StreamResult>((resolve, reject) => {
         pending.current = reject;
-        let active: Worker;
-        try {
-          active = new Worker(
-            new URL("./base64-stream-worker.js", import.meta.url),
-            { type: "module" },
-          );
-        } catch {
-          pending.current = null;
-          setBusy(false);
-          reject(Error("storage-unavailable"));
-          return;
-        }
-        worker.current = active;
-        const finish = () => {
-          active.terminate();
+        const size =
+          typeof options.textPayload === "string"
+            ? textByteLength(
+                options.textPayload,
+                mode === "decode"
+                  ? "utf-8"
+                  : String(options.encoding || "utf-8"),
+              )
+            : file.size;
+        const expectedBytes =
+          mode === "zip"
+            ? zipPlan(options.files as any).expectedBytes
+            : storageBudget(size, mode, Number(options.wrap) || 0);
+        void acquireAndStart({
+          acquire: () => claimTemporary({ consent, expectedBytes }),
+          retain: (claim: Claim) => {
+            owned.current.set(claim.id, claim);
+            if (current === generation.current) activeId.current = claim.id;
+          },
+          isCurrent: () => alive.current && current === generation.current,
+          retire,
+          start: (claim: Claim) => {
+            const active = new Worker(
+              new URL("./base64-stream-worker.js", import.meta.url),
+              { type: "module" },
+            );
+            worker.current = active;
+            const finish = () => {
+              active.terminate();
+              worker.current = null;
+              pending.current = null;
+              if (timer.current) clearTimeout(timer.current);
+              timer.current = null;
+              setBusy(false);
+              setPaused(false);
+            };
+            active.onmessage = ({ data }) => {
+              if (current !== generation.current) return;
+              if (data.type === "progress") {
+                setProgress(data);
+                return;
+              }
+              if (data.type === "paused") {
+                setPaused(true);
+                return;
+              }
+              if (data.type === "resumed") {
+                setPaused(false);
+                return;
+              }
+              if (data.type === "complete") {
+                activeId.current = null;
+                finish();
+                resolve(data);
+                return;
+              }
+              if (data.type === "error") {
+                const id = activeId.current;
+                activeId.current = null;
+                finish();
+                if (id) void retire(id);
+                reject(
+                  Error(
+                    data.code +
+                      (Number.isInteger(data.offset) ? ":" + data.offset : ""),
+                  ),
+                );
+              }
+            };
+            active.onerror = () => {
+              const id = activeId.current;
+              activeId.current = null;
+              finish();
+              if (id) void retire(id);
+              reject(Error("processing"));
+            };
+            active.postMessage({ type: "start", file, mode, options, claim });
+          },
+        }).catch((error: Error) => {
+          if (current !== generation.current) return;
+          worker.current?.terminate();
           worker.current = null;
+          activeId.current = null;
           pending.current = null;
-          if (timer.current) clearTimeout(timer.current);
-          timer.current = null;
           setBusy(false);
           setPaused(false);
-        };
-        active.onmessage = ({ data }) => {
-          if (current !== generation.current) return;
-          if (data.type === "temporary") {
-            owned.current.add(data.id);
-            activeId.current = data.id;
-            return;
-          }
-          if (data.type === "progress") {
-            setProgress(data);
-            return;
-          }
-          if (data.type === "paused") {
-            setPaused(true);
-            return;
-          }
-          if (data.type === "resumed") {
-            setPaused(false);
-            return;
-          }
-          if (data.type === "complete") {
-            activeId.current = null;
-            finish();
-            resolve(data);
-            return;
-          }
-          if (data.type === "error") {
-            const id = activeId.current;
-            activeId.current = null;
-            finish();
-            if (id) void retire(id);
-            reject(
-              Error(
-                data.code +
-                  (Number.isInteger(data.offset) ? ":" + data.offset : ""),
-              ),
-            );
-          }
-        };
-        active.onerror = () => {
-          const id = activeId.current;
-          activeId.current = null;
-          finish();
-          if (id) void retire(id);
-          reject(Error("processing"));
-        };
-        active.postMessage({ type: "start", file, mode, options, consent });
+          reject(error);
+        });
       });
     },
     [stop, retire],

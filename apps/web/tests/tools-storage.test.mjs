@@ -5,64 +5,35 @@ import {
   removeTemporary,
   storageBudget,
 } from "../../../packages/shared/local-base64/storage.mjs";
-function fakeStorage(quota = 1024) {
-  const files = new Map();
-  let accesses = 0;
-  const missing = () =>
-    Object.assign(Error("missing"), { name: "NotFoundError" });
-  const directory = {
-    async getFileHandle(name, options = {}) {
-      if (!files.has(name) && !options.create) throw missing();
-      if (!files.has(name)) files.set(name, []);
-      return {
-        async createWritable() {
-          return {
-            async write(bytes) {
-              files.get(name).push(bytes.slice());
-            },
-            async close() {},
-            async abort() {},
-          };
-        },
-        async getFile() {
-          return new Blob(files.get(name));
-        },
-      };
-    },
-    async removeEntry(name) {
-      if (!files.delete(name)) throw missing();
-    },
-  };
-  return {
-    files,
-    get accesses() {
-      return accesses;
-    },
-    async estimate() {
-      return { quota, usage: 0 };
-    },
-    async getDirectory() {
-      accesses++;
-      return {
-        async getDirectoryHandle() {
-          return directory;
-        },
-      };
-    },
-  };
-}
+import { fakeStorage } from "./tools-storage-fixture.mjs";
+
 test("temporary storage is never accessed without consent or sufficient verified quota", async () => {
   const storage = fakeStorage();
   await assert.rejects(
-    createTemporarySink({ consent: false, expectedBytes: 100, storage }),
+    createTemporarySink({
+      consent: false,
+      expectedBytes: 100,
+      storage,
+      locks: storage.locks,
+    }),
     (error) => error.code === "storage-consent",
   );
   await assert.rejects(
-    createTemporarySink({ consent: true, expectedBytes: 2048, storage }),
+    createTemporarySink({
+      consent: true,
+      expectedBytes: 2048,
+      storage,
+      locks: storage.locks,
+    }),
     (error) => error.code === "storage-quota",
   );
   await assert.rejects(
-    createTemporarySink({ consent: true, expectedBytes: NaN, storage }),
+    createTemporarySink({
+      consent: true,
+      expectedBytes: NaN,
+      storage,
+      locks: storage.locks,
+    }),
     (error) => error.code === "size",
   );
   assert.equal(storage.accesses, 0);
@@ -73,6 +44,7 @@ test("owned output cannot be offered before commit and cleanup affects only its 
       consent: true,
       expectedBytes: 100,
       storage,
+      locks: storage.locks,
     });
   storage.files.set("unrelated.tmp", [new Uint8Array([99])]);
   await sink.write(new Uint8Array([1, 2, 3]));
@@ -83,7 +55,7 @@ test("owned output cannot be offered before commit and cleanup affects only its 
     new Uint8Array(await (await sink.file()).arrayBuffer()),
     new Uint8Array([1, 2, 3]),
   );
-  await removeTemporary(sink.id, storage);
+  await removeTemporary(sink.claim, storage, storage.locks);
   assert.equal(storage.files.size, 1);
   assert.ok(storage.files.has("unrelated.tmp"));
 });
@@ -94,6 +66,7 @@ test("quota bounds and identifier collisions abort without overwriting an existi
     consent: true,
     expectedBytes: 2,
     storage,
+    locks: storage.locks,
     id,
   });
   await assert.rejects(
@@ -101,7 +74,13 @@ test("quota bounds and identifier collisions abort without overwriting an existi
     (error) => error.code === "storage-quota",
   );
   await assert.rejects(
-    createTemporarySink({ consent: true, expectedBytes: 2, storage, id }),
+    createTemporarySink({
+      consent: true,
+      expectedBytes: 2,
+      storage,
+      id,
+      locks: storage.locks,
+    }),
     (error) => error.code === "storage-collision",
   );
   await sink.abort();

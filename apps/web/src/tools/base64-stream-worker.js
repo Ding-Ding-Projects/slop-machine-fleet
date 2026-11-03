@@ -44,16 +44,9 @@ self.onmessage = async ({ data }) => {
     const sourceSize = hasText
       ? textByteLength(data.options.textPayload, textEncoding)
       : data.file.size;
-    const id = crypto.randomUUID();
-    self.postMessage({ type: "temporary", id });
-    sink = await createTemporarySink({
-      consent: data.consent,
-      expectedBytes:
-        data.mode === "zip"
-          ? zipPlan(data.options.files).expectedBytes
-          : storageBudget(sourceSize, data.mode, data.options.wrap),
-      id,
-    });
+    const id = data.claim.id;
+    sink = await createTemporarySink({ claim: data.claim });
+    self.postMessage({ type: "attached", id });
     await control.checkpoint();
     let last = 0;
     const onProgress = (value) => {
