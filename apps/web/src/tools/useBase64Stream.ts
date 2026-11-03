@@ -80,7 +80,7 @@ export function useBase64Stream() {
   const run = useCallback(
     (
       file: File,
-      mode: "encode" | "decode",
+      mode: "encode" | "decode" | "zip",
       options: Record<string, unknown>,
       consent: boolean,
     ) => {

@@ -7,6 +7,7 @@ export type Result = {
   inputSize: number;
   outputSize: number;
   sha256: string;
+  inputSha256?: string;
   hex: string;
   parameters: string[];
 };

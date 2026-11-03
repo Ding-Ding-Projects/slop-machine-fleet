@@ -7,6 +7,7 @@ import { useToolSafety } from "./ToolSafetyContext";
 import { deriveToolSafety } from "./safety.mjs";
 import { StreamingBase64 } from "./StreamingBase64";
 import { ToolSafety } from "./ToolSafetyContext";
+import { Base64History, HistoryWriter } from "./Base64History";
 const encodings = ["utf-8", "utf-16le", "utf-16be", "latin1"];
 export function Base64Tool() {
   const [streamSafety, setStreamSafety] = useState<ToolSafety>({
@@ -15,6 +16,8 @@ export function Base64Tool() {
     pendingWrites: false,
   });
   const disposeStream = useRef<(() => void) | null>(null);
+  const historyWriter = useRef<HistoryWriter | null>(null),
+    [historyBusy, setHistoryBusy] = useState(false);
   const { t } = useUI(),
     message = useErrors();
   const [text, setText] = useState(""),
@@ -45,7 +48,7 @@ export function Base64Tool() {
           !strict ||
           wrap !== 0 ||
           dataURL,
-        busy: processor.busy || streamSafety.pendingWrites,
+        busy: processor.busy || streamSafety.pendingWrites || historyBusy,
       }),
       known: streamSafety.known,
     },
@@ -84,6 +87,18 @@ export function Base64Tool() {
       });
       if (!mounted.current || current !== revision.current) return;
       setResult(output);
+      if (output.inputSha256)
+        void historyWriter
+          .current?.({
+            name: file?.name || "Text input",
+            mode: action,
+            inputSize: output.inputSize,
+            outputSize: output.outputSize,
+            inputSha256: output.inputSha256,
+            outputSha256: output.sha256,
+            options: { url, padding, strict, wrap, encoding, dataURL },
+          })
+          .catch(() => {});
       setResultName(
         action === "encode"
           ? (file?.name || "text") + ".b64"
@@ -256,16 +271,25 @@ export function Base64Tool() {
       {result && <Output result={result} name={resultName} />}
       <p className="tool-muted">
         {t(
-          "The text editor is limited to 8 MiB. Use the streaming file workspace below for larger inputs. ZIP export and durable undo remain in progress.",
-          "文字編輯器限於 8 MiB，大型輸入請使用下方串流檔案工作區。ZIP 匯出及持久復原仍在開發中。",
+          "The text editor is limited to 8 MiB. Use the streaming file workspace below for larger inputs. History stores metadata only.",
+          "文字編輯器限於 8 MiB，大型輸入請使用下方串流檔案工作區。紀錄只儲存中繼資料。",
         )}
       </p>
       <StreamingBase64
         options={{ url, padding, strict, wrap }}
+        onHistory={(metadata) =>
+          historyWriter.current?.(metadata) || Promise.resolve()
+        }
         onSafety={setStreamSafety}
         onDispose={(callback) => {
           disposeStream.current = callback;
         }}
+      />
+      <Base64History
+        onReady={(writer) => {
+          historyWriter.current = writer;
+        }}
+        onBusy={setHistoryBusy}
       />
     </section>
   );

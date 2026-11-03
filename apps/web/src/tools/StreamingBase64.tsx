@@ -97,7 +97,11 @@ function StreamOutput({ entry }: { entry: Entry }) {
             saveFile(
               output.file,
               entry.name +
-                (output.result.mode === "encode" ? ".b64" : ".decoded"),
+                (output.result.mode === "encode"
+                  ? ".b64"
+                  : output.result.mode === "zip"
+                    ? ""
+                    : ".decoded"),
             )
           }
         >
@@ -142,10 +146,12 @@ export function StreamingBase64({
   options,
   onSafety,
   onDispose,
+  onHistory,
 }: {
   options: { url: boolean; padding: boolean; strict: boolean; wrap: number };
   onSafety: (value: ToolSafety) => void;
   onDispose: (callback: (() => void) | null) => void;
+  onHistory: (metadata: Record<string, unknown>) => Promise<void>;
 }) {
   const { t, notice } = useUI(),
     stream = useBase64Stream();
@@ -267,6 +273,15 @@ export function StreamingBase64({
               : entry,
           ),
         );
+        void onHistory({
+          name: file.name,
+          mode: output.result.mode,
+          inputSize: output.result.inputSize,
+          outputSize: output.result.outputSize,
+          inputSha256: output.result.inputSha256,
+          outputSha256: output.result.outputSha256,
+          options: output.result.options,
+        }).catch(() => {});
       } catch (error) {
         if (!alive.current || current !== generation.current) break;
         setEntries((previous) =>
@@ -292,6 +307,54 @@ export function StreamingBase64({
           "檔案處理已結束，請查看各項結果。",
         ),
       );
+    }
+  };
+  const exportZip = async () => {
+    const current = ++generation.current;
+    setRunning(true);
+    setMessage("");
+    try {
+      const selected = entries
+        .filter((entry) => entry.output && entry.output.result.mode !== "zip")
+        .map((entry) => ({
+          name:
+            entry.name +
+            (entry.output!.result.mode === "encode" ? ".b64" : ".decoded"),
+          file: entry.output!.file,
+        }));
+      const output = await stream.run(
+        new File([], "results.zip"),
+        "zip",
+        { files: selected },
+        consent,
+      );
+      if (!alive.current || current !== generation.current) {
+        void stream.release(output.id);
+        return;
+      }
+      setEntries((previous) => [
+        ...previous,
+        {
+          id: crypto.randomUUID(),
+          name: "results.zip",
+          status: "verified",
+          output,
+        },
+      ]);
+      void onHistory({
+        name: "results.zip",
+        mode: "zip",
+        inputSize: output.result.inputSize,
+        outputSize: output.result.outputSize,
+        inputSha256: output.result.inputSha256,
+        outputSha256: output.result.outputSha256,
+        options: output.result.options,
+      }).catch(() => {});
+    } catch (error) {
+      if (alive.current && current === generation.current)
+        setMessage(describe(error));
+    } finally {
+      if (alive.current && current === generation.current) setRunning(false);
     }
   };
   return (
@@ -378,6 +441,19 @@ export function StreamingBase64({
         )}
         <button disabled={running} onClick={clear}>
           {t("Clear files and temporary outputs", "清除檔案選擇及暫存輸出")}
+        </button>
+        <button
+          disabled={
+            !consent ||
+            running ||
+            stream.busy ||
+            !entries.some(
+              (entry) => entry.output && entry.output.result.mode !== "zip",
+            )
+          }
+          onClick={() => void exportZip()}
+        >
+          {t("Export verified results as ZIP", "將已驗證結果匯出為 ZIP")}
         </button>
       </div>
       {running && (

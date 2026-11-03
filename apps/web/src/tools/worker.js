@@ -137,6 +137,9 @@ self.onmessage = async ({ data }) => {
       inputSize: bytes.length,
       outputSize: output.length,
       sha256: await hash(output),
+      ...(data.action === "encode" || data.action === "decode"
+        ? { inputSha256: await hash(bytes) }
+        : {}),
       parameters,
       hex: Array.from(output.subarray(0, 128), (b) =>
         b.toString(16).padStart(2, "0"),

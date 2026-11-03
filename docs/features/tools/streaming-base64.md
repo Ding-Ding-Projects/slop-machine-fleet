@@ -16,3 +16,11 @@ Tests compare codec output against Node's independent Base64 implementation acro
 
 
 The independently exported `StreamingBase64` component is available for later documentation integration. It uses the host preference interface for localized copy and notifications. The current application cancels owned work and invalidates asynchronous generations on unmount; host authentication transitions must unmount or explicitly discard the owning tool. No controller API or payload network request is used. Three storage tests verify consent before access, quota failures, collision refusal, commit-before-exposure and exact-owned cleanup.
+
+## Streaming ZIP and durable metadata history
+
+Verified file results can be exported as a streaming ZIP archive. The archive uses stored members, awaits every output write before reading more input, then reopens the actual output and compares every member hash and byte count before allowing download. ZIP32 limits apply: no member or complete archive may reach 4 GiB, and there may be at most 65,535 entries. ZIP64 and compression-level controls are unavailable.
+
+Text and file conversions append only validated metadata to a dedicated IndexedDB database: names, sizes, hashes, conversion options and timestamps. Payload-shaped fields are rejected before transactions. Linked records and redo links have no arbitrary history-length limit; reads are paged and actual storage quota remains authoritative. Undo/redo changes metadata selection, never promises restoration of payloads that were not stored. New work after undo creates a new history path. Permanent clearing requires both a typed CLEAR acknowledgement and a separate confirmation checkbox. Storage failures remain visible and do not turn a successful conversion into a history-save claim.
+
+The test-only fake-indexeddb 6.2.4 package is pinned, carries its Apache 2.0 licence and has a downloaded SHA-512 receipt. It is imported only by tests. Transaction tests cover reopening, undo/redo, new history paths, bounded pages, payload rejection and confirmed clearing. These model checks do not establish actual browser IndexedDB acceptance.

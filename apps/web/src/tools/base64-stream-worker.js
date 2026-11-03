@@ -4,6 +4,10 @@ import {
 } from "../../../../packages/shared/local-base64/codec.mjs";
 import { convertStream } from "../../../../packages/shared/local-base64/stream.mjs";
 import {
+  createVerifiedZip,
+  zipPlan,
+} from "../../../../packages/shared/local-base64/archive.mjs";
+import {
   createTemporarySink,
   storageBudget,
 } from "../../../../packages/shared/local-base64/storage.mjs";
@@ -31,32 +35,55 @@ self.onmessage = async ({ data }) => {
     self.postMessage({ type: "temporary", id });
     sink = await createTemporarySink({
       consent: data.consent,
-      expectedBytes: storageBudget(
-        data.file.size,
-        data.mode,
-        data.options.wrap,
-      ),
+      expectedBytes:
+        data.mode === "zip"
+          ? zipPlan(data.options.files).expectedBytes
+          : storageBudget(data.file.size, data.mode, data.options.wrap),
       id,
     });
     await control.checkpoint();
     let last = 0;
-    const result = await convertStream({
-      source: () => blobChunks(data.file),
-      sink,
-      mode: data.mode,
-      options: data.options,
-      control,
-      onProgress: (value) => {
-        if (performance.now() - last > 100) {
-          last = performance.now();
-          self.postMessage({
-            type: "progress",
-            ...value,
-            total: data.file.size,
+    const onProgress = (value) => {
+      if (performance.now() - last > 100) {
+        last = performance.now();
+        self.postMessage({
+          type: "progress",
+          ...value,
+          total:
+            data.mode === "zip"
+              ? data.options.files.reduce(
+                  (sum, entry) => sum + entry.file.size,
+                  0,
+                )
+              : data.file.size,
+        });
+      }
+    };
+    const result =
+      data.mode === "zip"
+        ? await createVerifiedZip({
+            files: data.options.files,
+            sink,
+            control,
+            onProgress,
+          })
+        : await convertStream({
+            source: () => blobChunks(data.file),
+            sink,
+            mode: data.mode,
+            options: data.options,
+            control,
+            onProgress: (value) => {
+              if (performance.now() - last > 100) {
+                last = performance.now();
+                self.postMessage({
+                  type: "progress",
+                  ...value,
+                  total: data.file.size,
+                });
+              }
+            },
           });
-        }
-      },
-    });
     const file = await sink.file();
     self.postMessage({ type: "complete", id, result, file });
   } catch (error) {
