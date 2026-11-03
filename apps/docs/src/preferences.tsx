@@ -3,11 +3,17 @@ type Settings = {
   language: "en" | "yue" | "both";
   theme: "light" | "dark" | "system";
   reduceMotion: boolean;
+  sounds: boolean;
+  volume: number;
+  lowStimulation: boolean;
 };
 const defaults: Settings = {
     language: "en",
     theme: "system",
     reduceMotion: false,
+    sounds: false,
+    volume: 30,
+    lowStimulation: false,
   },
   key = "fleet.docs.preferences.v1";
 function read(): Settings {
@@ -21,6 +27,9 @@ function read(): Settings {
         ? value.theme
         : "system",
       reduceMotion: value.reduceMotion === true,
+      sounds: value.sounds === true,
+      volume: Number.isFinite(value.volume)&&value.volume>=0&&value.volume<=100?value.volume:30,
+      lowStimulation: value.lowStimulation === true,
     };
   } catch {
     return defaults;
@@ -56,7 +65,7 @@ export function UIProvider({ children }: { children: React.ReactNode }) {
             ? "dark"
             : "light"
           : prefs.theme;
-      document.documentElement.dataset.motion = prefs.reduceMotion
+      document.documentElement.dataset.motion = prefs.reduceMotion||prefs.lowStimulation
         ? "reduced"
         : "normal";
       document.documentElement.lang = prefs.language === "yue" ? "zh-HK" : "en";

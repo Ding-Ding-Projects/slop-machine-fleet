@@ -567,3 +567,5 @@ footer {
   transition: none !important;
   animation: none !important;
 }
+
+.docs-dialog{width:min(640px,calc(100vw - 24px));max-height:calc(100dvh - 24px);overflow:auto;border:1px solid var(--outline-variant);border-radius:var(--corner-extra-large,28px);padding:24px;background:var(--surface-container-high);color:var(--on-surface)}.docs-dialog::backdrop{background:#0008}.docs-dialog>header{display:flex;justify-content:space-between;align-items:start;gap:16px}.docs-dialog h2{margin-top:0}.docs-dialog .actions{display:flex;gap:12px;flex-wrap:wrap}.command-list{display:grid;gap:10px}.command-list button{text-align:left;white-space:normal}.base64-steps{display:grid;gap:12px;padding-left:24px;margin:24px 0}.base64-page .local-tools{margin-top:24px}.base64-page .tool-panel{min-width:0}.base64-page input[type=file]{max-width:100%}.base64-page .notice label{display:flex;align-items:center;gap:10px}.topbar nav{flex-wrap:wrap}.topbar nav button{font-size:inherit}.settings input[type=range]{width:100%}.base64-page pre{max-width:100%;overflow:auto}@media(max-width:500px){.docs-dialog{padding:16px}.base64-steps{padding-left:20px}.base64-page .tool-actions{flex-wrap:wrap}}

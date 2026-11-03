@@ -7,23 +7,20 @@ import { categories } from "./journeys";
 import { Journey } from "./Journey";
 import { Settings } from "./Settings";
 import { Downloads } from "./Downloads";
+import {Base64Page} from "./Base64Page";
+import {CommandCatalog} from "./CommandCatalog";
+import {useGuardedRoute} from "./useGuardedRoute";
 import { Article, ArticleCards, articleURL } from "./ArticleCards";
-function useRoute() {
-  const [route, setRoute] = useState(location.hash || "#/");
-  useEffect(() => {
-    const change = () => setRoute(location.hash || "#/");
-    addEventListener("hashchange", change);
-    return () => removeEventListener("hashchange", change);
-  }, []);
-  return route;
-}
 export function App() {
   const { t, storageError } = useUI(),
-    route = useRoute(),
+    navigation = useGuardedRoute(),
+    route = navigation.route,
     search = useSearch(
       content.articles,
       (article) => article.title + "\n" + article.body,
     );
+  const [commands,setCommands]=useState(false);
+  useEffect(()=>{const key=(event:KeyboardEvent)=>{if(event.ctrlKey&&event.shiftKey&&event.key.toLowerCase()==='f'){event.preventDefault();setCommands(true);}};addEventListener('keydown',key);return()=>removeEventListener('keydown',key);},[]);
   let article: Article | undefined,
     anchor = "";
   if (route.startsWith("#/article/")) {
@@ -72,6 +69,8 @@ export function App() {
           <a href="#/">{t("Learn", "學習")}</a>
           <a href="#/category/operations">{t("Guides", "指南")}</a>
           <a href="#/category/wiki">{t("Wiki", "維基")}</a>
+          <a href="#/base64">{t("Base64 tools", "Base64 工具")}</a>
+          <button onClick={()=>setCommands(true)} aria-label={t("Open task commands, Control Shift F","開啟工作指令，Control Shift F")}>{t("Go to a task","前往工作")}</button>
           <a href="#/settings">{t("Settings", "設定")}</a>
         </nav>
       </header>
@@ -95,7 +94,8 @@ export function App() {
             )}
           </p>
         )}
-        {searching ? (
+        {navigation.warning}
+        {route==="#/base64" ? <><Base64Page onSafety={navigation.onSafety} onLifecycle={navigation.onLifecycle}/>{searching&&<section><h2>{t('Documentation search results','文件搜尋結果')}</h2><ArticleCards articles={search.filtered}/></section>}</> : searching ? (
           <section>
             <span className="eyebrow">{t("Search results", "搜尋結果")}</span>
             <h1>
@@ -222,6 +222,7 @@ export function App() {
               </div>
             </section>
             <Journey />
+            <section className="notice"><h2>{t('Transform text and files without an upload','毋須上載即可轉換文字及檔案')}</h2><p>{t('Use the local Base64 workspace to encode, decode, inspect and export your own data. Streaming and storage limits are explained before work starts.','使用本機 Base64 工作區編碼、解碼、檢查及匯出自己的資料，執行前會說明串流及儲存限制。')}</p><a href="#/base64">{t('Open Base64 tools','開啟 Base64 工具')}</a></section>
             <section className="categories">
               <header>
                 <span className="eyebrow">{t("Go deeper", "深入了解")}</span>
@@ -267,6 +268,8 @@ export function App() {
           </section>
         )}
       </main>
+      {navigation.confirmation}
+      {commands&&<CommandCatalog onClose={()=>setCommands(false)} navigate={navigation.navigate}/>}
       <footer>
         <p>
           Slop Machine Fleet ·{" "}

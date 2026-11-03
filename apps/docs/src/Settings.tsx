@@ -49,10 +49,14 @@ export function Settings() {
           />
           {t("Reduce motion", "減少動態效果")}
         </label>
+        <label className="check"><input type="checkbox" checked={prefs.sounds} onChange={event=>set({sounds:event.target.checked})}/>{t('Tool outcome sounds','工具結果音效')}</label>
+        <label>{t('Tool sound volume','工具音效音量')}<input type="range" min={0} max={100} value={prefs.volume} onChange={event=>set({volume:Number(event.target.value)})}/><output>{prefs.volume}%</output></label>
+        <label className="check"><input type="checkbox" checked={prefs.lowStimulation} onChange={event=>set({lowStimulation:event.target.checked})}/>{t('Low stimulation: suppress tool sounds and motion','低刺激：停用工具音效及動態')}</label>
+        <p>{t('Tool sounds are off by default. Successful and failed Base64 outcomes use short local synthesized cues; audio never changes the result.','工具音效預設關閉。Base64 成功及失敗結果使用短本機合成音效，聲音不影響結果。')}</p>
       </div>
       <button
         onClick={() =>
-          set({ language: "en", theme: "system", reduceMotion: false })
+          set({ language: "en", theme: "system", reduceMotion: false, sounds:false,volume:30,lowStimulation:false })
         }
       >
         {t("Restore reading defaults", "還原閱讀預設值")}

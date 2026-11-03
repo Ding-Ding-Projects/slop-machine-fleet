@@ -1,0 +1,5 @@
+import React from 'react';
+import {Search,useSearch} from '../../web/src/Search';
+import {LocalDialog} from './LocalDialog';
+import {useUI} from './preferences';
+export function CommandCatalog({onClose,navigate}:{onClose:()=>void;navigate:(route:string)=>void}){const {t}=useUI();const entries=[{route:'#/',title:t('Start guided reading','開始導讀')},{route:'#/category/operations',title:t('Read operation guides','閱讀操作指南')},{route:'#/category/wiki',title:t('Browse the bundled wiki','瀏覽附載維基')},{route:'#/base64',title:t('Encode or decode Base64 locally','在本機編碼或解碼 Base64')},{route:'#/settings',title:t('Change reading and sound preferences','更改閱讀及音效偏好')}];const search=useSearch(entries,item=>item.title);return <LocalDialog title={t('Go to a task','前往工作')} onClose={onClose}><Search label={t('Search actual documentation destinations','搜尋實際文件目的地')} state={search.state} onChange={search.setState} error={search.error}/><div className="command-list">{search.filtered.map(item=><button key={item.route} onClick={()=>{onClose();navigate(item.route);}}>{item.title}</button>)}</div>{!search.filtered.length&&<p>{t('No matching destination.','沒有符合目的地。')}</p>}</LocalDialog>;}

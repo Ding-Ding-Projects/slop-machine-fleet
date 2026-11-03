@@ -1,0 +1,3 @@
+import React,{useEffect,useId,useRef} from 'react';
+import {useUI} from './preferences';
+export function LocalDialog({title,onClose,children}:{title:string;onClose:()=>void;children:React.ReactNode}){const ref=useRef<HTMLDialogElement>(null),id=useId(),{t}=useUI();useEffect(()=>{const prior=document.activeElement as HTMLElement;ref.current?.showModal();return()=>{ref.current?.close();if(prior?.isConnected)prior.focus();else document.getElementById('main-content')?.focus();};},[]);return <dialog ref={ref} className="docs-dialog" aria-labelledby={id} onCancel={event=>{event.preventDefault();onClose();}}><header><h2 id={id}>{title}</h2><button onClick={onClose} aria-label={t('Close dialog','關閉對話框')}>×</button></header>{children}</dialog>;}
