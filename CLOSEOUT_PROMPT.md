@@ -1,5 +1,15 @@
 # Fleet continuation
 
+## Latest checkpoint, superseding older pending states below
+
+Main1e7114ee79caf2a63e99532ec514ce3c511d005c is pushed and read back. Each new worker and matching operation target now record the actual resolved launch image; absent historical facts stay null. Independent review accepted the repair. Source tree8b08f215a0337f00b6e4bcbeecf0cb56fdef6746 matches18c9df7 exactly, whose root build passed and30 service tests passed. The full outgoing-history privacy scan passed. Provider runs41660602078,41660602082 and41660602130 are not yet verified successful.
+
+Normal0.1.2 releasebuild-41646405880-1/source4c0 has eight payload sizes/hashes and package/feed integrity verified. Installed0.1.1 remains the applied-and-verified baseline. The updater download operation was rejected before execution, with reason "blocked by policy". No updater ran. Browser use remains disabled in Work settings; do not retry either operation through another helper. Native trust awaits the existing user choice.
+
+Base64 tools50ad71f has47 focused tests and an independent dry source review. The public documentation workspace and parser are combined on the isolated interface branch atc6d30ad42787f6b851516ae6a33fa93bd1730618: exact root build passed,47 tools and18 documentation tests passed, and four actual module graphs excluded protected application-state imports. These results do not establish browser OPFS, clipboard, navigation, audio or lifecycle acceptance. No Base64 interface activation on main is authorized by these source results. Read back newer branch preservation before claiming it pushed.
+
+Bulk restart/reconciliation is under bounded source audit. Preserve concrete findings and independent refutation separately. The complete product goal remains unfinished: real approved cloud provisioning, bootstrap, login, pairing, model turns, native update, both hosting modes and full required-feature/runtime acceptance are still pending. No paid resource was launched. Status Hub owner-data privacy remains unverified; no private writes are claimed.
+
 Objective: deliver the isolated Windows Server2025 EC2 coding-worker fleet with shared desktop/browser management, Slop Machine device login, interactive GitHub CLI login, remote pairing, coding tasks and bulk lifecycle controls, plus all applicable required features.
 
 Main95872c98c13ab7564760e24fbcbdd553d0d3ce3d was pushed and read back. Its exact root build passed with148 complete documentation articles. The next local candidate is0.1.2, needed for a genuine update pair from the accepted installed0.1.1. Review HANDOFF.md and ROADMAP.md for the full evidence and remaining work.

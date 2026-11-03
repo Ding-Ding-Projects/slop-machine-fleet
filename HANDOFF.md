@@ -1,5 +1,15 @@
 # Fleet delivery handoff
 
+## Current checkpoint
+
+Main1e7114ee79caf2a63e99532ec514ce3c511d005c is pushed and verified. Resolved image provenance is persisted per worker and operation target without inventing legacy facts or changing review-admission semantics. Its tree matches independently reviewed18c9df7, whose exact root build and30 service tests passed. Outgoing-history privacy passed. New provider results remain pending.
+
+Normal0.1.2 releasebuild-41646405880-1/source4c0 passed eight payload size/hash and package/feed checks. Live documentation was verified with149 source-matched articles, five sourcec054 screenshots, original fonts and eight exact download records; the homepage is correct. These results supersede older deployment-pending statements retained below as history. Installed0.1.1 remains the verified baseline. The attempted updater download was rejected before execution; browser use is disabled and neither operation may be retried through alternate helpers. Native certificate trust still awaits the user's choice.
+
+Base64 source50ad71f and public-documentation integrationc6d30ad remain isolated and inactive on main. The combined candidate passed the exact root build,47 tools tests,18 documentation tests and four actual production module-graph checks. Independent percent-decoding source review is dry. Actual browser/storage/navigation/clipboard/audio proof remains unavailable. Preserve their owning branches and evidence; current remote proof is required before claiming newer preservation.
+
+The requested bulk lifecycle behavior is under focused restart/reconciliation audit. Full cloud-worker and required-feature acceptance remains unfinished. Consult CLOSEOUT_PROMPT.md for current boundaries and continuation; earlier sections retain historical evidence without upgrading its source identity.
+
 Implementation remains incomplete. The source contains the shared fleet service, native Windows worker, browser and desktop workflows, portable companions, documentation and release methods. The115-entry required-feature inventory records unfinished capabilities honestly.
 
 ## Preserved source and build state

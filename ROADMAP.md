@@ -10,6 +10,7 @@
 - [ ] Complete guided Codex login, remote pairing and interactive GitHub CLI login on the worker.
 - [ ] Dispatch coding work, handle approvals, interrupt safely and preserve unfinished changes.
 - [ ] Verify bulk lifecycle actions and retained workspace data.
+- [x] Record exact resolved launch images per worker and operation target, with focused provider, partial-result and legacy-history checks.
 
 ## Interface and complete required features
 
@@ -32,6 +33,8 @@
 - [ ] Verify both host modes and trusted HTTPS from an intended LAN client.
 - [ ] Publish complete interactive documentation and verify repository homepage.
 - [x] Deploy the initial 148-article documentation, verify live HTTP/content/assets and read back the exact repository homepage.
+- [x] Verify source4c0 documentation with149 articles, five inspected image hashes, original fonts and eight exact release downloads.
+- [x] Verify normal0.1.2 releasebuild-41646405880-1 payload sizes/hashes and package/feed integrity; installed update remains pending.
 - [ ] Verify live journeys, persistence, search, Settings, keyboard, accessibility and narrow layouts in an enabled runtime environment.
 - [x] Preserve complete prepared wiki articles and navigation while forge-wiki initialization is unavailable.
 - [ ] Publish and read back the forge wiki after its supported repository becomes available.
