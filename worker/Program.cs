@@ -47,8 +47,8 @@ app.Use(async (context, next) => {
 app.MapGet("/health", (TaskManager tasks) => new { workerId = settings.WorkerId, ready = !tasks.Draining, state = tasks.Draining ? "draining" : "ready", version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "unavailable", runtime = Environment.Version.ToString() });
 app.MapPost("/auth/{provider}/start", (string provider, AuthManager auth) => auth.Start(provider));
 app.MapGet("/auth/{provider}", (string provider, AuthManager auth) => auth.Status(provider));
-app.MapPost("/auth/{provider}/input", async (string provider, InputRequest body, AuthManager auth) => { await auth.Input(provider, body.Input); return Results.Accepted(); });
-app.MapDelete("/auth/{provider}", (string provider, AuthManager auth) => { auth.Cancel(provider); return Results.NoContent(); });
+app.MapPost("/auth/{provider}/input", async (string provider, AuthSessionInput body, AuthManager auth) => { await auth.Input(provider, body.SessionId,body.Input); return Results.Accepted(); });
+app.MapDelete("/auth/{provider}", async (string provider, Guid sessionId, AuthManager auth) => { await auth.Cancel(provider,sessionId); return Results.NoContent(); });
 app.MapPost("/tasks", async (TaskRequest request, TaskManager tasks) => Results.Accepted(value: await tasks.Start(request)));
 app.MapGet("/tasks/{id:guid}", (Guid id, TaskManager tasks) => tasks.Details(id));
 app.MapGet("/tasks/{id:guid}/output", (Guid id, long? after, int? limit, TaskManager tasks) => tasks.Output(id,after??0,limit??100));

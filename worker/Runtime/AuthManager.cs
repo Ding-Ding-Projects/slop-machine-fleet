@@ -2,29 +2,39 @@ using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
 using System.Text.Json;
 namespace Fleet.Worker;
-public sealed record AuthState(string State,string? VerificationUrl=null,string? UserCode=null,DateTimeOffset? ExpiresAt=null,string? ErrorCode=null);
+public sealed record AuthState(string State,string? VerificationUrl=null,string? UserCode=null,DateTimeOffset? ExpiresAt=null,string? ErrorCode=null,Guid? SessionId=null);
+public sealed record AuthSessionInput(Guid SessionId,string Input);
 public sealed class AuthManager(WorkerSettings settings,IPairingRuntime? pairingRuntime=null) : IDisposable {
-    sealed class Session { public AuthState State=new("pending"); public CancellationTokenSource Stop=new(TimeSpan.FromMinutes(15)); public PseudoTerminal? Terminal; public Task Completion=Task.CompletedTask; }
+    sealed class Session(string provider) { public string Provider=provider; public Guid Id=Guid.NewGuid(); public AuthState State=new("pending"); public CancellationTokenSource Stop=new(TimeSpan.FromMinutes(15)); public PseudoTerminal? Terminal; public Task Completion=Task.CompletedTask; }
     readonly ConcurrentDictionary<string,Session> sessions=new();
+    readonly ConcurrentDictionary<string,SemaphoreSlim> lifecycle=new();
+    readonly ConcurrentDictionary<string,object> ownership=new();
+    object OwnerLock(string provider)=>ownership.GetOrAdd(provider,_=>new());
+    SemaphoreSlim Lifecycle(string provider)=>lifecycle.GetOrAdd(provider,_=>new(1,1));
     static void Validate(string provider) { if(provider is not ("codex" or "github" or "pairing")) throw new ArgumentException("Unknown provider."); }
-    public AuthState Start(string provider) {
+    public async Task<AuthState> Start(string provider) {
         Validate(provider);
-        var session=new Session();
-        if(sessions.TryGetValue(provider,out var previous)) { if(previous.State.State is "pending" or "code-issued") throw new InvalidOperationException("Authentication already exists; cancel before restarting."); sessions.TryRemove(provider,out _); }
-        if(!sessions.TryAdd(provider,session)) throw new InvalidOperationException("Authentication already exists.");
-        session.Completion=Run(provider,session);
-        return session.State;
+        var gate=Lifecycle(provider);await gate.WaitAsync();
+        try {
+            Session? previous;lock(OwnerLock(provider)) {sessions.TryGetValue(provider,out previous);if(previous?.State.State is "pending" or "code-issued" or "input-required") throw new InvalidOperationException("Authentication already exists; cancel before restarting.");}
+            if(previous is not null) {previous.Stop.Cancel();previous.Terminal?.Cancel();await previous.Completion;previous.Stop.Dispose();}
+            var session=new Session(provider);session.State=session.State with {SessionId=session.Id};
+            lock(OwnerLock(provider)) sessions[provider]=session;
+            session.Completion=Run(provider,session);
+            return Status(provider);
+        } finally {gate.Release();}
     }
     internal Task Completion(string provider)=>sessions.TryGetValue(provider,out var session)?session.Completion:Task.CompletedTask;
-    public AuthState Status(string provider) { Validate(provider); return sessions.TryGetValue(provider,out var session) ? session.State : new("unknown"); }
-    public async Task Input(string provider,string value) {
+    public AuthState Status(string provider) { Validate(provider);lock(OwnerLock(provider)) return sessions.TryGetValue(provider,out var session) ? session.State : new("unknown"); }
+    public async Task Input(string provider,Guid sessionId,string value) {
         Validate(provider);
         if(value.Length>256 || value.Any(c=>char.IsControl(c)&&c is not '\r' and not '\n') || value.Count(c=>c=='\n')>1) throw new ArgumentException("Invalid interactive input.");
-        if(!sessions.TryGetValue(provider,out var session) || session.Terminal is null || session.State.State is not ("pending" or "code-issued")) throw new InvalidOperationException("Not accepting input.");
-        await session.Terminal.Input(value+"\r");
+        var gate=Lifecycle(provider);await gate.WaitAsync();
+        try {Session session;lock(OwnerLock(provider)) {if(!sessions.TryGetValue(provider,out session!)||session.Id!=sessionId||session.Terminal is null||session.State.State is not ("pending" or "code-issued")) throw new InvalidOperationException("Not accepting input for this session.");}await session.Terminal.Input(value+"\r");}
+        finally {gate.Release();}
     }
-    public void Cancel(string provider) { Validate(provider); if(sessions.TryGetValue(provider,out var session)) { lock(session) session.State=new("cancelled"); session.Stop.Cancel(); session.Terminal?.Cancel(); } }
-    static void Set(Session session,AuthState state) { lock(session) { if(session.State.State!="cancelled") session.State=state; } }
+    public async Task Cancel(string provider,Guid sessionId) {Validate(provider);var gate=Lifecycle(provider);await gate.WaitAsync();try {Session session;lock(OwnerLock(provider)) {if(!sessions.TryGetValue(provider,out session!)||session.Id!=sessionId) throw new InvalidOperationException("Authentication session is stale.");session.State=new("cancelled",SessionId:session.Id);}session.Stop.Cancel();session.Terminal?.Cancel();await session.Completion;}finally {gate.Release();}}
+    void Set(Session session,AuthState state) {lock(OwnerLock(session.Provider)) {if(sessions.TryGetValue(session.Provider,out var owner)&&ReferenceEquals(owner,session)&&session.State.State!="cancelled") session.State=state with {SessionId=session.Id};}}
     async Task Run(string provider,Session session) {
         try {
             if(provider=="pairing") {
@@ -45,14 +55,15 @@ public sealed class AuthManager(WorkerSettings settings,IPairingRuntime? pairing
             var executable=provider=="github"?settings.GhPath:settings.CodexPath;
             using var terminal=new PseudoTerminal(executable,provider=="github"?["auth","login","--hostname","github.com","--git-protocol","https","--web"]:["login","--device-auth"]);
             session.Terminal=terminal;
-            var reading=Read(terminal,session);
-            var exit=await terminal.Wait(session.Stop.Token);
-            session.Stop.Cancel();
-            try { await reading; } catch(OperationCanceledException) { }
+            using var readStop=CancellationTokenSource.CreateLinkedTokenSource(session.Stop.Token);
+            var reading=Read(terminal,session,readStop.Token);
+            int exit;
+            try {exit=await terminal.Wait(session.Stop.Token);}
+            finally {readStop.Cancel();try {await reading;}catch(OperationCanceledException){}catch(IOException){}catch(ObjectDisposedException){}}
             if(exit!=0) { Set(session,new("error",ErrorCode:"LOGIN_FAILED")); return; }
-            var verified=await Commands.Run(executable,provider=="github"?["auth","status","--hostname","github.com"]:["login","status"]);
+            var verified=await Commands.Run(executable,provider=="github"?["auth","status","--hostname","github.com"]:["login","status"],cancellation:session.Stop.Token);
             if(verified.Code!=0) { Set(session,new("error",ErrorCode:"VERIFICATION_FAILED")); return; }
-            if(provider=="github" && (await Commands.Run(settings.GhPath,["auth","setup-git","--hostname","github.com"])).Code!=0) { Set(session,new("error",ErrorCode:"GIT_SETUP_FAILED")); return; }
+            if(provider=="github" && (await Commands.Run(settings.GhPath,["auth","setup-git","--hostname","github.com"],cancellation:session.Stop.Token)).Code!=0) { Set(session,new("error",ErrorCode:"GIT_SETUP_FAILED")); return; }
             Set(session,new("verified"));
         } catch(OperationCanceledException) { Set(session,new("expired")); }
         catch(Exception) { Set(session,new("error",ErrorCode:"AUTH_PROCESS_FAILED")); }
@@ -65,10 +76,10 @@ public sealed class AuthManager(WorkerSettings settings,IPairingRuntime? pairing
         var at=DateTimeOffset.FromUnixTimeSeconds(seconds);
         return at<=(now??DateTimeOffset.UtcNow)?new("expired"):new("code-issued",UserCode:code,ExpiresAt:at);
     }
-    static async Task Read(PseudoTerminal terminal,Session session) {
+    async Task Read(PseudoTerminal terminal,Session session,CancellationToken cancellation) {
         var buffer=new char[1024]; var recent="";
         while(true) {
-            var count=await terminal.Read(buffer,session.Stop.Token); if(count==0) return;
+            var count=await terminal.Read(buffer,cancellation); if(count==0) return;
             recent+=new string(buffer,0,count); if(recent.Length>8192) recent=recent[^8192..];
             var plain=Regex.Replace(recent,"\u001b\\[[0-?]*[ -/]*[@-~]","");
             var url=Regex.Match(plain,@"https://(?:github\.com/login/device|auth\.openai\.com/[^\s\u001b]+)");
@@ -76,5 +87,5 @@ public sealed class AuthManager(WorkerSettings settings,IPairingRuntime? pairing
             if(url.Success || code.Success) Set(session,new("code-issued",url.Success?url.Value:null,code.Success?code.Value:null));
         }
     }
-    public void Dispose() { foreach(var provider in sessions.Keys) Cancel(provider); }
+    public void Dispose() {foreach(var provider in sessions.Keys) {var id=Status(provider).SessionId;if(id.HasValue) Cancel(provider,id.Value).GetAwaiter().GetResult();}}
 }
